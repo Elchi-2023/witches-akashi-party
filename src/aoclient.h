@@ -1414,6 +1414,15 @@ class AOClient : public QObject
      */
     void cmdRollP(int argc, QStringList argv);
 
+        /**
+     * @brief Rock Paper Scissors game
+     *
+     * @details accepts an argument of either rock, paper, or scissors
+     *
+     * @iscommand
+     */
+    void cmdRps(int argc, QStringList argv);
+
     /**
      * @brief Gets or sets the global or one of the area-specific timers.
      *
@@ -1489,6 +1498,24 @@ class AOClient : public QObject
      * that are also related to messages or the client's self-management in some way.
      */
     ///@{
+
+        /**
+     * @brief Pairs with someone.
+     *
+     * @details Usage: /pair ID.
+     *
+     * @iscommand
+     */
+    void cmdPair(int argc, QStringList argv);
+
+    /**
+     * @brief Stop Pairing with someone.
+     *
+     * @details Usage:/unpair.
+     *
+     * @iscommand
+     */
+    void cmdUnPair(int argc, QStringList argv);
 
     /**
      * @brief Changes the client's position.

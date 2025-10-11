@@ -25,6 +25,43 @@
 // This file is for commands under the messaging category in aoclient.h
 // Be sure to register the command in the header before adding it here!
 
+void AOClient::cmdPair(int argc, QStringList argv)
+{
+    Q_UNUSED(argc);
+
+    bool ok;
+    QList<AOClient *> l_targets;
+    int l_target_id = argv[0].toInt(&ok);
+
+    if (!ok) {
+        sendServerMessage("That does not look like a valid ID.");
+        return;
+    }
+    else if (ok) {
+        AOClient *l_target_client = server->getClientByID(l_target_id);
+        if (l_target_client == nullptr) {
+            sendServerMessage("Target ID not found!");
+            return;
+        }
+        if (l_target_id == clientId()) {
+            sendServerMessage("You can't pair with yourself!");
+            return;
+        }
+    }
+
+    m_pairing_with = l_target_client->m_char_id;
+    sendServerMessage("You are now paired with " + l_target_client->characterName() + ".");
+}
+
+void AOClient::cmdUnPair(int argc, QStringList argv) 
+{
+    Q_UNUSED(argc);
+
+    m_pairing_with = -1;
+    sendServerMessage("You unpaired");
+
+}
+
 void AOClient::cmdPos(int argc, QStringList argv)
 {
     Q_UNUSED(argc);

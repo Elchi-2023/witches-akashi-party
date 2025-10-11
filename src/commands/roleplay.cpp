@@ -166,6 +166,70 @@ void AOClient::cmdRollP(int argc, QStringList argv)
     diceThrower(l_sides, l_dice, true);
 }
 
+void AOClient::cmdRps(int argc, QStringList argv)
+{
+    if (argc != 1) {
+        sendServerMessage("Usage: /rps [rock/paper/scissors]");
+        return;
+    }
+
+    QString l_choice = argv[0].toLower();
+    if (l_choice != "rock" && l_choice != "paper" && l_choice != "scissors") {
+        sendServerMessage("Invalid choice. Please choose rock, paper, or scissors.");
+        return;
+    }
+
+    // Check if there's active game
+    AOClient *challenger = nullptr;
+    for (AOClient *client : server->getClients()) {
+        if (client->rps_waiting && client != this) {
+            challenger = client;
+            break;
+        }
+    }
+
+    if (!challenger) {
+        // Start new game
+        rps_choice = l_choice;
+        sendServerMessage("You chose " + l_choice + "!");
+        rps_waiting = true;
+        QString l_sender_name = name();
+        sendServerMessageArea("⚔️" + l_sender_name + " wants to play Rock Paper Scissors! Use /rps [choice] to play against them⚔️");
+
+        QTimer::singleShot(600000, this, [this]() {
+            if (rps_waiting) {
+                rps_waiting = false;
+                rps_choice.clear();
+                sendServerMessage("🥀Rock Paper Scissors challenge expired🥀");
+            }
+        });
+    }
+    else {
+        // Accept challenge and decide winner
+        QString result;
+        if (challenger->rps_choice == l_choice) {
+            result = "👔It's a tie👔";
+        }
+        else if ((l_choice == "rock" && challenger->rps_choice == "scissors") ||
+                 (l_choice == "paper" && challenger->rps_choice == "rock") ||
+                 (l_choice == "scissors" && challenger->rps_choice == "paper")) {
+            result = "👑" + name() + " wins👑";
+        }
+        else {
+            result = "👑" + challenger->name() + " wins👑";
+        }
+
+        // Announce results
+        sendServerMessageArea(challenger->name() + " chose " + challenger->rps_choice +
+                              " and " + name() + " chose " + l_choice + ".");
+        sendServerMessageArea(result);
+
+        // Reset state
+        challenger->rps_waiting = false;
+        challenger->rps_choice.clear();
+    }
+}
+
 void AOClient::cmdTimer(int argc, QStringList argv)
 {
     AreaData *l_area = server->getAreaById(areaId());
