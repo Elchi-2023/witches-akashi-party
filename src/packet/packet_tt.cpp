@@ -25,7 +25,7 @@ void PacketTT::handlePacket(AreaData *area, AOClient &client) const{
     if (validated_packet->getPacketInfo().header == "INVALID")
         return;
 
-    client.getServer()->broadcast(validated_packet, client.m_current_area);
+    client.getServer()->broadcast(validated_packet, client.areaId());
     /*
      * area->startMessageFloodguard(ConfigManager::messageFloodguard());
      * client.getServer()->startMessageFloodguard(ConfigManager::globalMessageFloodguard());}
@@ -55,7 +55,7 @@ AOPacket *PacketTT::validateTTPacket(AOClient &client) const{
     if (!validType || l_args[1].trimmed().isEmpty() || l_args[2].trimmed().isEmpty())
         return l_invalid;
 
-    if (l_args[1].toLower() != client.m_current_char.toLower()) /* kfo behaviors */
+    if (l_args[1].toLower() != client.character().toLower()) /* kfo behaviors */
         client.m_current_iniswap = l_args[1];
     else if (!client.m_current_iniswap.isEmpty())
         client.m_current_iniswap.clear();
