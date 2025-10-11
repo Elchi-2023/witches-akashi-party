@@ -43,7 +43,7 @@ class AOPacket;
 class AOClient : public QObject
 {
     Q_OBJECT
-
+      
   public:
     /**
      * @brief Describes a command's details.
@@ -2176,6 +2176,16 @@ class AOClient : public QObject
      * @brief Number of packets received for the current tick.
      */
     int packet_count;
+
+    /**
+     * @brief choice for rock paper scissor.
+     */
+    QString rps_choice;
+
+    /**
+     * @brief check if an RPS game is already in progress.
+     */
+    bool rps_waiting = false;
 
   signals:
 
