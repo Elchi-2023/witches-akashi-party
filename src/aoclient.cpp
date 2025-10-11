@@ -17,6 +17,8 @@
 //////////////////////////////////////////////////////////////////////////////////////
 #include "aoclient.h"
 
+#include <utility>
+
 #include "area_data.h"
 #include "command_extension.h"
 #include "config_manager.h"
@@ -360,7 +362,7 @@ void AOClient::handleCommand(QString command, int argc, QStringList argv)
     }
 
     bool l_has_permissions = false;
-    for (const ACLRole::Permission i_permission : qAsConst(l_permissions)) {
+    for (const ACLRole::Permission i_permission : std::as_const(l_permissions)) {
         if (checkPermission(i_permission)) {
             l_has_permissions = true;
             break;
