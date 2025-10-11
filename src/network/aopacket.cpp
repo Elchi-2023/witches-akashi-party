@@ -39,7 +39,6 @@
 #include "packet/packet_rm.h"
 #include "packet/packet_rt.h"
 #include "packet/packet_setcase.h"
-#include "packet/packet_tt.h"
 #include "packet/packet_zz.h"
 
 AOPacket::AOPacket(QStringList p_contents) :
@@ -138,7 +137,6 @@ void AOPacket::registerPackets()
     PacketFactory::registerClass<PacketSetcase>("SETCASE");
     PacketFactory::registerClass<PacketMA>("MA");
     PacketFactory::registerClass<PacketZZ>("ZZ");
-    PacketFactory::registerClass<PacketTT>("TT");
     PacketFactory::registerClass<PacketPR>("PR");
     PacketFactory::registerClass<PacketPU>("PU");
 }
