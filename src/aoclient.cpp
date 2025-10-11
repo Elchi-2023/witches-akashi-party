@@ -360,7 +360,7 @@ void AOClient::handleCommand(QString command, int argc, QStringList argv)
     }
 
     bool l_has_permissions = false;
-    for (const ACLRole::Permission i_permission : qAsconst(l_permissions)) {
+    for (const ACLRole::Permission i_permission : qAsConst(l_permissions)) {
         if (checkPermission(i_permission)) {
             l_has_permissions = true;
             break;
