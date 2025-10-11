@@ -47,10 +47,10 @@ void AOClient::cmdPair(int argc, QStringList argv)
             sendServerMessage("You can't pair with yourself!");
             return;
         }
-    }
 
-    m_pairing_with = l_target_client->m_char_id;
-    sendServerMessage("You are now paired with " + l_target_client->characterName() + ".");
+        m_pairing_with = l_target_client->m_char_id;
+        sendServerMessage("You are now paired with " + l_target_client->characterName() + ".");
+    }
 }
 
 void AOClient::cmdUnPair(int argc, QStringList argv) 
