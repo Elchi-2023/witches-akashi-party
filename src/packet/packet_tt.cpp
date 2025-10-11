@@ -42,7 +42,7 @@ AOPacket *PacketTT::validateTTPacket(AOClient &client) const{
     AOPacket *l_invalid = PacketFactory::createPacket("INVALID", {});
     QStringList l_args;
 
-    if (!client.m_is_spectator) /* don't let spectator mess this either */
+    if (client.m_is_spectator) /* don't let spectator mess this either */
         return l_invalid;
 
     QList<QVariant> l_incoming_args;
