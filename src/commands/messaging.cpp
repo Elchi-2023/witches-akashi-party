@@ -21,6 +21,7 @@
 #include "config_manager.h"
 #include "packet/packet_factory.h"
 #include "server.h"
+#include "packet/packet_ms.h"
 
 // This file is for commands under the messaging category in aoclient.h
 // Be sure to register the command in the header before adding it here!
@@ -49,13 +50,20 @@ void AOClient::cmdPair(int argc, QStringList argv)
         }
 
         m_pairing_with = l_target_client->m_char_id;
-        sendServerMessage("You are now paired with " + l_target_client->characterName() + ".");
+        changePosition(l_target_client->m_pos);
+        l_other_name = l_target_client->m_current_iniswap;
+        l_other_emote = l_target_client->m_emote;
+        l_other_offset = l_target_client->m_offset;
+        l_other_flip = l_target_client->m_flipping;
+        l_pairing = true;
+        sendServerMessage("You are now paired with " + l_target_client->character() + ".");
     }
 }
 
 void AOClient::cmdUnPair(int argc, QStringList argv) 
 {
     Q_UNUSED(argc);
+    Q_UNUSED(argv);
 
     m_pairing_with = -1;
     sendServerMessage("You unpaired");
