@@ -136,26 +136,30 @@ void AOClient::cmdMods(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    QStringList l_entries;
-    int l_online_count = 0;
-    const QVector<AOClient *> l_clients = server->getClients();
-    for (AOClient *l_client : l_clients) {
-        if (l_client->m_authenticated) {
-            l_entries << "---";
-            if (ConfigManager::authType() != DataTypes::AuthType::SIMPLE) {
-                l_entries << "Moderator: " + l_client->m_moderator_name;
-                l_entries << "Role:" << l_client->m_acl_role_id;
-            }
-            l_entries << "OOC name: " + l_client->name();
-            l_entries << "ID: " + QString::number(l_client->clientId());
-            l_entries << "Area: " + QString::number(l_client->areaId());
-            l_entries << "Character: " + l_client->character();
-            l_online_count++;
+    QMap<int, QStringList> EntriesMap; /* why use qmap?.. because we needs area_id for get areas name */
+    for (AOClient *client : server->getClients()){
+        if (client->m_authenticated){
+            QString user_entry = QString("· [%1] %2").arg(QString::number(client->clientId()), client->character().isEmpty() ? "[Spectator]" : client->character());
+            if (!client->name().trimmed().isEmpty() && m_authenticated) /* moderator can see ooc name when other moderator had ooc name on it */
+                user_entry.append(" (" + client->name().trimmed() + ")");
+            if (EntriesMap.contains(client->areaId())) /* if area_id was on enteriesmap, we adds another entry */
+                EntriesMap[client->areaId()].append(user_entry);
+            else /* otherwise, we needs captures area_id and entry */
+                EntriesMap.insert(client->areaId(), {user_entry});
         }
+    } /* if you wander about where's akashi profiles stuff?.. mint don't want that stuff (unless if he change mind) */
+
+    /* kfo/tsu-like behavior */
+    QStringList entry("=== Moderator ===");
+    int entry_count = 0;
+
+    for (auto EMap = EntriesMap.begin(); EMap != EntriesMap.end(); ++EMap){
+        entry.append(QString("=== %1 ===\n%2").arg(server->getAreaById(EMap.key())->name(), EMap.value().join('\n')));
+        entry_count += EMap.value().size();
     }
-    l_entries << "---";
-    l_entries << "Total online: " << QString::number(l_online_count);
-    sendServerMessage(l_entries.join("\n"));
+    entry.append(QString("=== Total online : %1 ===").arg(QString::number(entry_count)));
+
+    sendServerMessage(entry.join('\n'));
 }
 
 void AOClient::cmdCommands(int argc, QStringList argv)
