@@ -66,6 +66,11 @@ void AOClient::cmdUnPair(int argc, QStringList argv)
     Q_UNUSED(argv);
 
     m_pairing_with = -1;
+    l_other_name = "0";
+    l_other_emote = "0";
+    l_other_offset = "0";
+    l_other_flip = "0";
+    l_pairing = false;
     sendServerMessage("You unpaired");
 
 }
