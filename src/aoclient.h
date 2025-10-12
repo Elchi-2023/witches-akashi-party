@@ -567,6 +567,14 @@ class AOClient : public QObject
     int m_pairing_with = -1;
 
     /**
+     * @brief The character ID of the other character that the client wants to pair up with.
+     *
+     * @details Though this uses character ID, a client with *that* character ID by /pair must exist in the area for the pairing to work.
+     * Furthermore, the owner of that character ID must also do the reverse to this client, making their `pairing_with` equal
+     * to this client's character ID.
+     */
+    bool m_pairing_override = false;
+    /**
      * @brief The name of the emote last used by the client. No extension.
      *
      * @details This is used for pairing mainly, for the server to be able to craft a smooth-looking transition from one

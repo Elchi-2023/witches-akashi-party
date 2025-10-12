@@ -50,13 +50,14 @@ void AOClient::cmdPair(int argc, QStringList argv)
         }
 
         m_pairing_with = l_target_client->m_char_id;
+        m_pairing_override = true;
         changePosition(l_target_client->m_pos);
         m_other_name = l_target_client->m_current_iniswap;
         m_other_emote = l_target_client->m_emote;
         m_other_offset = l_target_client->m_offset;
         m_other_flip = l_target_client->m_flipping;
         m_pairing = true;
-        sendServerMessage("You are now paired with " + l_target_client->character() + ".");
+        sendServerMessage("You are now paired with " + l_target_client->character() + ".\nMake sure that target also selected you.");
     }
 }
 
@@ -65,14 +66,15 @@ void AOClient::cmdUnPair(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    m_pairing_with = -1;
-    m_other_name = "0";
-    m_other_emote = "0";
-    m_other_offset = "0";
-    m_other_flip = "0";
-    m_pairing = false;
-    sendServerMessage("You unpaired");
-
+    if (m_pairing_override){
+        m_pairing_with = -1;
+        m_pairing_override = false;
+        m_other_name.clear();
+        m_other_emote.clear();
+        m_other_offset.clear();
+        m_other_flip.clear();
+        sendServerMessage("You are unpaired");
+    }
 }
 
 void AOClient::cmdPos(int argc, QStringList argv)

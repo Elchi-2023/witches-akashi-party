@@ -322,7 +322,8 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         // things get a bit hairy here
         // don't ask me how this works, because i don't know either
         QStringList l_pair_data = l_incoming_args[16].toString().split("^");
-        client.m_pairing_with = l_pair_data[0].toInt();
+        if (!client.m_pairing_override)
+            client.m_pairing_with = l_pair_data[0].toInt();
         client.m_front_back = "";
         if (l_pair_data.length() > 1)
             client.m_front_back = "^" + l_pair_data[1];
