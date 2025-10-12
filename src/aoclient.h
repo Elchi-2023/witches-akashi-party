@@ -592,6 +592,15 @@ class AOClient : public QObject
      */
     QString m_pos = "";
 
+    QString m_front_back = "";
+    int m_other_charid = -1;
+    bool m_pairing = false;
+    QString m_other_name = "";
+    QString m_other_emote = "";
+    QString m_other_offset = "";
+    QString m_other_flip = "";
+    
+
     ///@}
 
     /**

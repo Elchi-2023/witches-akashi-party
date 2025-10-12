@@ -323,32 +323,32 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         // don't ask me how this works, because i don't know either
         QStringList l_pair_data = l_incoming_args[16].toString().split("^");
         client.m_pairing_with = l_pair_data[0].toInt();
-        QString l_front_back = "";
+        client.m_front_back = "";
         if (l_pair_data.length() > 1)
-            l_front_back = "^" + l_pair_data[1];
-        int l_other_charid = client.m_pairing_with;
-        bool l_pairing = false;
-        QString l_other_name = "0";
-        QString l_other_emote = "0";
-        QString l_other_offset = "0";
-        QString l_other_flip = "0";
+            client.m_front_back = "^" + l_pair_data[1];
+        client.m_other_charid = client.m_pairing_with;
+        client.m_pairing = false;
+        client.m_other_name = "0";
+        client.m_other_emote = "0";
+        client.m_other_offset = "0";
+        client.m_other_flip = "0";
         for (int l_client_id : area->joinedIDs()) {
             AOClient *l_client = client.getServer()->getClientByID(l_client_id);
-            if (l_client->m_pairing_with == client.m_char_id && l_other_charid != client.m_char_id && l_client->m_char_id == client.m_pairing_with && l_client->m_pos == client.m_pos) {
-                l_other_name = l_client->m_current_iniswap;
-                l_other_emote = l_client->m_emote;
-                l_other_offset = l_client->m_offset;
-                l_other_flip = l_client->m_flipping;
-                l_pairing = true;
+            if (l_client->m_pairing_with == client.m_char_id && client.m_other_charid != client.m_char_id && l_client->m_char_id == client.m_pairing_with && l_client->m_pos == client.m_pos) {
+                client.m_other_name = l_client->m_current_iniswap;
+                client.m_other_emote = l_client->m_emote;
+                client.m_other_offset = l_client->m_offset;
+                client.m_other_flip = l_client->m_flipping;
+                client.m_pairing = true;
             }
         }
-        if (!l_pairing) {
-            l_other_charid = -1;
-            l_front_back = "";
+        if (!client.m_pairing) {
+            client.m_other_charid = -1;
+            client.m_front_back = "";
         }
-        l_args.append(QString::number(l_other_charid) + l_front_back);
-        l_args.append(l_other_name);
-        l_args.append(l_other_emote);
+        l_args.append(QString::number(client.m_other_charid) + client.m_front_back);
+        l_args.append(client.m_other_name);
+        l_args.append(client.m_other_emote);
 
         // self offset
         client.m_offset = l_incoming_args[17].toString();
