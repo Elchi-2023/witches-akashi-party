@@ -356,14 +356,14 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         if ((client.m_version.release == 2) && (client.m_version.major == 6 || client.m_version.major == 7 || client.m_version.major == 8)) {
             QString l_x_offset = client.m_offset.split("&")[0];
             l_args.append(l_x_offset);
-            QString l_other_x_offset = l_other_offset.split("&")[0];
+            QString l_other_x_offset = client.m_other_offset.split("&")[0];
             l_args.append(l_other_x_offset);
         }
         else {
             l_args.append(client.m_offset);
-            l_args.append(l_other_offset);
+            l_args.append(client.m_other_offset);
         }
-        l_args.append(l_other_flip);
+        l_args.append(client.m_other_flip);
 
         // immediate text processing
         int l_immediate = l_incoming_args[18].toInt();
