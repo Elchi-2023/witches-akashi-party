@@ -64,7 +64,8 @@ void AOClient::cmdBan(int argc, QStringList argv)
     }
 
     const QList<AOClient *> l_targets = server->getClientsByIpid(l_ban.ipid);
-    for (AOClient *l_client : l_targets) {
+    for (int index = 0; index < l_targets.size(); ++index){
+        AOClient *l_client = l_targets[index];
         if (!l_ban_logged) {
             l_ban.ip = l_client->m_remote_ip;
             l_ban.hdid = l_client->m_hwid;
@@ -80,9 +81,10 @@ void AOClient::cmdBan(int argc, QStringList argv)
             l_ban_duration = "Permanently.";
         }
         int l_ban_id = server->getDatabaseManager()->getBanID(l_ban.ip);
+        l_client->m_is_multiclient = index != 0;
         l_client->sendPacket("KB", {l_ban.reason + "\nID: " + QString::number(l_ban_id) + "\nUntil: " + l_ban_duration});
         l_client->m_socket->close();
-        l_kick_counter++;
+        l_kick_counter = index +1;
 
         emit logBan(l_ban.moderator, l_ban.ipid, l_ban_duration, l_ban.reason);
         if (ConfigManager::discordBanWebhookEnabled())
@@ -112,10 +114,11 @@ void AOClient::cmdKick(int argc, QStringList argv)
     }
 
     const QList<AOClient *> l_targets = server->getClientsByIpid(l_target_ipid);
-    for (AOClient *l_client : l_targets) {
-        l_client->sendPacket("KK", {l_reason});
-        l_client->m_socket->close();
-        l_kick_counter++;
+    for (int index = 0; index < l_targets.size(); ++index){
+        l_targets[index]->m_is_multiclient = index != 0;
+        l_targets[index]->sendPacket("KK", {l_reason});
+        l_targets[index]->m_socket->close();
+        l_kick_counter = index +1;
     }
 
     if (l_kick_counter > 0) {

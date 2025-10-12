@@ -324,6 +324,25 @@ class AOClient : public QObject
     bool m_is_spectator = true;
 
     /**
+    * @brief The disconnnect reason type.
+    */
+    enum Disconnected{
+        NORMAL = 0,
+        KICK,
+        BAN
+    };
+
+    /**
+      * @brief The disconnnect reason of client.
+      */
+    int m_disconnect_reason = Disconnected::NORMAL;
+
+    /**
+     * @brief if true, the client is multiclienting
+     */
+    bool m_is_multiclient = false;
+
+    /**
      * @brief The hardware ID of the client.
      *
      * @details Generated based on the client's own supplied hardware ID.

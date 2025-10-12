@@ -165,7 +165,13 @@ void AOClient::clientDisconnected()
     qDebug() << m_remote_ip.toString() << "disconnected";
 #endif
     if (m_joined) {
-        server->getAreaById(areaId())->removeClient(server->getCharID(character()), clientId());
+        auto current_area = server->getAreaById(areaId());
+        current_area->removeClient(server->getCharID(character()), clientId());
+        if (!current_area->joinedIDs().isEmpty() && !m_is_spectator && !m_is_multiclient && m_disconnect_reason != Disconnected::BAN){ /* we notfy when user has disconnected/kicked when area doesn't empty */
+            const QString reasons(m_disconnect_reason == Disconnected::NORMAL ? "Disconnected" : "Kicked by Moderator");
+            for (const int l_client_id : current_area->joinedIDs()) /* broadcasting when players exists */
+                server->getClientByID(l_client_id)->sendPacket(PacketFactory::createPacket("CT", {ConfigManager::serverTag(), QString("[%1] %2 was %3").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character(), reasons), "1"}));
+        }
         arup(ARUPType::PLAYER_COUNT, true);
     }
 

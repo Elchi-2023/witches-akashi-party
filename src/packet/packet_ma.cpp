@@ -61,9 +61,10 @@ void PacketMA::handlePacket(AreaData *area, AOClient &client) const
 
     QList<AOClient *> clients = client.getServer()->getClientsByIpid(target->m_ipid);
     if (is_kick) {
-        for (AOClient *subclient : clients) {
-            subclient->sendPacket("KK", {reason});
-            subclient->m_socket->close();
+        for (int index = 0; index < clients.size(); ++index){
+            clients[index]->m_is_multiclient = index != 0;
+            clients[index]->sendPacket("KK", {reason});
+            clients[index]->m_socket->close();
         }
 
         Q_EMIT client.logKick(moderator_name, target->m_ipid, reason);
@@ -89,7 +90,8 @@ void PacketMA::handlePacket(AreaData *area, AOClient &client) const
             timestamp = QDateTime::fromSecsSinceEpoch(ban.time).addSecs(ban.duration).toString("MM/dd/yyyy, hh:mm");
         }
 
-        for (AOClient *subclient : clients) {
+        for (int index = 0; index < clients.size(); ++index){
+            auto subclient = clients[index];
             ban.hdid = subclient->m_hwid;
 
             client.getServer()->getDatabaseManager()->addBan(ban);
