@@ -82,6 +82,7 @@ void AOClient::cmdBan(int argc, QStringList argv)
         }
         int l_ban_id = server->getDatabaseManager()->getBanID(l_ban.ip);
         l_client->m_is_multiclient = index != 0;
+        l_client->m_disconnect_reason = Disconnected::BAN;
         l_client->sendPacket("KB", {l_ban.reason + "\nID: " + QString::number(l_ban_id) + "\nUntil: " + l_ban_duration});
         l_client->m_socket->close();
         l_kick_counter = index +1;
@@ -116,6 +117,7 @@ void AOClient::cmdKick(int argc, QStringList argv)
     const QList<AOClient *> l_targets = server->getClientsByIpid(l_target_ipid);
     for (int index = 0; index < l_targets.size(); ++index){
         l_targets[index]->m_is_multiclient = index != 0;
+        l_targets[index]->m_disconnect_reason = Disconnected::KICK;
         l_targets[index]->sendPacket("KK", {l_reason});
         l_targets[index]->m_socket->close();
         l_kick_counter = index +1;
