@@ -1043,7 +1043,7 @@ class AreaData : public QObject
      * @return gives client id if success, -1 otherwise.
      */
     int get_pair_sync_clientID(const int client_id, const bool target = true);
-    
+
   public slots:
 
     /**
@@ -1350,6 +1350,11 @@ class AreaData : public QObject
      */
     bool m_medieval_mode = false;
 
+    /**
+     * @brief The collection of all currently /pair sync clients.
+     */
+    QMap<int, int> m_clients_pairing_sync;
+    
   private slots:
     /**
      * @brief Allow game messages to be broadcasted.
