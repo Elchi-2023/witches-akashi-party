@@ -358,6 +358,49 @@ void AreaData::startMessageFloodguard(int f_duration)
     m_message_floodguard_timer->start(f_duration);
 }
 
+bool AreaData::addPairSync(const int self, const int target){
+    if (self < 0 || target < 0)
+        return false;
+
+    if (m_clients_pairing_sync.contains(self) && m_clients_pairing_sync[self] == target)
+        return false;
+    else if (m_clients_pairing_sync.contains(self) && m_clients_pairing_sync[self] != target)
+        m_clients_pairing_sync.insert(self, target);
+    else
+        m_clients_pairing_sync.insert(self, target);
+    return true;
+}
+
+bool AreaData::removePairSync(const int self){
+    if (self < 0)
+        return false;
+
+    if (m_clients_pairing_sync.contains(self)){
+        m_clients_pairing_sync.remove(self);
+        return true;
+    }
+
+    return false;
+}
+
+bool AreaData::checkPairSync(const int client_id, const bool is_target){
+    if (is_target)
+        return m_clients_pairing_sync.values().contains(client_id);
+
+    return m_clients_pairing_sync.contains(client_id);
+}
+
+QMap<int, int> AreaData::getPairSyncList(){
+    return m_clients_pairing_sync;
+}
+
+int AreaData::get_pair_sync_clientID(const int client_id, const bool target){
+    if (target)
+        return m_clients_pairing_sync.value(client_id, -1);
+
+    return m_clients_pairing_sync.key(client_id, -1);
+}
+
 void AreaData::toggleMusic()
 {
     m_toggleMusic = !m_toggleMusic;

@@ -997,6 +997,53 @@ class AreaData : public QObject
      */
     void startMessageFloodguard(int f_duration);
 
+    /**
+     * @brief Adds or change client id onto /pair sync list.
+     *
+     * @param Self client id, must not < 0 or vaild.
+     *
+     * @param Target client id, must not < 0 or vaild.
+     *
+     * @return True if success, false otherwise.
+     */
+    bool addPairSync(const int self, const int target);
+
+    /**
+     * @brief Remove client id from /pair sync list.
+     *
+     * @param Self client id, must not < 0 or vaild.
+     *
+     * @return True if success, false otherwise.
+     */
+
+    bool removePairSync(const int self);
+    /**
+     * @brief check if client id were on /pair sync list.
+     *
+     * @param client id, must not < 0 or vaild.
+     *
+     * @param Choices between self or target, self by default.
+     *
+     * @return True if checked, false otherwise.
+     */
+    bool checkPairSync(const int client_id, const bool is_target = false);
+
+    /**
+     * @brief Get all ids from /pair sync list
+     */
+    QMap<int, int> getPairSyncList();
+
+    /**
+     * @brief Get client ids from specifc of /pair sync list.
+     *
+     * @param Client id, must not < 0 or vaild.
+     *
+     * @param Choices between target or visa.
+     *
+     * @return gives client id if success, -1 otherwise.
+     */
+    int get_pair_sync_clientID(const int client_id, const bool target = true);
+    
   public slots:
 
     /**

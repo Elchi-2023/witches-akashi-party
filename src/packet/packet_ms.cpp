@@ -322,8 +322,11 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         // things get a bit hairy here
         // don't ask me how this works, because i don't know either
         QStringList l_pair_data = l_incoming_args[16].toString().split("^");
-        if (!client.m_pairing_override)
-            client.m_pairing_with = l_pair_data[0].toInt();
+        auto current_area = client.getServer()->getAreaById(client.areaId());
+        if (current_area->checkPairSync(client.clientId()) && client.getServer()->getClientByID(current_area->getPairSyncList()[client.clientId()]) != nullptr && client.getServer()->getClientByID(current_area->getPairSyncList()[client.clientId()])->areaId() == client.areaId())
+            client.m_pairing_with = client.getServer()->getClientByID(current_area->getPairSyncList()[client.clientId()])->m_char_id; /* syncing by /pair, no matter if target were switching chars. */
+        else
+            client.m_pairing_with = l_pair_data[0].toInt(); /* otherwise, just let client-side choices */
         client.m_front_back = "";
         if (l_pair_data.length() > 1)
             client.m_front_back = "^" + l_pair_data[1];

@@ -28,36 +28,38 @@
 
 void AOClient::cmdPair(int argc, QStringList argv)
 {
-    Q_UNUSED(argc);
+    if (argc < 1){
+        sendServerMessage("Please inserts target ID if you want pairing someone.");
+        return;
+    }
 
     bool ok;
     QList<AOClient *> l_targets;
     int l_target_id = argv[0].toInt(&ok);
 
-    if (!ok) {
+    if (!ok){
         sendServerMessage("That does not look like a valid ID.");
         return;
     }
-    else if (ok) {
+    else{
         AOClient *l_target_client = server->getClientByID(l_target_id);
         if (l_target_client == nullptr) {
             sendServerMessage("Target ID not found!");
             return;
         }
+
         if (l_target_id == clientId()) {
             sendServerMessage("You can't pair with yourself!");
             return;
         }
 
-        m_pairing_with = l_target_client->m_char_id;
-        m_pairing_override = true;
-        changePosition(l_target_client->m_pos);
-        m_other_name = l_target_client->m_current_iniswap;
-        m_other_emote = l_target_client->m_emote;
-        m_other_offset = l_target_client->m_offset;
-        m_other_flip = l_target_client->m_flipping;
-        m_pairing = true;
-        sendServerMessage("You are now paired with " + l_target_client->character() + ".\nMake sure that target also selected you.");
+        auto current_area = server->getAreaById(areaId());
+        if (!current_area->joinedIDs().contains(l_target_client->clientId()))
+            sendServerMessage("That target weren't on this area, make sure you check if that target were on this area.");
+        else if (current_area->addPairSync(clientId(), l_target_client->clientId())) /* oh this?.. well.. user choices the target that'll adds/change */
+            sendServerMessage("You are now paired with " + l_target_client->characterName() + " and synced with that target, Make sure that targets also selected you.");
+        else
+            sendServerMessage("You are already synced pairing with that target.");
     }
 }
 
@@ -66,15 +68,11 @@ void AOClient::cmdUnPair(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    if (m_pairing_override){
-        m_pairing_with = -1;
-        m_pairing_override = false;
-        m_other_name.clear();
-        m_other_emote.clear();
-        m_other_offset.clear();
-        m_other_flip.clear();
-        sendServerMessage("You are unpaired");
-    }
+    auto current_area = server->getAreaById(areaId());
+    if (current_area->removePairSync(clientId()))
+        sendServerMessage("You are not longer paired.");
+    else
+        sendServerMessage("You are not pairing with anyone, do /pair id if you want pairing someone.");
 }
 
 void AOClient::cmdPos(int argc, QStringList argv)

@@ -167,11 +167,26 @@ void AOClient::clientDisconnected()
     if (m_joined) {
         auto current_area = server->getAreaById(areaId());
         current_area->removeClient(server->getCharID(character()), clientId());
-        if (!current_area->joinedIDs().isEmpty() && !m_is_spectator && !m_is_multiclient && m_disconnect_reason != Disconnected::BAN){ /* we notfy when user has disconnected/kicked when area doesn't empty */
-            const QString reasons(m_disconnect_reason == Disconnected::NORMAL ? "Disconnected" : "Kicked by Moderator");
-            for (const int l_client_id : current_area->joinedIDs()) /* broadcasting when players exists */
-                server->getClientByID(l_client_id)->sendPacket(PacketFactory::createPacket("CT", {ConfigManager::serverTag(), QString("[%1] %2 was %3").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character(), reasons), "1"}));
+        if (!current_area->joinedIDs().isEmpty()){
+            const QVector<int> current_joinedID = current_area->joinedIDs();
+            for (const int l_client_id : current_joinedID){ /* broadcasting when current area doesn't empty */
+                auto l_client = server->getClientByID(l_client_id);
+                if (!m_is_spectator && !m_is_multiclient && m_disconnect_reason != Disconnected::BAN){ /* we notfy when user has disconnected/kicked (not banned) */
+                    const QString reasons(m_disconnect_reason == Disconnected::NORMAL ? "Disconnected." : "Kicked by Moderator.");
+                    l_client->sendServerMessage(QString("[%1] %2 was %3").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character(), reasons));
+                }
+
+                if (current_area->get_pair_sync_clientID(l_client->clientId()) == clientId() && current_area->get_pair_sync_clientID(clientId()) == l_client_id){ /* you know how this checkers goes, right? */
+                    l_client->sendServerMessage("You aren't longer synced pairing with target, target not longer exists."); /* we notfy the target about user weren't longer exists for pairs sync */
+                    current_area->removePairSync(clientId());
+                    current_area->removePairSync(l_client_id); /* freed both ids from pairs sync list.. */
+                }
+            }
         }
+
+        if (current_area->checkPairSync(clientId())) /* double checks if user client id weren't on pairs sync list */
+            current_area->removePairSync(clientId());
+
         arup(ARUPType::PLAYER_COUNT, true);
     }
 
@@ -268,14 +283,21 @@ void AOClient::changeArea(int new_area)
         server->getAreaById(areaId())->changeCharacter(server->getCharID(character()), -1);
         server->updateCharsTaken(server->getAreaById(areaId()));
     }
-    server->getAreaById(areaId())->removeClient(m_char_id, clientId());
+    auto previous_area = server->getAreaById(areaId());
+    previous_area->removeClient(m_char_id, clientId());
+    if (previous_area->get_pair_sync_clientID(clientId()) == clientId() && previous_area->joinedIDs().contains(previous_area->get_pair_sync_clientID(clientId())) && previous_area->checkPairSync(previous_area->get_pair_sync_clientID(clientId()))){
+        server->getClientByID(previous_area->get_pair_sync_clientID(clientId()))->sendServerMessage("You aren't longer synced pairing with that target, target moved area.");
+        previous_area->removePairSync(previous_area->get_pair_sync_clientID(clientId()));
+    }
+
     bool l_character_taken = false;
-    if (server->getAreaById(new_area)->charactersTaken().contains(server->getCharID(character()))) {
+    auto next_area = server->getAreaById(new_area);
+    if (next_area->charactersTaken().contains(server->getCharID(character()))) {
         setCharacter("");
         m_char_id = -1;
         l_character_taken = true;
     }
-    server->getAreaById(new_area)->addClient(m_char_id, clientId());
+    next_area->addClient(m_char_id, clientId());
     setAreaId(new_area);
     arup(ARUPType::PLAYER_COUNT, true);
     sendEvidenceList(server->getAreaById(new_area));
@@ -285,9 +307,9 @@ void AOClient::changeArea(int new_area)
     if (l_character_taken) {
         sendPacket("DONE");
     }
-    const QList<QTimer *> l_timers = server->getAreaById(areaId())->timers();
+    const QList<QTimer *> l_timers = next_area->timers();
     for (QTimer *l_timer : l_timers) {
-        int l_timer_id = server->getAreaById(areaId())->timers().indexOf(l_timer) + 1;
+        int l_timer_id = next_area->timers().indexOf(l_timer) + 1;
         if (l_timer->isActive()) {
             sendPacket("TI", {QString::number(l_timer_id), "2"});
             sendPacket("TI", {QString::number(l_timer_id), "0", QString::number(QTime(0, 0).msecsTo(QTime(0, 0).addMSecs(l_timer->remainingTime())))});
@@ -297,11 +319,16 @@ void AOClient::changeArea(int new_area)
         }
     }
     sendServerMessage("You moved to area " + server->getAreaName(areaId()));
-    if (server->getAreaById(areaId())->sendAreaMessageOnJoin()) {
-        sendServerMessage(server->getAreaById(areaId())->areaMessage());
+    if (previous_area->checkPairSync(clientId())){
+        sendServerMessage("You weren't longer synced pairing.");
+        previous_area->removePairSync(clientId());
     }
 
-    if (server->getAreaById(areaId())->lockStatus() == AreaData::LockStatus::SPECTATABLE) {
+    if (next_area->sendAreaMessageOnJoin()) {
+        sendServerMessage(next_area->areaMessage());
+    }
+
+    if (next_area->lockStatus() == AreaData::LockStatus::SPECTATABLE) {
         sendServerMessage("Area " + server->getAreaName(areaId()) + " is spectate-only; to chat IC you will need to be invited by the CM.");
     }
 }
