@@ -63,6 +63,7 @@ void PacketMA::handlePacket(AreaData *area, AOClient &client) const
     if (is_kick) {
         for (int index = 0; index < clients.size(); ++index){
             clients[index]->m_is_multiclient = index != 0;
+            clients[index]->m_disconnect_reason = Disconnected::KICK;
             clients[index]->sendPacket("KK", {reason});
             clients[index]->m_socket->close();
         }
@@ -96,6 +97,7 @@ void PacketMA::handlePacket(AreaData *area, AOClient &client) const
 
             client.getServer()->getDatabaseManager()->addBan(ban);
 
+            subclient->m_disconnect_reason = Disconnected::BAN;
             subclient->sendPacket("KB", {reason});
             subclient->m_socket->close();
         }
