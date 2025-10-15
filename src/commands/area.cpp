@@ -25,88 +25,95 @@
 // This file is for commands under the area category in aoclient.h
 // Be sure to register the command in the header before adding it here!
 
-void AOClient::cmdCM(int argc, QStringList argv)
-{
-    QString l_sender_name = name();
-    AreaData *l_area = server->getAreaById(areaId());
-    if (l_area->isProtected()) {
-        sendServerMessage("This area is protected, you may not become CM.");
-        return;
-    }
-    else if (l_area->owners().isEmpty()) { // no one owns this area, and it's not protected
-        l_area->addOwner(clientId());
-        sendServerMessageArea(l_sender_name + " is now CM in this area.");
-        arup(ARUPType::CM, true);
-    }
-    else if (!l_area->owners().contains(clientId())) { // there is already a CM, and it isn't us
-        sendServerMessage("You cannot become a CM in this area.");
-    }
-    else if (argc == 1) { // we are CM, and we want to make ID argv[0] also CM
-        bool ok;
-        AOClient *l_owner_candidate = server->getClientByID(argv[0].toInt(&ok));
-        if (!ok) {
+void AOClient::cmdCM(int argc, QStringList argv){
+    AreaData *current_area = server->getAreaById(areaId());
+
+    switch (argc){ /* switch were better */
+    case 0:
+        if (current_area->isProtected())
+            sendServerMessage("This area is protected, you may not become CM.");
+        else if (current_area->owners().isEmpty()){  /*  no one owns this area, and it's not protected */
+            current_area->addOwner(clientId());
+            sendServerMessageArea(QString("[%1] %2 is now CM in this area.").arg(QString::number(clientId()), name()));
+            arup(ARUPType::CM, true);
+        }
+        else if (current_area->owners().contains(clientId())) /* there is already a CM, and it isn't us */
+            sendServerMessage("You are already a CM in this area.");
+        else if (m_authenticated){ /* bypassed for an moderator/authenticated */
+            current_area->addOwner(clientId());
+            sendServerMessageArea(QString("[M][%1] %2 is now CM in this area.").arg(QString::number(clientId()), name()));
+            arup(ARUPType::CM, true);
+        }
+        else
+            sendServerMessage("You cannot become a CM in this area.");
+        break;
+    case 1: default: /* doesn't hurts when argc >= 1, right?.. */
+        bool vaild;
+        const AOClient *owner_candidate = server->getClientByID(argv[0].toInt(&vaild)); /* why const?.. because not been modified if just get info */
+
+        if (current_area->isProtected())
+            sendServerMessage("This area is protected, you may not uses this Commands nor become CM.");
+        else if (!vaild)
             sendServerMessage("That doesn't look like a valid ID.");
-            return;
-        }
-        if (l_owner_candidate == nullptr) {
+        else if (!checkPermission(ACLRole::CM)) /* preventing user for use this if their not an moderator/authenticated or in area owner */
+            sendServerMessage("You must become a CM to use this command.");
+        else if (owner_candidate == nullptr)
             sendServerMessage("Unable to find client with ID " + argv[0] + ".");
-            return;
+        else if (current_area->owners().contains(owner_candidate->clientId()))
+            sendServerMessage(QString("%1 already a CM in this area.").arg(owner_candidate->clientId() == clientId() ? "You are" : "User is"));
+        else{
+            current_area->addOwner(owner_candidate->clientId());
+            sendServerMessageArea(QString("[%1] %2 is now CM in this area.").arg(QString::number(owner_candidate->clientId()), owner_candidate->name().isEmpty() ? owner_candidate->m_current_char.isEmpty() ? "Spectator" : owner_candidate->m_current_char : owner_candidate->name())); /* to fix "is now CM in this area.".. we just get target chars instead, target ooc-name otherwise. */
+            arup(ARUPType::CM, true);
         }
-        if (l_area->owners().contains(l_owner_candidate->clientId())) {
-            sendServerMessage("User is already a CM in this area.");
-            return;
-        }
-        l_area->addOwner(l_owner_candidate->clientId());
-        sendServerMessageArea(l_owner_candidate->name() + " is now CM in this area.");
-        arup(ARUPType::CM, true);
-    }
-    else {
-        sendServerMessage("You are already a CM in this area.");
+        break;
     }
 }
 
-void AOClient::cmdUnCM(int argc, QStringList argv)
-{
-    AreaData *l_area = server->getAreaById(areaId());
-    int l_uid;
+void AOClient::cmdUnCM(int argc, QStringList argv){
+    AreaData *current_area = server->getAreaById(areaId());
 
-    if (l_area->owners().isEmpty()) {
+    if (current_area->owners().isEmpty())
         sendServerMessage("There are no CMs in this area.");
-        return;
-    }
-    else if (argc == 0) {
-        l_uid = clientId();
-        sendServerMessage("You are no longer CM in this area.");
-    }
-    else if (checkPermission(ACLRole::UNCM) && argc >= 1) {
-        bool conv_ok = false;
-        l_uid = argv[0].toInt(&conv_ok);
-        if (!conv_ok) {
-            sendServerMessage("Invalid user ID.");
-            return;
-        }
-        if (!l_area->owners().contains(l_uid)) {
-            sendServerMessage("That user is not CMed.");
-            return;
-        }
-        AOClient *l_target = server->getClientByID(l_uid);
-        if (l_target == nullptr) {
-            sendServerMessage("No client with that ID found.");
-            return;
-        }
-        sendServerMessage(l_target->name() + " was successfully unCMed.");
-        l_target->sendServerMessage("You have been unCMed by a moderator.");
-    }
-    else {
-        sendServerMessage("You do not have permission to unCM others.");
-        return;
-    }
+    else{
+        switch (argc){ /* switch were winner again.. :) */
+        case 0:
+            if (current_area->removeOwner(clientId()))
+                arup(ARUPType::LOCKED, true);
+            sendServerMessage("You are no longer CM in this area.");
+            arup(ARUPType::CM, true);
+            break;
+        case 1: default:
+            if (!checkPermission(ACLRole::UNCM)){
+                sendServerMessage("You do not have permission to unCM others.");
+                return;
+            }
 
-    if (l_area->removeOwner(l_uid)) {
-        arup(ARUPType::LOCKED, true);
-    }
+            bool vaild_uid;
+            int uid = argv[0].toInt(&vaild_uid);
 
-    arup(ARUPType::CM, true);
+            if (!vaild_uid)
+                sendServerMessage("Invalid user ID.");
+            else if (!current_area->owners().contains(uid))
+                sendServerMessage("That user weren't CMed.");
+            else if (server->getClientByID(uid) == nullptr)
+                sendServerMessage("No client with that ID found.");
+            else if (uid == clientId()){ /* imagine if someone want been uncm themself */
+                if (current_area->removeOwner(clientId()))
+                    arup(ARUPType::LOCKED, true);
+                sendServerMessage("You are no longer CM in this area.");
+                arup(ARUPType::CM, true);
+            }
+            else{
+                AOClient *target = server->getClientByID(uid);
+                sendServerMessage(QString("[%1] %2 was successfully unCMed.").arg(QString::number(target->clientId()), target->name().isEmpty() ? target->m_current_char.isEmpty() ? "Spectator" : target->m_current_char : target->name()));
+                target->sendServerMessage(QString("You have been unCMed by %1.").arg(m_authenticated ? "a moderator" : "a others CMs")); /* let target know who uncmed them between moderator and others cms */
+                if (current_area->removeOwner(target->clientId()))
+                    arup(ARUPType::LOCKED, true);
+                arup(ARUPType::CM, true);
+            }
+        }
+    }
 }
 
 void AOClient::cmdInvite(int argc, QStringList argv)
