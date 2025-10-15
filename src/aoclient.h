@@ -243,6 +243,7 @@ class AOClient : public QObject
         int release = -1;
         int major = -1;
         int minor = -1;
+        bool is_webao = false;
     };
 
     /**

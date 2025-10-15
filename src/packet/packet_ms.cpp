@@ -112,6 +112,13 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     }
 
     // desk modifier
+    const QMap<QString, int> allowed_desk_mods{{"chat", 1}, {"0", 0}, {"1", 1}, {"2", 2}, {"3", 3}, {"4", 4}, {"5", 5}}; /* this just simple a "hack" by using qmap.., the original "hack" you can see on next commented */
+    if (allowed_desk_mods.contains(l_incoming_args[0].toString()))
+        l_args.append(QString::number(allowed_desk_mods[l_incoming_args[0].toString()]));
+    else
+        return l_invalid;
+
+    /* == this orignally "hack" and not been deleted ===
     QStringList allowed_desk_mods;
     allowed_desk_mods << "chat"
                       << "0"
@@ -134,6 +141,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     }
     else
         return l_invalid;
+    */
 
     // preanim
     l_args.append(l_incoming_args[1].toString());
@@ -214,14 +222,12 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     // side
     // this is validated clientside so w/e
     QString side = area->side();
-    if (side.isEmpty()) {
+    if (side.isEmpty())
         side = l_incoming_args[5].toString();
-    }
     l_args.append(side);
 
     if (client.m_pos != l_incoming_args[5].toString()) {
-        client.m_pos = l_incoming_args[5].toString();
-        client.m_pos.replace("../", "").replace("..\\", "");
+        client.m_pos = l_incoming_args[5].toString().remove("../").remove("..\\");
         client.updateEvidenceList(client.getServer()->getAreaById(client.areaId()));
     }
 
@@ -236,13 +242,18 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     // This would crash everyone else's client, and the feature had to be disabled
     // But, for some reason, nobody traced the cause of this issue for many many years.
     // The serverside fix is needed to ensure invalid values are not sent, because the client sucks
-    int emote_mod = l_incoming_args[7].toInt();
+    const int emote_mod = l_incoming_args[7].toInt();
 
-    if (emote_mod == 4)
-        emote_mod = 6;
-    if (emote_mod != 0 && emote_mod != 1 && emote_mod != 2 && emote_mod != 5 && emote_mod != 6)
+    switch (emote_mod){
+    case 0: case 1: case 2: case 5: case 6:
+        l_args.append(QString::number(emote_mod));
+        break;
+    case 4:
+        l_args.append(QString::number(6));
+        break;
+    default:
         return l_invalid;
-    l_args.append(QString::number(emote_mod));
+    }
 
     // char id
     if (l_incoming_args[8].toInt() != client.m_char_id)
@@ -254,22 +265,18 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
 
     // objection modifier
     if (area->isShoutAllowed()) {
-        if (l_incoming_args[10].toString().contains("4")) {
-            // custom shout includes text metadata
+        if (l_incoming_args[10].toString().contains("4")) /* custom shout includes text metadata */
             l_args.append(l_incoming_args[10].toString());
-        }
         else {
             int l_obj_mod = l_incoming_args[10].toInt();
-            if ((l_obj_mod < 0) || (l_obj_mod > 4)) {
+            if (l_obj_mod < 0 || l_obj_mod > 4)
                 return l_invalid;
-            }
             l_args.append(QString::number(l_obj_mod));
         }
     }
     else {
-        if (l_incoming_args[10].toString() != "0") {
+        if (l_incoming_args[10].toString() != "0")
             client.sendServerMessage("Shouts have been disabled in this area.");
-        }
         l_args.append("0");
     }
 
@@ -282,14 +289,14 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
 
     // flipping
     int l_flip = l_incoming_args[12].toInt();
-    if (l_flip != 0 && l_flip != 1)
+    if (l_flip < 0 && l_flip > 1)
         return l_invalid;
     client.m_flipping = QString::number(l_flip);
     l_args.append(client.m_flipping);
 
     // realization
     int realization = l_incoming_args[13].toInt();
-    if (realization != 0 && realization != 1)
+    if (realization < 0 && realization > 1)
         return l_invalid;
     l_args.append(QString::number(realization));
 
@@ -321,53 +328,61 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         // other char id
         // things get a bit hairy here
         // don't ask me how this works, because i don't know either
-        QStringList l_pair_data = l_incoming_args[16].toString().split("^");
-        auto current_area = client.getServer()->getAreaById(client.areaId());
-        if (current_area->checkPairSync(client.clientId()) && client.getServer()->getClientByID(current_area->getPairSyncList()[client.clientId()]) != nullptr && client.getServer()->getClientByID(current_area->getPairSyncList()[client.clientId()])->areaId() == client.areaId())
-            client.m_pairing_with = client.getServer()->getClientByID(current_area->getPairSyncList()[client.clientId()])->m_char_id; /* syncing by /pair, no matter if target were switching chars. */
-        else
-            client.m_pairing_with = l_pair_data[0].toInt(); /* otherwise, just let client-side choices */
-        client.m_front_back = "";
-        if (l_pair_data.length() > 1)
-            client.m_front_back = "^" + l_pair_data[1];
-        client.m_other_charid = client.m_pairing_with;
-        client.m_pairing = false;
-        client.m_other_name = "0";
-        client.m_other_emote = "0";
-        client.m_other_offset = "0";
-        client.m_other_flip = "0";
-        for (int l_client_id : area->joinedIDs()) {
-            AOClient *l_client = client.getServer()->getClientByID(l_client_id);
-            if (l_client->m_pairing_with == client.m_char_id && client.m_other_charid != client.m_char_id && l_client->m_char_id == client.m_pairing_with && l_client->m_pos == client.m_pos) {
-                client.m_other_name = l_client->m_current_iniswap;
-                client.m_other_emote = l_client->m_emote;
-                client.m_other_offset = l_client->m_offset;
-                client.m_other_flip = l_client->m_flipping;
-                client.m_pairing = true;
+        const QStringList l_pair_data = l_incoming_args[16].toString().split("^");
+        QPair<int, QStringList> l_other_data = qMakePair(0, QStringList{"", "", ""});
+        if (area->checkPairSync(client.clientId())){
+            auto target_synced = client.getServer()->getClientByID(area->getPairSyncList()[client.clientId()]);
+            if (target_synced != nullptr && area->joinedIDs().contains(client.areaId())){
+                if (area->checkPairSync(target_synced->clientId()) && area->get_pair_sync_clientID(target_synced->clientId()) == client.clientId()){ /* when user been targeted by that targets */
+                    client.m_pairing_with = target_synced->m_char_id; /* syncing by /pair, no matter if target were switching chars. */
+                    if (target_synced->m_pos == client.m_pos && target_synced->m_pairing_with != client.m_char_id){ /* resyncing target 'pairing_with' with user id too when target were same pos */
+                        target_synced->m_pairing_with = client.m_pairing_with;
+                    }
+                }
+                else if (area->checkPairSync(target_synced->clientId()) && area->get_pair_sync_clientID(target_synced->clientId()) != client.clientId()) /* otherwise.. still synced even that target doesn't selected user, just store they char_id */
+                    client.m_pairing_with = target_synced->m_char_id;
+                else if (!area->checkPairSync(target_synced->clientId())) /* otherwise, targeting who prefer pair via client-side instead */
+                    client.m_pairing_with = l_pair_data[0].toInt();
             }
         }
-        if (!client.m_pairing) {
-            client.m_other_charid = -1;
-            client.m_front_back = "";
+        else
+            client.m_pairing_with = l_pair_data[0].toInt(); /* otherwise, just let client-side choices */
+        int l_front_back = -1;
+        if (l_pair_data.length() > 1)
+            l_front_back = l_pair_data[1].toInt();
+        int l_other_charid = client.m_pairing_with;
+        bool l_pairing = false;
+        for (int l_client_id : area->joinedIDs()) {
+            const AOClient *l_client = client.getServer()->getClientByID(l_client_id);
+            if (l_client->m_pairing_with == client.m_char_id && l_other_charid != client.m_char_id && l_client->m_char_id == client.m_pairing_with && l_client->m_pos == client.m_pos) {
+                l_other_data = qMakePair(l_client->m_flipping.toInt(), QStringList{l_client->m_current_iniswap, l_client->m_emote, l_client->m_offset});
+                l_pairing = true;
+            }
         }
-        l_args.append(QString::number(client.m_other_charid) + client.m_front_back);
-        l_args.append(client.m_other_name);
-        l_args.append(client.m_other_emote);
+        if (!l_pairing) {
+            l_other_charid = -1;
+            l_front_back = -1;
+        }
+        l_args.append(QString::number(l_other_charid) + l_front_back > -1 ? QString("^" + QString::number(l_front_back)) : "");
+        l_args.append(l_other_data.second[0]);
+        l_args.append(l_other_data.second[1]);
 
         // self offset
         client.m_offset = l_incoming_args[17].toString();
         // versions 2.6-2.8 cannot validate y-offset so we send them just the x-offset
-        if ((client.m_version.release == 2) && (client.m_version.major == 6 || client.m_version.major == 7 || client.m_version.major == 8)) {
-            QString l_x_offset = client.m_offset.split("&")[0];
-            l_args.append(l_x_offset);
-            QString l_other_x_offset = client.m_other_offset.split("&")[0];
-            l_args.append(l_other_x_offset);
+        if (client.m_version.release == 2){
+            switch (client.m_version.major){
+            case 6: case 7: case 8:
+                l_args.append({client.m_offset.split("&")[0], l_other_data.second[2].split("&")[0]});
+                break;
+            default:
+                l_args.append({client.m_offset, l_other_data.second[2]});
+                break;
+            }
         }
-        else {
-            l_args.append(client.m_offset);
-            l_args.append(client.m_other_offset);
-        }
-        l_args.append(client.m_other_flip);
+        else
+            return l_invalid;
+        l_args.append(QString::number(l_other_data.first));
 
         // immediate text processing
         int l_immediate = l_incoming_args[18].toInt();
@@ -390,13 +405,13 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     if (l_incoming_args.length() >= 26) {
         // sfx looping
         int l_sfx_loop = l_incoming_args[19].toInt();
-        if (l_sfx_loop != 0 && l_sfx_loop != 1)
+        if (l_sfx_loop < 0 && l_sfx_loop > 1)
             return l_invalid;
         l_args.append(QString::number(l_sfx_loop));
 
         // screenshake
         int l_screenshake = l_incoming_args[20].toInt();
-        if (l_screenshake != 0 && l_screenshake != 1)
+        if (l_screenshake < 0 && l_screenshake > 1)
             return l_invalid;
         l_args.append(QString::number(l_screenshake));
 
@@ -411,16 +426,19 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
 
         // additive
         int l_additive = l_incoming_args[24].toInt();
-        if (l_additive != 0 && l_additive != 1)
+        switch (l_additive){ /* use switch instead. . */
+        case 0:
+            break;
+        case 1:
+            if (area->lastICMessage().isEmpty())
+                l_additive = 0;
+            else if (!(client.m_char_id == area->lastICMessage()[8].toInt()))
+                l_additive = 0;
+            else
+                l_args[4].insert(0, " ");
+            break;
+        default:
             return l_invalid;
-        else if (area->lastICMessage().isEmpty()) {
-            l_additive = 0;
-        }
-        else if (!(client.m_char_id == area->lastICMessage()[8].toInt())) {
-            l_additive = 0;
-        }
-        else if (l_additive == 1) {
-            l_args[4].insert(0, " ");
         }
         l_args.append(QString::number(l_additive));
 
