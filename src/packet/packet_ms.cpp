@@ -363,7 +363,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
             l_other_charid = -1;
             l_front_back = -1;
         }
-        l_args.append(QString::number(l_other_charid) + l_front_back > -1 ? QString("^" + QString::number(l_front_back)) : "");
+        l_args.append(QString::number(l_other_charid) + QString(l_front_back > -1 ? QString("^" + QString::number(l_front_back)) : ""));
         l_args.append(l_other_data.second[0]);
         l_args.append(l_other_data.second[1]);
 
