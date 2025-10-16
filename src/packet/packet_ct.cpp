@@ -28,15 +28,16 @@ void PacketCT::handlePacket(AreaData *area, AOClient &client) const
         return;
     }
 
-    client.setName(client.dezalgo(m_content[0]).replace(QRegularExpression("\\[|\\]|\\{|\\}|\\#|\\$|\\%|\\&"), "")); // no fucky wucky shit here
-    if (client.name().trimmed().isEmpty() || client.name() == ConfigManager::serverName())        // impersonation & empty name protection
+    const QString Name = client.dezalgo(m_content[0]).replace(QRegularExpression("\\[|\\]|\\{|\\}|\\#|\\$|\\%|\\&"), ""); // no fucky wucky shit here
+    if (Name.trimmed().remove(QString::fromUtf8("\xE2\x80\x8B")).remove(QString::fromUtf8("\xE2\x80\x8E")).isEmpty() || Name == ConfigManager::serverName()) /* impersonation & empty name protection */
         return;
 
-    if (client.name().length() > 30) {
+    if (Name.length() > 30) {
         client.sendServerMessage("Your name is too long! Please limit it to under 30 characters.");
         return;
     }
 
+    client.setName(Name);
     if (client.m_is_logging_in) {
         client.loginAttempt(m_content[1]);
         return;
