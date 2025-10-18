@@ -330,23 +330,26 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         // don't ask me how this works, because i don't know either
         const QStringList l_pair_data = l_incoming_args[16].toString().split("^");
         QPair<int, QStringList> l_other_data = qMakePair(0, QStringList{"", "", ""});
-        if (area->checkPairSync(client.clientId())){
+        if (area->checkPairSync(client.clientId())){ /* server-side */
             auto target_synced = client.getServer()->getClientByID(area->getPairSyncList()[client.clientId()]);
-            if (target_synced != nullptr && area->joinedIDs().contains(client.areaId())){
-                if (area->checkPairSync(target_synced->clientId()) && area->get_pair_sync_clientID(target_synced->clientId()) == client.clientId()){ /* when user been targeted by that targets */
-                    client.m_pairing_with = target_synced->m_char_id; /* syncing by /pair, no matter if target were switching chars. */
-                    if (target_synced->m_pos == client.m_pos && target_synced->m_pairing_with != client.m_char_id){ /* resyncing target 'pairing_with' with user id too when target were same pos */
-                        target_synced->m_pairing_with = client.m_pairing_with;
+            if (target_synced != nullptr && area->joinedIDs().contains(target_synced->clientId())){ /* capture target from current area */
+                if (area->checkPairSync(target_synced->clientId())){ /* target were in pair_sync list */
+                    if (area->get_pair_sync_clientID(target_synced->clientId()) == client.clientId()){ /* when user been targeted by that targets */
+                        client.m_pairing_with = target_synced->m_char_id; /* syncing by /pair, no matter if target were switching chars. */
+                        if (target_synced->m_pairing_with != client.m_char_id) /* resyncing target 'pairing_with' with user id too when target were switching chars */
+                            target_synced->m_pairing_with = client.m_char_id;
                     }
+                    else /* otherwise.. still synced even that target doesn't selected user, just store they char_id */
+                        client.m_pairing_with = target_synced->m_char_id;
                 }
-                else if (area->checkPairSync(target_synced->clientId()) && area->get_pair_sync_clientID(target_synced->clientId()) != client.clientId()) /* otherwise.. still synced even that target doesn't selected user, just store they char_id */
-                    client.m_pairing_with = target_synced->m_char_id;
-                else if (!area->checkPairSync(target_synced->clientId())) /* otherwise, targeting who prefer pair via client-side instead */
+                else /* otherwise, targeting who prefer pair via client-side instead */
                     client.m_pairing_with = l_pair_data[0].toInt();
             }
+            else /* fallback */
+                client.m_pairing_with = l_pair_data[0].toInt();
         }
-        else
-            client.m_pairing_with = l_pair_data[0].toInt(); /* otherwise, just let client-side choices */
+        else /* client-side */
+            client.m_pairing_with = l_pair_data[0].toInt();
         int l_front_back = -1;
         if (l_pair_data.length() > 1)
             l_front_back = l_pair_data[1].toInt();

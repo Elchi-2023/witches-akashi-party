@@ -249,12 +249,9 @@ void AOClient::handlePacket(AOPacket *packet)
     }
 
     if (packet->getPacketInfo().header != "CH" && m_joined) {
-        if (m_is_afk) {
+        if (UserAFK()){
             sendServerMessage("You are no longer AFK.");
-        }
-        m_is_afk = false;
-        if (characterName().endsWith(" [AFK]")) {
-            setCharacterName(characterName().remove(" [AFK]"));
+            ToggleAFK(false);
         }
         m_afk_timer->start(ConfigManager::afkTimeout() * 1000);
     }
@@ -286,10 +283,6 @@ void AOClient::changeArea(int new_area)
     }
     auto previous_area = server->getAreaById(areaId());
     previous_area->removeClient(m_char_id, clientId());
-    if (previous_area->get_pair_sync_clientID(clientId()) == clientId() && previous_area->joinedIDs().contains(previous_area->get_pair_sync_clientID(clientId())) && previous_area->checkPairSync(previous_area->get_pair_sync_clientID(clientId()))){
-        server->getClientByID(previous_area->get_pair_sync_clientID(clientId()))->sendServerMessage("You aren't longer synced pairing with that target, target moved area.");
-        previous_area->removePairSync(previous_area->get_pair_sync_clientID(clientId()));
-    }
 
     bool l_character_taken = false;
     auto next_area = server->getAreaById(new_area);
@@ -321,7 +314,12 @@ void AOClient::changeArea(int new_area)
     }
     sendServerMessage("You moved to area " + server->getAreaName(areaId()));
     if (previous_area->checkPairSync(clientId())){
-        sendServerMessage("You weren't longer synced pairing.");
+        sendServerMessage("Reseted sync pairing.");
+        AOClient *target = server->getClientByID(previous_area->get_pair_sync_clientID(clientId()));
+        if (target != nullptr){
+            if (previous_area->joinedIDs().contains(target->clientId()) && previous_area->get_pair_sync_clientID(clientId()) == target->clientId() && previous_area->removePairSync(target->clientId()))
+                target->sendServerMessage(QString("You aren't longer synced pairing with [%1] %2, target moved area.").arg(QString::number(target->clientId()), target->character().isEmpty() ? "Spectator" : target->character()));
+        }
         previous_area->removePairSync(clientId());
     }
 
@@ -625,6 +623,17 @@ void AOClient::setCharacterName(const QString &f_showname)
     }
 }
 
+bool AOClient::UserAFK() const{
+    return m_is_afk;
+}
+
+void AOClient::ToggleAFK(const bool afk){
+    if (m_is_afk != afk){
+        m_is_afk = afk;
+        Q_EMIT nameChanged("[💤] " + m_ooc_name);
+    }
+}
+
 void AOClient::setSpectator(bool f_spectator)
 {
     m_is_spectator = f_spectator;
@@ -637,11 +646,10 @@ bool AOClient::isSpectator() const
 
 void AOClient::onAfkTimeout()
 {
-    if (!m_is_afk) {
+    if (!UserAFK()) {
         sendServerMessage("You are now AFK.");
-        setCharacterName(characterName() + " [AFK]");
+        ToggleAFK();
     }
-    m_is_afk = true;
 }
 
 AOClient::AOClient(Server *p_server, NetworkSocket *socket, QObject *parent, int user_id, MusicManager *p_manager) :
