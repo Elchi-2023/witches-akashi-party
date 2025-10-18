@@ -84,6 +84,19 @@ void AOClient::cmdCurrentMusic(int argc, QStringList argv)
         sendServerMessage("There is no music playing.");
 }
 
+void AOClient::cmdGetMusic(int argc, QStringList argv){
+    Q_UNUSED(argc)
+    Q_UNUSED(argv)
+
+    const AreaData *l_area = server->getAreaById(areaId());
+    if (!l_area->currentMusic().isEmpty() && !l_area->currentMusic().contains("~stop.mp3")){ // dummy track for stopping music
+        sendServerMessage("Playing the current song is " + l_area->currentMusic() + " played by " + l_area->musicPlayerBy());
+        sendPacket("MC", {l_area->currentMusic(), "-1", characterName(), "1", "1"});
+    }
+    else
+        sendServerMessage("There is no music playing.");
+}
+
 void AOClient::cmdBlockDj(int argc, QStringList argv)
 {
     Q_UNUSED(argc);

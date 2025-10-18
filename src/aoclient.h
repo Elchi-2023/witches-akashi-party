@@ -2029,6 +2029,12 @@ class AOClient : public QObject
     void cmdCurrentMusic(int argc, QStringList argv);
 
     /**
+     * @brief Returns the currently playing music in the area, and play it to user.
+     *
+     */
+    void cmdGetMusic(int argc, QStringList argv);
+    
+    /**
      * @brief Toggles music playing in the current area.
      *
      * @details No arguments.

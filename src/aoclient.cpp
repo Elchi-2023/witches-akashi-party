@@ -73,6 +73,7 @@ const QMap<QString, AOClient::CommandInfo> AOClient::COMMANDS{
     {"status", {{ACLRole::NONE}, 1, &AOClient::cmdStatus}},
     {"forcepos", {{ACLRole::CM}, 2, &AOClient::cmdForcePos}},
     {"currentmusic", {{ACLRole::NONE}, 0, &AOClient::cmdCurrentMusic}},
+    {"getmusic",  {{ACLRole::NONE}, 0, &AOClient::cmdGetMusic}},
     {"pm", {{ACLRole::NONE}, 2, &AOClient::cmdPM}},
     {"evidence_mod", {{ACLRole::EVI_MOD}, 1, &AOClient::cmdEvidenceMod}},
     {"motd", {{ACLRole::NONE}, 0, &AOClient::cmdMOTD}},
