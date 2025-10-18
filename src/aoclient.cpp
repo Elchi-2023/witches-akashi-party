@@ -630,7 +630,7 @@ bool AOClient::UserAFK() const{
 void AOClient::ToggleAFK(const bool afk){
     if (m_is_afk != afk){
         m_is_afk = afk;
-        Q_EMIT nameChanged("[💤] " + m_ooc_name);
+        Q_EMIT nameChanged(QStringList({m_ooc_name, "[💤] " + m_ooc_name})[m_is_afk]);
     }
 }
 
