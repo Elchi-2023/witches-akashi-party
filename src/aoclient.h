@@ -152,6 +152,9 @@ class AOClient : public QObject
     QString characterName() const;
     void setCharacterName(const QString &f_showname);
 
+    bool UserAFK() const;
+    void ToggleAFK(const bool afk = true);
+    
     int areaId() const;
     void setAreaId(const int f_area_id);
 
@@ -2033,7 +2036,7 @@ class AOClient : public QObject
      *
      */
     void cmdGetMusic(int argc, QStringList argv);
-    
+
     /**
      * @brief Toggles music playing in the current area.
      *

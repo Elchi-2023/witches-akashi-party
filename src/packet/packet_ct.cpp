@@ -28,8 +28,8 @@ void PacketCT::handlePacket(AreaData *area, AOClient &client) const
         return;
     }
 
-    const QString Name = client.dezalgo(m_content[0]).replace(QRegularExpression("\\[|\\]|\\{|\\}|\\#|\\$|\\%|\\&"), ""); // no fucky wucky shit here
-    if (Name.trimmed().remove(QString::fromUtf8("\xE2\x80\x8B")).remove(QString::fromUtf8("\xE2\x80\x8E")).isEmpty() || Name == ConfigManager::serverName()) /* impersonation & empty name protection */
+    const QString Name = client.dezalgo(m_content[0]).remove(QRegularExpression("\\[|\\]|\\{|\\}|\\#|\\$|\\%|\\&")).remove(QString::fromUtf8("\xE2\x80\x8B")).remove(QString::fromUtf8("\xE2\x80\x8E")); // no fucky wucky shit here
+    if (Name.trimmed().isEmpty() || Name == ConfigManager::serverName()) /* impersonation & empty name protection */
         return;
 
     if (Name.length() > 30) {

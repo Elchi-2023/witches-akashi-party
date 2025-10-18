@@ -489,9 +489,8 @@ void AOClient::cmdAfk(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    m_is_afk = true;
+    ToggleAFK();
     sendServerMessage("You are now AFK.");
-    setCharacterName(characterName() + " [AFK]");
 }
 
 void AOClient::cmdCharCurse(int argc, QStringList argv)
