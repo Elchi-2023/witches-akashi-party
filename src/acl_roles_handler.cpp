@@ -91,7 +91,7 @@ const QHash<ACLRole::Permission, QString> ACLRole::PERMISSION_CAPTIONS{
     },
     {
         ACLRole::Permission::PLAY,
-        "jukebox",
+        "play",
     },
     {
         ACLRole::Permission::SUPER,
