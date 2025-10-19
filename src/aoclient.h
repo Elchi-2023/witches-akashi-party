@@ -576,6 +576,11 @@ class AOClient : public QObject
     bool m_authenticated = false;
 
     /**
+     * @brief If true, the client is a logged-in VIP.
+     */
+    bool m_vip_authenticated = false;
+
+    /**
      * @brief The ACL role identifier, used to determine what ACL role the client is linked to.
      */
     QString m_acl_role_id;
