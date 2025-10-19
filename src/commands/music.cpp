@@ -39,7 +39,13 @@ void AOClient::cmdPlay(int argc, QStringList argv)
     }
     AreaData *l_area = server->getAreaById(areaId());
     const ACLRole l_role = server->getACLRolesHandler()->getRoleById(m_acl_role_id);
-    if (!m_vip_authenticated || (!l_area->owners().contains(clientId()) && !l_area->isPlayEnabled() && !l_role.checkPermission(ACLRole::CM))) { // Make sure we have permission to play music
+    if (m_vip_authenticated){ /* bypassed for vip or mods had "PLAY" perms, no matter if area not free play or has cms on it*/
+        l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), l_song);
+        AOPacket *music_change = PacketFactory::createPacket("MC", {l_song, QString::number(server->getCharID(character())), characterName(), "1", "0"});
+        server->broadcast(music_change, areaId());
+        return;
+    }
+    else if (!l_area->owners().contains(clientId()) && !l_area->isPlayEnabled() && !l_role.checkPermission(ACLRole::CM)) { // Make sure we have permission to play music
         sendServerMessage("Free music play is disabled in this area.");
         return;
     }
