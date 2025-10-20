@@ -132,12 +132,11 @@ void AOClient::loginAttempt(QString message)
         if (server->getDatabaseManager()->authenticate(username, password)) {
             m_acl_role_id = server->getDatabaseManager()->getACL(username);
             m_moderator_name = username;
-            const auto perms = server->getACLRolesHandler()->getRoleById(m_acl_role_id);
-            m_authenticated = perms.checkPermission(ACLRole::KICK) || perms.checkPermission(ACLRole::BAN);
-            m_vip_authenticated = perms.checkPermission(ACLRole::PLAY);
+            m_authenticated = QString(m_acl_role_id).toLower() != "vip";
+            m_vip_authenticated = QString(m_acl_role_id).toLower() == "vip";
             sendPacket("AUTH", {QString::number(m_authenticated)});
             if (m_version.release <= 2 && m_version.major <= 9 && m_version.minor <= 0)
-                sendServerMessage(QString("Logged in as a %1,").arg(m_authenticated ? "moderator" : "VIP"));
+                sendServerMessage(QString("Logged in as a %1.").arg(m_authenticated ? "moderator" : "VIP"));
             sendServerMessage("Welcome, " + username);
         }
         else {

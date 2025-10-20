@@ -198,14 +198,21 @@ void AOClient::cmdLogout(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    if (!m_authenticated) {
-        sendServerMessage("You are not logged in!");
-        return;
+    if (m_authenticated){
+        sendServerMessage(QString("You are logout from %1, %2.").arg(m_acl_role_id, m_moderator_name));
+        m_authenticated = false;
+        m_acl_role_id = "";
+        m_moderator_name = "";
+        sendPacket("AUTH", {"-1"}); // Client: "You were logged out."
     }
-    m_authenticated = false;
-    m_acl_role_id = "";
-    m_moderator_name = "";
-    sendPacket("AUTH", {"-1"}); // Client: "You were logged out."
+    else if (m_vip_authenticated){
+        sendServerMessage("You are logout from VIP.");
+        m_vip_authenticated = false;
+        m_acl_role_id = "";
+        m_moderator_name = "";
+    }
+    else
+        sendServerMessage("You are not logged in!");
 }
 
 void AOClient::cmdChangePassword(int argc, QStringList argv)

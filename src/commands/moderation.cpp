@@ -33,6 +33,8 @@ void AOClient::cmdBan(int argc, QStringList argv)
         for (int i = 3; i < argc; i++)
             l_args_str += " " + argv[i];
     }
+    if (m_vip_authenticated)
+        return; /* vip doesn't have ban perms yet.. */
 
     DBManager::BanInfo l_ban;
 
@@ -123,17 +125,27 @@ void AOClient::cmdKick(int argc, QStringList argv)
         l_kick_counter = index +1;
     }
 
-    if (l_kick_counter > 0) {
-        if (ConfigManager::authType() == DataTypes::AuthType::ADVANCED) {
-            emit logKick(m_moderator_name, l_target_ipid, l_reason);
-        }
-        else {
-            emit logKick("Moderator", l_target_ipid, l_reason);
-        }
-        sendServerMessage("Kicked " + QString::number(l_kick_counter) + " client(s) with ipid " + l_target_ipid + " for reason: " + l_reason);
+    switch (l_kick_counter){
+        case 0:
+            sendServerMessage("User with ipid not found!");
+            break;
+        default:
+            if (m_authenticated){
+                if (ConfigManager::authType() == DataTypes::AuthType::ADVANCED)
+                    emit logKick(m_moderator_name, l_target_ipid, l_reason);
+                else
+                    emit logKick("Moderator", l_target_ipid, l_reason);
+                sendServerMessage("Kicked " + QString::number(l_kick_counter) + " client(s) with ipid " + l_target_ipid + " for reason: " + l_reason);
+            }
+            else if (m_vip_authenticated){
+                if (ConfigManager::authType() == DataTypes::AuthType::ADVANCED)
+                    emit logKick("[VIP] " + m_moderator_name, l_target_ipid, l_reason);
+                else
+                    emit logKick("[VIP]", l_target_ipid, l_reason);
+                sendServerMessage("Kicked " + QString::number(l_kick_counter) + " client(s) for reason: " + l_reason);
+            }
+            break;
     }
-    else
-        sendServerMessage("User with ipid not found!");
 }
 
 void AOClient::cmdMods(int argc, QStringList argv)
@@ -569,9 +581,16 @@ void AOClient::cmdKickUid(int argc, QStringList argv)
         sendServerMessage("No client with that ID found.");
         return;
     }
+    const QString targetData(QString("[%1] %2 (%3)").arg(QString::number(l_target->clientId()), l_target->name().isEmpty() ? l_target->character().isEmpty() ? "Spectator" : l_target->character() : l_target->name(), l_target->m_ipid));
     l_target->sendPacket("KK", {l_reason});
     l_target->m_socket->close();
     sendServerMessage("Kicked client with UID " + argv[0] + " for reason: " + l_reason);
+    if (m_vip_authenticated){
+        const QString userdata(QString("[%1] %2").arg(QString::number(clientId()), name().isEmpty() ? character().isEmpty() ? "Spectator" : character() : name()));
+        for (auto C : server->getClients())
+            if (m_authenticated)
+                C->sendServerMessage(QString("[VIP]%1 was kicking %2: %3").arg(userdata, targetData, l_reason));
+    }
 }
 
 void AOClient::cmdUpdateBan(int argc, QStringList argv)

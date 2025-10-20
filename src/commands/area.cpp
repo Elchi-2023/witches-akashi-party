@@ -30,7 +30,16 @@ void AOClient::cmdCM(int argc, QStringList argv){
 
     switch (argc){ /* switch were better */
     case 0:
-        if (current_area->isProtected())
+        if (current_area->isProtected() && m_authenticated){ /* bypassed, even area were protected */
+            if (current_area->owners().contains(clientId())) /* there is already a CM, and it isn't us */
+                sendServerMessage("You are already a CM in this area.");
+            else if (m_authenticated){ /* bypassed for an moderator/authenticated */
+                current_area->addOwner(clientId());
+                sendServerMessageArea(QString("[M][%1] %2 is now CM in this area.").arg(QString::number(clientId()), name()));
+                arup(ARUPType::CM, true);
+            }
+        }
+        else if (current_area->isProtected())
             sendServerMessage("This area is protected, you may not become CM.");
         else if (current_area->owners().isEmpty()){  /*  no one owns this area, and it's not protected */
             current_area->addOwner(clientId());
@@ -39,11 +48,6 @@ void AOClient::cmdCM(int argc, QStringList argv){
         }
         else if (current_area->owners().contains(clientId())) /* there is already a CM, and it isn't us */
             sendServerMessage("You are already a CM in this area.");
-        else if (m_authenticated){ /* bypassed for an moderator/authenticated */
-            current_area->addOwner(clientId());
-            sendServerMessageArea(QString("[M][%1] %2 is now CM in this area.").arg(QString::number(clientId()), name()));
-            arup(ARUPType::CM, true);
-        }
         else
             sendServerMessage("You cannot become a CM in this area.");
         break;
@@ -51,7 +55,7 @@ void AOClient::cmdCM(int argc, QStringList argv){
         bool vaild;
         const AOClient *owner_candidate = server->getClientByID(argv[0].toInt(&vaild)); /* why const?.. because not been modified if just get info */
 
-        if (current_area->isProtected())
+        if (current_area->isProtected() && !m_authenticated) /* bypass for mods */
             sendServerMessage("This area is protected, you may not uses this Commands nor become CM.");
         else if (!vaild)
             sendServerMessage("That doesn't look like a valid ID.");
@@ -84,7 +88,7 @@ void AOClient::cmdUnCM(int argc, QStringList argv){
             arup(ARUPType::CM, true);
             break;
         case 1: default:
-            if (!checkPermission(ACLRole::UNCM)){
+            if (!m_authenticated && !checkPermission(ACLRole::UNCM)){
                 sendServerMessage("You do not have permission to unCM others.");
                 return;
             }
