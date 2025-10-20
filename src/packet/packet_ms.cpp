@@ -343,7 +343,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
                         client.m_pairing_with = target_synced->m_char_id;
                 }
                 else /* otherwise, targeting who prefer pair via client-side instead */
-                    client.m_pairing_with = l_pair_data[0].toInt();
+                    client.m_pairing_with = target_synced->m_char_id;
             }
             else /* fallback */
                 client.m_pairing_with = l_pair_data[0].toInt();
