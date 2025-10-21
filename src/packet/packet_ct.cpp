@@ -67,6 +67,20 @@ void PacketCT::handlePacket(AreaData *area, AOClient &client) const
         return;
     }
     else {
+        if (client.m_is_gimped)
+            l_message = ConfigManager::gimpList().at((client.genRand(1, ConfigManager::gimpList().size() - 1)));
+        if (client.m_is_shaken) {
+            QStringList l_parts = l_message.split(" ");
+
+            std::random_device rng;
+            std::mt19937 urng(rng());
+            std::shuffle(l_parts.begin(), l_parts.end(), urng);
+
+            l_message = l_parts.join(" ");
+        }
+        if (client.m_is_disemvoweled)
+            l_message = QString(l_message).remove(QRegularExpression("[AEIOUaeiou]"));
+        
         AOPacket *final_packet = PacketFactory::createPacket("CT", {client.name(), l_message, "0"});
         client.getServer()->broadcast(final_packet, client.areaId());
     }
