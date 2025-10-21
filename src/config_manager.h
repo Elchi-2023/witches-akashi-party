@@ -73,6 +73,11 @@ class ConfigManager
     static MusicList musiclist();
 
     /**
+     * @brief Returns a QStringlist of radio links..
+     */
+    static QMap<int, QPair<QString,QString>> radiolist();
+
+    /**
      * @brief Returns an ordered QList of all basesongs of this server..
      */
     static QStringList ordered_songs();
@@ -467,6 +472,11 @@ class ConfigManager
      * @brief Contains an ordered list for the musiclist.
      */
     static QStringList *m_ordered_list;
+
+    /**
+     * @brief Contains the radiolist with names and url.
+     */
+    static QMap<int, QPair<QString, QString>> *m_radioList;
 
     /**
      * @brief QHash containing the help information for all commands registered to the server.

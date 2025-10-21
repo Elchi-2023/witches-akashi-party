@@ -26,6 +26,7 @@ QSettings *ConfigManager::m_logtext = new QSettings("config/text/logtext.ini", Q
 QSettings *ConfigManager::m_ambience = new QSettings("config/ambience.ini", QSettings::IniFormat);
 ConfigManager::CommandSettings *ConfigManager::m_commands = new CommandSettings();
 MusicList *ConfigManager::m_musicList = new MusicList;
+QMap<int, QPair<QString, QString>> *ConfigManager::m_radioList = new QMap<int, QPair<QString, QString>>;
 QHash<QString, ConfigManager::help> *ConfigManager::m_commands_help = new QHash<QString, ConfigManager::help>;
 QStringList *ConfigManager::m_ordered_list = new QStringList;
 
@@ -42,7 +43,7 @@ bool ConfigManager::verifyServerConfig()
 
     // Verify config files
     QStringList l_config_files{"config/config.ini", "config/areas.ini", "config/backgrounds.txt", "config/characters.txt", "config/music.json",
-                               "config/discord.ini", "config/text/8ball.txt", "config/text/gimp.txt", "config/text/praise.txt",
+                               "config/radio.json", "config/discord.ini", "config/text/8ball.txt", "config/text/gimp.txt", "config/text/praise.txt",
                                "config/text/reprimands.txt", "config/text/commandhelp.json", "config/text/cdns.txt", "config/ipbans.json"};
     for (const QString &l_file : l_config_files) {
         if (!fileExists(QFileInfo(l_file))) {
@@ -224,6 +225,39 @@ MusicList ConfigManager::musiclist()
     l_music_json.close();
 
     return *m_musicList;
+}
+
+QMap<int, QPair<QString, QString>> ConfigManager::radiolist(){
+
+    QFile l_radio_json("config/radio.json");
+    l_radio_json.open(QIODevice::ReadOnly | QIODevice::Text);
+
+    QJsonParseError l_error;
+    QJsonDocument l_radio_list_json = QJsonDocument::fromJson(l_radio_json.readAll(), &l_error);
+    if (!(l_error.error == QJsonParseError::NoError)) { // Non-Terminating error.
+        qWarning() << "Unable to load radiolist. The following error was encounted : " + l_error.errorString();
+        return QMap<int, QPair<QString, QString>>{}; // Mimic the music list behaviour.
+    }
+
+    // The JSON is an array for the radio.
+    QJsonArray l_Json_root_array = l_radio_list_json.array();
+    QJsonObject l_child_obj;
+
+    for (int i = 0; i < l_Json_root_array.size(); i++) { // Iterate trough entire JSON file
+        l_child_obj = l_Json_root_array.at(i).toObject();
+
+               // Reading the silly id and name and url from JSON
+        int l_radio_id = l_child_obj["id"].toVariant().toInt();
+        QString l_radio_name = l_child_obj["name"].toString();
+        QString l_radio_url = l_child_obj["url"].toString();
+
+        m_radioList->insert(l_radio_id, {l_radio_name, l_radio_url});
+    }
+
+    l_radio_json.close();
+
+    return *m_radioList;
+
 }
 
 QStringList ConfigManager::ordered_songs()

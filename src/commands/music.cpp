@@ -21,6 +21,7 @@
 #include "music_manager.h"
 #include "packet/packet_factory.h"
 #include "server.h"
+#include "config_manager.h"
 
 // This file is for commands under the music category in aoclient.h
 // Be sure to register the command in the header before adding it here!
@@ -53,6 +54,37 @@ void AOClient::cmdPlay(int argc, QStringList argv)
     l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), l_song);
     AOPacket *music_change = PacketFactory::createPacket("MC", {l_song, QString::number(server->getCharID(character())), characterName(), "1", "0"});
     server->broadcast(music_change, areaId());
+}
+
+void AOClient::cmdRadio(int argc, QStringList argv)
+{
+    Q_UNUSED(argc);
+
+    const auto& l_radio = radiolist();
+
+    if(argv.isEmpty){
+        for(auto i = l_radio.constBegin(); i != l_radio.constEnd(); i++)
+
+            QStringList l_radio_list;
+
+            const QString line = QString("%1. %2").arg(i.key(), i.value().first);
+
+            l_radio_list.append(line);
+
+            sendServerMessage("Here are the songs for the radio: \n\n" + l_radio_list.join('\n'));
+            return;
+    } //if there are no arguments, send the radio list to ooc
+
+    if(!l_radio.contains(argv)){
+        send sendServerMessage("Invalid input!");
+        return;
+    } //if the id isn't there, throw an error
+
+    auto select = l_radio.value(argv);
+    QString link = select.second;
+
+    cmdPlay(1, link); //send the url to the play command
+
 }
 
 void AOClient::cmdPlayAmbience(int argc, QStringList argv)
