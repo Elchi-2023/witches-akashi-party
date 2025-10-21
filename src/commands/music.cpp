@@ -74,7 +74,7 @@ void AOClient::cmdRadio(int argc, QStringList argv)
 
         }
 
-        sendServerMessage("Here are the songs for the radio: \n\n" + l_radio_list.join('\n'));
+        sendServerMessage("Here are the songs for the radio: \n" + l_radio_list.join('\n'));
             return;
     } //if there are no arguments, send the radio list to ooc
 
