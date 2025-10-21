@@ -18,10 +18,10 @@
 #include "aoclient.h"
 
 #include "area_data.h"
+#include "config_manager.h"
 #include "music_manager.h"
 #include "packet/packet_factory.h"
 #include "server.h"
-#include "config_manager.h"
 
 // This file is for commands under the music category in aoclient.h
 // Be sure to register the command in the header before adding it here!
@@ -60,28 +60,34 @@ void AOClient::cmdRadio(int argc, QStringList argv)
 {
     Q_UNUSED(argc);
 
-    const auto& l_radio = radiolist();
+    const auto& l_radio = ConfigManager::radiolist();
 
-    if(argv.isEmpty){
-        for(auto i = l_radio.constBegin(); i != l_radio.constEnd(); i++)
+    if(argv.isEmpty()){
 
-            QStringList l_radio_list;
+        QStringList l_radio_list;
 
-            const QString line = QString("%1. %2").arg(i.key(), i.value().first);
+        for(auto i = l_radio.constBegin(); i != l_radio.constEnd(); i++){
 
-            l_radio_list.append(line);
+            QString line = QString("%1. %2").arg(i.key()).arg(i.value().first);
 
-            sendServerMessage("Here are the songs for the radio: \n\n" + l_radio_list.join('\n'));
+        l_radio_list.append(line);
+
+        }
+
+        sendServerMessage("Here are the songs for the radio: \n\n" + l_radio_list.join('\n'));
             return;
     } //if there are no arguments, send the radio list to ooc
 
-    if(!l_radio.contains(argv)){
-        send sendServerMessage("Invalid input!");
+    bool ok;
+    int id = argv[0].toInt(&ok);
+
+    if (!ok || !l_radio.contains(id)) {
+        sendServerMessage(QStringLiteral("Invalid input!"));
         return;
     } //if the id isn't there, throw an error
 
-    auto select = l_radio.value(argv);
-    QString link = select.second;
+    auto select = l_radio.value(id);
+    QStringList link = {select.second};
 
     cmdPlay(1, link); //send the url to the play command
 
