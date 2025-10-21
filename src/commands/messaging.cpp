@@ -127,9 +127,9 @@ void AOClient::cmdG(int argc, QStringList argv)
     QString l_sender_name = name();
     QString l_sender_area = server->getAreaName(areaId());
     QString l_sender_message = argv.join(" ");
-    if (client.m_is_gimped)
-        l_sender_message = ConfigManager::gimpList().at((client.genRand(1, ConfigManager::gimpList().size() - 1)));
-    if (client.m_is_shaken) {
+    if (m_is_gimped)
+        l_sender_message = ConfigManager::gimpList().at((genRand(1, ConfigManager::gimpList().size() - 1)));
+    if (m_is_shaken) {
         QStringList l_parts = l_sender_message.split(" ");
 
         std::random_device rng;
@@ -138,7 +138,7 @@ void AOClient::cmdG(int argc, QStringList argv)
 
         l_sender_message = l_parts.join(" ");
     }
-    if (client.m_is_disemvoweled)
+    if (m_is_disemvoweled)
         l_sender_message = QString(l_sender_message).remove(QRegularExpression("[AEIOUaeiou]"));
         
     // Better readability thanks to AwesomeAim.
@@ -223,9 +223,9 @@ void AOClient::cmdPM(int argc, QStringList argv)
         return;
     }
     QString l_message = argv.join(" "); //...which means it will not end up as part of the 
-    if (client.m_is_gimped)
-        l_message = ConfigManager::gimpList().at((client.genRand(1, ConfigManager::gimpList().size() - 1)));
-    if (client.m_is_shaken) {
+    if (m_is_gimped)
+        l_message = ConfigManager::gimpList().at((genRand(1, ConfigManager::gimpList().size() - 1)));
+    if (m_is_shaken) {
         QStringList l_parts = l_message.split(" ");
 
         std::random_device rng;
@@ -234,7 +234,7 @@ void AOClient::cmdPM(int argc, QStringList argv)
 
         l_message = l_parts.join(" ");
     }
-    if (client.m_is_disemvoweled)
+    if (m_is_disemvoweled)
         l_message = QString(l_message).remove(QRegularExpression("[AEIOUaeiou]"));
         
     l_target_client->sendServerMessage("Message from " + name() + " (" + QString::number(clientId()) + "): " + l_message);
