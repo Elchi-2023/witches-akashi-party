@@ -78,7 +78,7 @@ void AOClient::cmdRadio(int argc, QStringList argv)
             return;
     } //if there are no arguments, send the radio list to ooc
 
-    bool ok;
+    bool ok = false;
     int id = argv[0].toInt(&ok);
 
     if (!ok || !l_radio.contains(id)) {
