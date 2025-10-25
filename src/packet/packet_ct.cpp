@@ -23,7 +23,7 @@ PacketInfo PacketCT::getPacketInfo() const
 
 void PacketCT::handlePacket(AreaData *area, AOClient &client) const
 {
-    if (client.m_is_ooc_muted) {
+    if (client.m_is_ooc_muted && !client.m_authenticated) {
         client.sendServerMessage("You are OOC muted, and cannot speak.");
         return;
     }
@@ -66,7 +66,7 @@ void PacketCT::handlePacket(AreaData *area, AOClient &client) const
         emit client.logCMD((client.character() + " " + client.characterName()), client.m_ipid, client.name(), l_command, l_cmd_argv, client.getServer()->getAreaById(client.areaId())->name());
         return;
     }
-    else {
+    else if (!client.m_is_ooc_muted){
         if (client.m_is_gimped)
             l_message = ConfigManager::gimpList().at((client.genRand(1, ConfigManager::gimpList().size() - 1)));
         if (client.m_is_shaken) {
@@ -84,5 +84,8 @@ void PacketCT::handlePacket(AreaData *area, AOClient &client) const
         AOPacket *final_packet = PacketFactory::createPacket("CT", {client.name(), l_message, "0"});
         client.getServer()->broadcast(final_packet, client.areaId());
     }
+    else
+        client.sendServerMessage("You are OOC muted, and cannot speak. (even you are moderator)");
+    
     emit client.logOOC((client.character() + " " + client.characterName()), client.name(), client.m_ipid, area->name(), l_message);
 }
