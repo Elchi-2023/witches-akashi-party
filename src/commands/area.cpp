@@ -319,7 +319,7 @@ void AOClient::cmdSetBackground(int argc, QStringList argv)
                 server->broadcast(PacketFactory::createPacket("MC", {ambience_name, "-1", characterName(), "1", "1"}), areaId());
             }
             else {
-                server->broadcast(PacketFactory::createPacket("MC", {"~stop.mp3", "-1", characterName(), "1", "1"}), areaId());
+                server->broadcast(PacketFactory::createPacket("MC", {"~stop.mp3", "-1", characterName(), "0", "1"}), areaId());
             }
             sendServerMessageArea(character() + " changed the background to " + f_background);
         }
