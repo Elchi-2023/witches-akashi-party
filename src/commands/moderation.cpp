@@ -304,7 +304,7 @@ void AOClient::cmdAbout(int argc, QStringList argv)
 
 void AOClient::cmdMute(int argc, QStringList argv)
 {
-
+    Q_UNUSED(argc);
     bool conv_ok = false;
     int l_uid = argv[0].toInt(&conv_ok);
     if (!conv_ok) {
@@ -314,8 +314,9 @@ void AOClient::cmdMute(int argc, QStringList argv)
 
     AOClient *target = server->getClientByID(l_uid);
 
-    switch (argc){
-    case 1:
+    if (argv.isEmpty())
+        return;
+    else if (argv.size() == 1){
         if (target == nullptr) {
             sendServerMessage("No client with that ID found.");
             return;
@@ -328,7 +329,8 @@ void AOClient::cmdMute(int argc, QStringList argv)
             target->sendServerMessage("You were muted by a moderator. " + getReprimand());
             target->m_is_muted = true;
         }
-    case 2: default:
+    }
+    else{
         bool type_ok;
         int l_type = argv[1].toInt(&type_ok);
         if (!type_ok){
@@ -349,7 +351,7 @@ void AOClient::cmdMute(int argc, QStringList argv)
         case 1:
             if (target->m_is_ooc_muted)
                 sendServerMessage("That player is already OOC muted!");
-            else {
+            else{
                 sendServerMessage("OOC muted player.");
                 target->sendServerMessage("You were OOC muted by a moderator. " + getReprimand());
                 target->m_is_ooc_muted = true;
@@ -368,13 +370,12 @@ void AOClient::cmdMute(int argc, QStringList argv)
             }
             break;
         }
-        break;
     }
 }
 
 void AOClient::cmdUnMute(int argc, QStringList argv)
 {
-
+    Q_UNUSED(argc)
     bool conv_ok = false;
     int l_uid = argv[0].toInt(&conv_ok);
     if (!conv_ok) {
@@ -384,8 +385,9 @@ void AOClient::cmdUnMute(int argc, QStringList argv)
 
     AOClient *target = server->getClientByID(l_uid);
 
-    switch (argc){
-    case 1:
+    if (argv.isEmpty())
+        return;
+    else if (argv.size() == 1){
         if (target == nullptr) {
             sendServerMessage("No client with that ID found.");
             return;
@@ -396,9 +398,10 @@ void AOClient::cmdUnMute(int argc, QStringList argv)
         else {
             sendServerMessage("Unmuted player.");
             target->sendServerMessage("You were unmuted by a moderator. " + getReprimand());
-            target->m_is_ooc_muted = false;
+            target->m_is_muted = false;
         }
-    case 2: default:
+    }
+    else{
         bool type_ok;
         int l_type = argv[1].toInt(&type_ok);
         if (!type_ok){
@@ -411,15 +414,15 @@ void AOClient::cmdUnMute(int argc, QStringList argv)
             if (!target->m_is_muted)
                 sendServerMessage("That player is already IC unmuted!");
             else{
-                sendServerMessage("Unmuted IC player.");
+                sendServerMessage("unmuted IC player.");
                 target->sendServerMessage("You were IC unmuted by a moderator. " + getReprimand());
                 target->m_is_muted = false;
             }
             break;
         case 1:
             if (!target->m_is_ooc_muted)
-                sendServerMessage("That player is already OOC unmuted!");
-            else {
+                sendServerMessage("That player is already OOC muted!");
+            else{
                 sendServerMessage("OOC unmuted player.");
                 target->sendServerMessage("You were OOC unmuted by a moderator. " + getReprimand());
                 target->m_is_ooc_muted = false;
@@ -438,11 +441,8 @@ void AOClient::cmdUnMute(int argc, QStringList argv)
             }
             break;
         }
-        break;
     }
 }
-
-
 void AOClient::cmdBlockWtce(int argc, QStringList argv)
 {
     Q_UNUSED(argc);
