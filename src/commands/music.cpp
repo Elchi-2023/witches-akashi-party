@@ -40,7 +40,7 @@ void AOClient::cmdPlay(int argc, QStringList argv)
     }
     AreaData *l_area = server->getAreaById(areaId());
     const ACLRole l_role = server->getACLRolesHandler()->getRoleById(m_acl_role_id);
-    if (m_vip_authenticated){ /* bypassed for vip or mods had "PLAY" perms, no matter if area not free play or has cms on it*/
+    if (m_vip_authenticated || m_authenticated){ /* bypassed for vip and mods, no matter if area not free play or has cms on it*/
         l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), l_song);
         AOPacket *music_change = PacketFactory::createPacket("MC", {l_song, QString::number(server->getCharID(character())), characterName(), "1", "0"});
         server->broadcast(music_change, areaId());
