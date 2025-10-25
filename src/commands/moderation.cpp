@@ -326,6 +326,7 @@ void AOClient::cmdMute(int argc, QStringList argv)
         else {
             sendServerMessage("Muted player.");
             target->sendServerMessage("You were muted by a moderator. " + getReprimand());
+            target->m_is_muted = true;
         }
     case 2: default:
         bool type_ok;
@@ -390,11 +391,12 @@ void AOClient::cmdUnMute(int argc, QStringList argv)
             return;
         }
 
-        if (target->m_is_muted)
+        if (!target->m_is_ooc_muted)
             sendServerMessage("That player is already unmuted!");
         else {
             sendServerMessage("Unmuted player.");
             target->sendServerMessage("You were unmuted by a moderator. " + getReprimand());
+            target->m_is_ooc_muted = false;
         }
     case 2: default:
         bool type_ok;
@@ -406,31 +408,31 @@ void AOClient::cmdUnMute(int argc, QStringList argv)
 
         switch (l_type){
         case 0: default:
-            if (target->m_is_muted)
+            if (!target->m_is_muted)
                 sendServerMessage("That player is already IC unmuted!");
             else{
                 sendServerMessage("Unmuted IC player.");
                 target->sendServerMessage("You were IC unmuted by a moderator. " + getReprimand());
-                target->m_is_muted = true;
+                target->m_is_muted = false;
             }
             break;
         case 1:
-            if (target->m_is_ooc_muted)
+            if (!target->m_is_ooc_muted)
                 sendServerMessage("That player is already OOC unmuted!");
             else {
                 sendServerMessage("OOC unmuted player.");
                 target->sendServerMessage("You were OOC unmuted by a moderator. " + getReprimand());
-                target->m_is_ooc_muted = true;
+                target->m_is_ooc_muted = false;
             }
             break;
         case 2:
-            if (target->m_is_muted && target->m_is_ooc_muted)
+            if (!target->m_is_muted && !target->m_is_ooc_muted)
                 sendServerMessage("That player is already [IC & OOC] unmuted!");
             else{
-                if (!target->m_is_muted)
-                    target->m_is_muted = true;
-                if (!target->m_is_ooc_muted)
-                    target->m_is_ooc_muted = true;
+                if (target->m_is_muted)
+                    target->m_is_muted = false;
+                if (target->m_is_ooc_muted)
+                    target->m_is_ooc_muted = false;
                 sendServerMessage("[IC & OOC] unmuted player.");
                 target->sendServerMessage("You were [IC & OOC] unmuted by a moderator. " + getReprimand());
             }
