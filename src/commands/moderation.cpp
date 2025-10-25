@@ -391,7 +391,7 @@ void AOClient::cmdUnMute(int argc, QStringList argv)
             return;
         }
 
-        if (!target->m_is_ooc_muted)
+        if (!target->m_is_muted)
             sendServerMessage("That player is already unmuted!");
         else {
             sendServerMessage("Unmuted player.");
