@@ -331,7 +331,7 @@ void AOClient::cmdMute(int argc, QStringList argv)
         }
     }
     else{
-        bool type_ok;
+        bool type_ok = false;
         int l_type = argv[1].toInt(&type_ok);
         if (!type_ok){
             sendServerMessage("Invaild Type.");
@@ -402,7 +402,7 @@ void AOClient::cmdUnMute(int argc, QStringList argv)
         }
     }
     else{
-        bool type_ok;
+        bool type_ok = false;
         int l_type = argv[1].toInt(&type_ok);
         if (!type_ok){
             sendServerMessage("Invaild Type.");
