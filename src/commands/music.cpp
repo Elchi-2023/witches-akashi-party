@@ -18,6 +18,7 @@
 #include "aoclient.h"
 
 #include "area_data.h"
+#include "config_manager.h"
 #include "music_manager.h"
 #include "packet/packet_factory.h"
 #include "server.h"
@@ -53,6 +54,43 @@ void AOClient::cmdPlay(int argc, QStringList argv)
     l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), l_song);
     AOPacket *music_change = PacketFactory::createPacket("MC", {l_song, QString::number(server->getCharID(character())), characterName(), "1", "0"});
     server->broadcast(music_change, areaId());
+}
+
+void AOClient::cmdRadio(int argc, QStringList argv)
+{
+    Q_UNUSED(argc);
+
+    const auto& l_radio = ConfigManager::radiolist();
+
+    if(argv.isEmpty()){
+
+        QStringList l_radio_list;
+
+        for(auto i = l_radio.constBegin(); i != l_radio.constEnd(); i++){
+
+            QString line = QString("%1. %2").arg(i.key()).arg(i.value().first);
+
+        l_radio_list.append(line);
+
+        }
+
+        sendServerMessage("Here are the songs for the radio: \n" + l_radio_list.join('\n'));
+            return;
+    } //if there are no arguments, send the radio list to ooc
+
+    bool ok = false;
+    int id = argv[0].toInt(&ok);
+
+    if (!ok || !l_radio.contains(id)) {
+        sendServerMessage(QStringLiteral("Invalid input!"));
+        return;
+    } //if the id isn't there, throw an error
+
+    auto select = l_radio.value(id);
+    QStringList link = {select.second};
+
+    cmdPlay(1, link); //send the url to the play command
+
 }
 
 void AOClient::cmdPlayAmbience(int argc, QStringList argv)

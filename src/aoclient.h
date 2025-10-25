@@ -1993,6 +1993,17 @@ class AOClient : public QObject
     void cmdPlay(int argc, QStringList argv);
 
     /**
+     * @brief shows radio list or play a radio url.
+     *
+     * @details If no argument is provided, this returns the list of radio links.
+     *
+     * If the argument provided is an id of the radio link (from JSON file), play that link.
+     *
+     * @iscommand
+     */
+    void cmdRadio(int argc, QStringList argv);
+
+    /**
      * @brief Plays ambience in the area.
      *
      * @details The arguments are **the song's filepath** originating from `base/sounds/music/`,
