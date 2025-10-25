@@ -33,8 +33,6 @@ void AOClient::cmdBan(int argc, QStringList argv)
         for (int i = 3; i < argc; i++)
             l_args_str += " " + argv[i];
     }
-    if (m_vip_authenticated)
-        return; /* vip doesn't have ban perms yet.. */
 
     DBManager::BanInfo l_ban;
 
@@ -49,8 +47,13 @@ void AOClient::cmdBan(int argc, QStringList argv)
         return;
     }
 
+    bool isclientID;
+    int clientID = argv[0].toInt(&isclientID);
     l_ban.duration = l_duration_seconds;
-    l_ban.ipid = argv[0];
+    if (isclientID && server->getClientByID(clientID) != nullptr)
+        l_ban.ipid = server->getClientByID(clientID)->m_ipid;
+    else
+        l_ban.ipid = argv[0];
     l_ban.reason = l_args_str;
     l_ban.time = QDateTime::currentDateTime().toSecsSinceEpoch();
     bool l_ban_logged = false;
@@ -115,6 +118,10 @@ void AOClient::cmdKick(int argc, QStringList argv)
             l_reason += " " + argv[i];
         }
     }
+    bool isclientID;
+    int clientID = l_target_ipid.toInt(&isclientID);
+    if (isclientID && server->getClientByID(clientID) != nullptr)
+        l_target_ipid = server->getClientByID(clientID)->m_ipid;
 
     const QList<AOClient *> l_targets = server->getClientsByIpid(l_target_ipid);
     for (int index = 0; index < l_targets.size(); ++index){
