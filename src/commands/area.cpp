@@ -27,17 +27,19 @@
 
 void AOClient::cmdCM(int argc, QStringList argv){
     AreaData *current_area = server->getAreaById(areaId());
-
+    
     switch (argc){ /* switch were better */
     case 0:
-        if (current_area->isProtected() && m_authenticated){ /* bypassed, even area were protected */
-            if (current_area->owners().contains(clientId())) /* there is already a CM, and it isn't us */
-                sendServerMessage("You are already a CM in this area.");
-            else if (m_authenticated){ /* bypassed for an moderator/authenticated */
+        if (m_authenticated){ /* bypassed for an moderator/authenticated */
+            if (current_area->owners().isEmpty()){  /*  no one owns this area, and it's not protected */
                 current_area->addOwner(clientId());
                 sendServerMessageArea(QString("[M][%1] %2 is now CM in this area.").arg(QString::number(clientId()), name()));
                 arup(ARUPType::CM, true);
             }
+            else if (current_area->owners().contains(clientId())) /* there is already a CM, and it isn't us */
+                sendServerMessage("You are already a CM in this area.");
+            else
+                sendServerMessage("You cannot become a CM in this area.");
         }
         else if (current_area->isProtected())
             sendServerMessage("This area is protected, you may not become CM.");
@@ -54,8 +56,23 @@ void AOClient::cmdCM(int argc, QStringList argv){
     case 1: default: /* doesn't hurts when argc >= 1, right?.. */
         bool vaild;
         const AOClient *owner_candidate = server->getClientByID(argv[0].toInt(&vaild)); /* why const?.. because not been modified if just get info */
-
-        if (current_area->isProtected() && !m_authenticated) /* bypass for mods */
+        
+        if (m_authenticated){
+            if (!vaild)
+                sendServerMessage("That doesn't look like a valid ID.");
+            else if (!checkPermission(ACLRole::CM)) /* preventing user for use this if their not an moderator/authenticated or in area owner */
+                sendServerMessage("You must become a CM to use this command. (or you don't have \"CM\" permission");
+            else if (owner_candidate == nullptr)
+                sendServerMessage("Unable to find client with ID " + argv[0] + ".");
+            else if (current_area->owners().contains(owner_candidate->clientId()))
+                sendServerMessage(QString("%1 already a CM in this area.").arg(owner_candidate->clientId() == clientId() ? "You are" : "User is"));
+            else{
+                current_area->addOwner(owner_candidate->clientId());
+                sendServerMessageArea(QString("[%1] %2 is now CM in this area.").arg(QString::number(owner_candidate->clientId()), owner_candidate->name().isEmpty() ? owner_candidate->m_current_char.isEmpty() ? "Spectator" : owner_candidate->m_current_char : owner_candidate->name())); /* to fix "is now CM in this area.".. we just get target chars instead, target ooc-name otherwise. */
+                arup(ARUPType::CM, true);
+            }
+        }
+        else if (current_area->isProtected())
             sendServerMessage("This area is protected, you may not uses this Commands nor become CM.");
         else if (!vaild)
             sendServerMessage("That doesn't look like a valid ID.");
