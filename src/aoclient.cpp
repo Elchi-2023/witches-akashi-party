@@ -664,9 +664,9 @@ void AOClient::onAfkTimeout()
         for (const int client_id : current_area->joinedIDs()){
             auto l_client = server->getClientByID(client_id);
             if (l_client == this) /* "this" ... current client (aka user) lol */
-                sendServerMessage("You are now AFK (by timeout).");
+                sendServerMessage("You are now AFK (due to inactivity).");
             else if (!l_client->isSpectator()) /* lgnored spectator for moment.. */
-                l_client->sendServerMessage(QString("[%1] %2 are now AFK (by timeout).").arg(QString::number(l_client->clientId()), l_client->character()));
+                l_client->sendServerMessage(QString("[%1] %2 are now AFK (due to inactivity).").arg(QString::number(l_client->clientId()), l_client->character()));
         }
         ToggleAFK();
     }
