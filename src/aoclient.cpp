@@ -161,6 +161,7 @@ const QMap<QString, AOClient::CommandInfo> AOClient::COMMANDS{
     {"medievalmode", {{ACLRole::MUTE}, 0, &AOClient::cmdMedievalMode}},
 };
 
+void AOClient::clientDisconnected()
 {
 #ifdef NET_DEBUG
     qDebug() << m_remote_ip.toString() << "disconnected";
