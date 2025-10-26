@@ -161,7 +161,6 @@ const QMap<QString, AOClient::CommandInfo> AOClient::COMMANDS{
     {"medievalmode", {{ACLRole::MUTE}, 0, &AOClient::cmdMedievalMode}},
 };
 
-void AOClient::clientDisconnected()
 {
 #ifdef NET_DEBUG
     qDebug() << m_remote_ip.toString() << "disconnected";
@@ -173,9 +172,12 @@ void AOClient::clientDisconnected()
             const QVector<int> current_joinedID = current_area->joinedIDs();
             for (const int l_client_id : current_joinedID){ /* broadcasting when current area doesn't empty */
                 auto l_client = server->getClientByID(l_client_id);
-                if (!m_is_spectator && !m_is_multiclient && m_disconnect_reason != Disconnected::BAN){ /* we notfy when user has disconnected/kicked (not banned) */
-                    const QString reasons(m_disconnect_reason == Disconnected::NORMAL ? "Disconnected." : "Kicked by Moderator.");
-                    l_client->sendServerMessage(QString("[%1] %2 was %3").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character(), reasons));
+                if (!m_is_spectator && !m_is_multiclient){
+                    const QStringList Reason{"disconnected", "disconnected: (kicked)", "disconnected (banned)"};
+                    if (l_client->m_authenticated)
+                        l_client->sendServerMessage(QString("[%1] %2 are %3.").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character(), Reason[m_disconnect_reason]));
+                    else
+                        l_client->sendServerMessage(QString("[%1] %2 are %3.").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character(), Reason[m_disconnect_reason > Disconnected::KICK ? 0 : m_disconnect_reason]));
                 }
 
                 if (current_area->get_pair_sync_clientID(l_client->clientId()) == clientId() && current_area->get_pair_sync_clientID(clientId()) == l_client_id){ /* you know how this checkers goes, right? */
@@ -192,24 +194,26 @@ void AOClient::clientDisconnected()
         arup(ARUPType::PLAYER_COUNT, true);
     }
 
-    if (character() != "") {
+    if (!character().isEmpty())
         server->updateCharsTaken(server->getAreaById(areaId()));
-    }
 
     bool l_updateLocks = false;
 
     const QVector<AreaData *> l_areas = server->getAreas();
     for (AreaData *l_area : l_areas) {
-        if (l_area->invited().contains(m_id)) {
+        if (l_area->invited().contains(m_id))
             l_area->uninvite(m_id);
+        if (l_area->removeOwner(clientId()) && !l_updateLocks)
+            l_updateLocks = true;
+        if (l_area->joinedIDs().isEmpty() && l_area->lockStatus() != AreaData::FREE){
+            l_area->unlock();
+            if (!l_updateLocks)
+                l_updateLocks = true;
         }
-
-        l_updateLocks = l_updateLocks || l_area->removeOwner(clientId());
     }
 
-    if (l_updateLocks) {
+    if (l_updateLocks)
         arup(ARUPType::LOCKED, true);
-    }
     arup(ARUPType::CM, true);
     emit clientSuccessfullyDisconnected(clientId());
 }
