@@ -260,9 +260,9 @@ void AOClient::handlePacket(AOPacket *packet)
             for (const int client_id : current_area->joinedIDs()){
                 auto l_client = server->getClientByID(client_id);
                 if (l_client == this) /* "this" ... current client (aka user) lol */
-                    sendServerMessage("You are no longer AFK.");
+                    l_client->sendServerMessage("You are no longer AFK.");
                 else if (!l_client->isSpectator()) /* lgnored spectator for moment.. */
-                    l_client->sendServerMessage(QString("[%1] %2 are no longer AFK.").arg(QString::number(l_client->clientId()), l_client->character()));
+                    l_client->sendServerMessage(QString("[%1] %2 are no longer AFK.").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character()));
             }
             ToggleAFK(false);
         }
@@ -666,7 +666,7 @@ void AOClient::onAfkTimeout()
             if (l_client == this) /* "this" ... current client (aka user) lol */
                 sendServerMessage("You are now AFK (due to inactivity).");
             else if (!l_client->isSpectator()) /* lgnored spectator for moment.. */
-                l_client->sendServerMessage(QString("[%1] %2 are now AFK (due to inactivity).").arg(QString::number(l_client->clientId()), l_client->character()));
+                l_client->sendServerMessage(QString("[%1] %2 are now AFK (due to inactivity).").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character()));
         }
         ToggleAFK();
     }
