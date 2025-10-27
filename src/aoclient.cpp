@@ -159,6 +159,8 @@ const QMap<QString, AOClient::CommandInfo> AOClient::COMMANDS{
     {"medieval", {{ACLRole::MUTE}, 1, &AOClient::cmdMedieval}},
     {"unmedieval", {{ACLRole::MUTE}, 1, &AOClient::cmdUnMedieval}},
     {"medievalmode", {{ACLRole::MUTE}, 0, &AOClient::cmdMedievalMode}},
+    {"curses", {{ACLRole::MUTE}, 0, &AOClient::cmdCurses}},
+    {"uncurses", {{ACLRole::MUTE}, 0, &AOClient::cmdUnCurses}},
 };
 
 void AOClient::clientDisconnected()

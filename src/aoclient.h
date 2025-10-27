@@ -1685,6 +1685,24 @@ class AOClient : public QObject
      */
     void cmdLM(int argc, QStringList argv);
 
+        /**
+     * @brief this commands gives **target id** an curses.
+     *
+     * @details The only argument is the **the target's ID** and **type** if there is.
+     *
+     * @iscommand
+     */
+    void cmdCurses(int argc, QStringList argv);
+
+    /**
+     * @brief this commands removes **target id** from an curses.
+     *
+     * @details The only argument is the **the target's ID** and **type** if there is.
+     *
+     * @iscommand
+     */
+    void cmdUnCurses(int argc, QStringList argv);
+    
     /**
      * @brief Replaces a target client's in-character messages with strings randomly selected from gimp.txt.
      *

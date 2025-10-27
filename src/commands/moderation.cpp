@@ -186,6 +186,152 @@ void AOClient::cmdMods(int argc, QStringList argv)
     sendServerMessage(entry.join('\n'));
 }
 
+void AOClient::cmdCurses(int argc, QStringList argv){
+    if (argc <= 0)
+        return;
+    bool vaild_id = false;
+    int target_id = argv[0].toInt(&vaild_id);
+
+    if (!vaild_id){
+        sendServerMessage("Invalid user ID.");
+        return;
+    }
+
+    auto target_client = server->getClientByID(target_id);
+
+    if (target_client == nullptr){
+        sendServerMessage("No client with that ID found.");
+        return;
+    }
+
+    const QStringList m_type{"disemvoweled", "shaked", "medievaled", "gimped"};
+    switch (argc){
+    case 1:
+        if (target_client->m_is_disemvoweled)
+            sendServerMessage("That target are already been curses (disemvoweled).");
+        else{
+            target_client->m_is_disemvoweled = true;
+            sendServerMessage("You gives target an curses (disemvoweled).");
+            target_client->sendServerMessage("You been curses (disemvoweled) by Moderator! " + getReprimand(false));
+        }
+        break;
+    case 2: default:
+        bool vaild_type = false;
+        const int _type = argv[1].toInt(&vaild_type);
+        if (!vaild_type){
+            sendServerMessage("Invaild Type.");
+            return;
+        }
+
+        const QList<bool*> target_state{&target_client->m_is_disemvoweled, &target_client->m_is_shaken, &target_client->m_is_medieval, &target_client->m_is_gimped};
+        switch (_type){
+        case -1:
+            if (target_client->m_is_disemvoweled && target_client->m_is_shaken && target_client->m_is_medieval && target_client->m_is_gimped)
+                sendServerMessage("That target are already been *TRUE* curses.");
+            else{
+                for (auto state : target_state){
+                    if (!*state)
+                        *state = true;
+                }
+                sendServerMessage("You gives target an *TRUE* curses.");
+                target_client->sendServerMessage("You been *TRUE* curses by Moderator! " + getReprimand(false));
+            }
+            break;
+        case 0: case 1: case 2: case 3:
+            if (*target_state[_type])
+                sendServerMessage(QString("That target are already been curses (%1)").arg(m_type[_type]));
+            else{
+                *target_state[_type] = true;
+                sendServerMessage(QString("You gives target an curses (%1).").arg(m_type[_type]));
+                target_client->sendServerMessage(QString("You been curses (%1) by Moderator! ").arg(m_type[_type]) + getReprimand(false));
+            }
+            break;
+        default:
+            if (target_client->m_is_disemvoweled)
+                sendServerMessage("That target are already been curses (disemvoweled).");
+            else{
+                target_client->m_is_disemvoweled = true;
+                sendServerMessage("You gives target an curses (disemvoweled).");
+                target_client->sendServerMessage("You been curses (disemvoweled) by Moderator! " + getReprimand(false));
+            }
+        }
+        break;
+    }
+}
+
+void AOClient::cmdUnCurses(int argc, QStringList argv){
+    if (argc <= 0)
+        return;
+    bool vaild_id = false;
+    int target_id = argv[0].toInt(&vaild_id);
+
+    if (!vaild_id){
+        sendServerMessage("Invalid user ID.");
+        return;
+    }
+
+    auto target_client = server->getClientByID(target_id);
+
+    if (target_client == nullptr){
+        sendServerMessage("No client with that ID found.");
+        return;
+    }
+
+    const QStringList m_type{"disemvoweled", "shaked", "medievaled", "gimped"};
+    switch (argc){
+    case 1:
+        if (!target_client->m_is_disemvoweled)
+            sendServerMessage("That target are already been freed from curses (disemvoweled).");
+        else{
+            target_client->m_is_disemvoweled = false;
+            sendServerMessage("You freed target from an curses (disemvoweled).");
+            target_client->sendServerMessage("You been freed from an curses (disemvoweled) by Moderator! " + getReprimand(true));
+        }
+        break;
+    case 2: default:
+        bool vaild_type = false;
+        const int _type = argv[1].toInt(&vaild_type);
+        if (!vaild_type){
+            sendServerMessage("Invaild Type.");
+            return;
+        }
+
+        const QList<bool*> target_state{&target_client->m_is_disemvoweled, &target_client->m_is_shaken, &target_client->m_is_medieval, &target_client->m_is_gimped};
+        switch (_type){
+        case -1:
+            if (!target_client->m_is_disemvoweled && !target_client->m_is_shaken && !target_client->m_is_medieval && !target_client->m_is_gimped)
+                sendServerMessage("That target are already freed from an *TRUE* curses.");
+            else{
+                for (auto state : target_state){
+                    if (!state)
+                        *state = true;
+                }
+                sendServerMessage("You freed target from an *TRUE* curses.");
+                target_client->sendServerMessage("You been freed from an *TRUE* curses by Moderator! " + getReprimand(true));
+            }
+            break;
+        case 0: case 1: case 2: case 3:
+            if (*target_state[_type])
+                sendServerMessage(QString("That target are already freed from an (%1)").arg(m_type[_type]));
+            else{
+                *target_state[_type] = false;
+                sendServerMessage(QString("You freed target from an curses (%1).").arg(m_type[_type]));
+                target_client->sendServerMessage(QString("You been freed from an curses (%1) by Moderator! ").arg(m_type[_type]) + getReprimand(true));
+            }
+            break;
+        default:
+            if (!target_client->m_is_disemvoweled)
+                sendServerMessage("That target are already been freed from curses (disemvoweled).");
+            else{
+                target_client->m_is_disemvoweled = false;
+                sendServerMessage("You freed target from an curses (disemvoweled).");
+                target_client->sendServerMessage("You been freed from an curses (disemvoweled) by Moderator! " + getReprimand(true));
+            }
+        }
+        break;
+    }
+}
+
 void AOClient::cmdCommands(int argc, QStringList argv)
 {
     Q_UNUSED(argc);
