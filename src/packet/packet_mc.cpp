@@ -81,10 +81,10 @@ void PacketMC::handlePacket(AreaData *area, AOClient &client) const
         // Since we can't ensure a user has their showname set, we check if its empty to prevent
         //"played by ." in /currentmusic.
         if (client.characterName().isEmpty()) {
-            area->changeMusic(client.character(), l_final_song);
+            area->changeMusic(client.character(), l_final_song, l_final_song != "~stop.mp3");
             return;
         }
-        area->changeMusic(client.characterName(), l_final_song);
+        area->changeMusic(client.characterName(), l_final_song, l_final_song != "~stop.mp3");
         return;
     }
 
