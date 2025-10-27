@@ -303,7 +303,7 @@ void AOClient::cmdUnCurses(int argc, QStringList argv){
                 sendServerMessage("That target are already freed from an *TRUE* curses.");
             else{
                 for (auto state : target_state){
-                    if (!state)
+                    if (state)
                         *state = false;
                 }
                 sendServerMessage("You freed target from an *TRUE* curses.");
