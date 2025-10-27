@@ -683,6 +683,15 @@ class AreaData : public QObject
     QString currentMusic() const;
 
     /**
+     * @brief Returns the music currently being played in the area.
+     *
+     * @return See short description.
+     *
+     * @see #m_currentMusic
+     */
+    bool currentMusicLoop() const;
+
+    /**
      * @brief Returns the ambient audio currently being played in the area.
      *
      * @return See short description.
@@ -723,8 +732,9 @@ class AreaData : public QObject
      *
      * @param f_source_r The showname of the client who initiated the music change.
      * @param f_newSong_r The name of the new song that is going to be played in the area.
+     * @param f_loop_song the loop of song.
      */
-    void changeMusic(const QString &f_source_r, const QString &f_newSong_r);
+    void changeMusic(const QString &f_source_r, const QString &f_newSong_r, const bool &f_loop_song);
 
     /**
      * @brief Changes the ambience audio being played in the area.
@@ -1229,6 +1239,11 @@ class AreaData : public QObject
      * @brief The name of the client (or client's character) that started the currently playing music.
      */
     QString m_musicPlayedBy;
+
+    /**
+     * @brief The loop of music that started the currently playing music.
+     */
+    bool m_music_loop = false;
 
     /**
      * @brief A pointer to a Logger, used to send requests to log data.

@@ -113,7 +113,7 @@ void AreaData::addClient(int f_charId, int f_userId)
     emit sendAreaPacketClient(PacketFactory::createPacket("MC", {m_currentAmbience, QString::number(-1), ConfigManager::serverName(), QString::number(1), QString::number(1)}), f_userId);
     // The name will never be shown as we are using a spectator ID. Still nice for people who network sniff.
     // We auto-loop this so you'll never sit in silence unless wanted.
-    emit sendAreaPacketClient(PacketFactory::createPacket("MC", {m_currentMusic, QString::number(-1), ConfigManager::serverName(), QString::number((m_currentMusic.toLower() != "~stop.mp3" || !m_currentMusic.isEmpty()))}), f_userId);
+    emit sendAreaPacketClient(PacketFactory::createPacket("MC", {m_currentMusic, QString::number(-1), ConfigManager::serverName(), QString::number((m_currentMusic.toLower() != "~stop.mp3" || !m_currentMusic.isEmpty()) || m_music_loop)}), f_userId);
 }
 
 QList<int> AreaData::owners() const
@@ -559,10 +559,11 @@ void AreaData::setMusicPlayedBy(const QString &f_music_player)
     m_musicPlayedBy = f_music_player;
 }
 
-void AreaData::changeMusic(const QString &f_source_r, const QString &f_newSong_r)
+void AreaData::changeMusic(const QString &f_source_r, const QString &f_newSong_r, const bool &f_loop_song)
 {
     m_currentMusic = f_newSong_r;
     m_musicPlayedBy = f_source_r;
+    m_music_loop = f_loop_song;
 }
 
 void AreaData::changeAmbience(const QString &f_newSong_r)
@@ -573,6 +574,10 @@ void AreaData::changeAmbience(const QString &f_newSong_r)
 QString AreaData::currentMusic() const
 {
     return m_currentMusic;
+}
+
+bool AreaData::currentMusicLoop() const{
+    return m_music_loop;
 }
 
 QString AreaData::currentAmbience() const
