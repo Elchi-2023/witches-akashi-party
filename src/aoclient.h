@@ -1702,7 +1702,7 @@ class AOClient : public QObject
      * @iscommand
      */
     void cmdUnCurses(int argc, QStringList argv);
-    
+
     /**
      * @brief Replaces a target client's in-character messages with strings randomly selected from gimp.txt.
      *
@@ -2009,6 +2009,19 @@ class AOClient : public QObject
      * @iscommand
      */
     void cmdPlay(int argc, QStringList argv);
+
+    /**
+     * @brief Plays music once in the area.
+     *
+     * @details The arguments are **the song's filepath** originating from `base/sounds/music/`,
+     * or **the song's URL** if it's a stream.
+     *
+     * As described above, this command can be used to play songs by URL (for clients at and above version 2.9),
+     * but it can also be used to play songs locally available for the clients but not listed in the music list.
+     *
+     * @iscommand
+     */
+    void cmdPlayOnce(int argc, QStringList argv);
 
     /**
      * @brief shows radio list or play a radio url.
