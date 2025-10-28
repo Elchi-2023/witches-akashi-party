@@ -68,6 +68,8 @@ QStringList AOClient::buildAreaList(int area_idx)
                 char_entry.insert(0, "[💤]");
             if (l_client->m_vip_authenticated && !l_client->m_authenticated)
                 char_entry.insert(0, "[VIP]");
+            if (l_client == this)
+                char_entry.insert(0, "[🔖] ");
             if (m_authenticated)
                 char_entry += " (" + l_client->getIpid() + "): " + l_client->name();
             entries.append(char_entry);
