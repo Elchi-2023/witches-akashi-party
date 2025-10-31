@@ -51,8 +51,10 @@ void PacketCT::handlePacket(AreaData *area, AOClient &client) const
     if (!ConfigManager::filterList().isEmpty()) {
         foreach (const QString &regex, ConfigManager::filterList()) {
             QRegularExpression re(regex, QRegularExpression::CaseInsensitiveOption);
-            l_message.replace(re, "❌");
+            //l_message.replace(re, "❌");
         }
+        //mint wanted instead of censor, it gimps.
+        client.m_is_gimped = true;
     }
 
     if (l_message.at(0) == '/') {

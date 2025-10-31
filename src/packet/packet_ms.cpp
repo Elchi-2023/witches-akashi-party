@@ -187,8 +187,10 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     if (!ConfigManager::filterList().isEmpty()) {
         foreach (const QString &regex, ConfigManager::filterList()) {
             QRegularExpression re(regex, QRegularExpression::CaseInsensitiveOption);
-            l_incoming_msg.replace(re, "❌");
+            //l_incoming_msg.replace(re, "❌");
         }
+        //mint wanted it so instead of censoring it gimps.
+        client.m_is_gimped = true;
     }
 
     if (client.m_is_gimped) {
@@ -326,7 +328,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         client.setCharacterName(l_incoming_showname);
 
         if(client.m_is_halloween){
-            int l_index = genRand(1, 50); //generate number between 1 and 50
+            int l_index = client.genRand(1, 50); //generate number between 1 and 50
             if(l_index == 25){
                 QString l_evil_name = "👻Evil " + l_incoming_showname.trimmed() + "👻"; //if the number is 25, user name will be "Evil + [name]"
                 if (l_evil_name.length() > 30){
