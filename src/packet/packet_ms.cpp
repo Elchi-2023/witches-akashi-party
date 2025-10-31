@@ -222,6 +222,16 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         l_incoming_msg = l_disemvoweled_message;
     }
 
+    if(client.m_is_halloween){
+        int l_index = client.genRand(1, 50); //generate number between 1 and 50
+        if(l_index == 25){
+            l_incoming_msg = "Boo."; //if the number is 25, the message will be overwritten by "Boo."
+        }
+    }
+
+    client.m_last_message = l_incoming_msg;
+    l_args.append(l_incoming_msg);
+
     // side
     // this is validated clientside so w/e
     QString side = area->side();
@@ -325,24 +335,17 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         // if the raw input is not empty but the trimmed input is, use a single space
         if (l_incoming_showname.isEmpty() && !l_incoming_args[15].toString().isEmpty())
             l_incoming_showname = " ";
-        l_args.append(l_incoming_showname);
-        client.setCharacterName(l_incoming_showname);
 
-        if(client.m_is_halloween){
-            int l_index = client.genRand(1, 50); //generate number between 1 and 50
-            if(l_index == 25){
-                QString l_evil_name = "👻Evil " + l_incoming_showname.trimmed() + "👻"; //if the number is 25, user name will be "Evil + [name]"
-                if (l_evil_name.length() > 30){
-                    l_evil_name = "👻EvilLongName👻";
-                }
-                client.setCharacterName(l_evil_name);
-                l_incoming_msg = "Boo."; //if the number is 25, the message will be overwritten by "Boo."
+        if (client.m_is_halloween){
+            QString l_evil_name = "👻Evil " + l_incoming_showname.trimmed() + "👻"; //if the number is 25, user name will be "Evil + [name]"
+            if (l_evil_name.length() > 30){
+                l_evil_name = "👻EvilLongName👻";
             }
+            l_incoming_showname = l_evil_name;
         }
 
-        client.m_last_message = l_incoming_msg;
-        l_args.append(l_incoming_msg);
-
+        l_args.append(l_incoming_showname);
+        client.setCharacterName(l_incoming_showname);
 
         // other char id
         // things get a bit hairy here
