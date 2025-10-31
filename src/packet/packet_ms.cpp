@@ -223,7 +223,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     }
 
     if(client.m_is_halloween){
-        int l_index = client.genRand(1, 50); //generate number between 1 and 50 for halloween
+        int l_index = client.genRand(1, 31); //generate number between 1 and 31 for halloween
         if(l_index == 25){
             l_incoming_msg = "Boo."; //if the number is 25, the message will be overwritten by "Boo."
         }
