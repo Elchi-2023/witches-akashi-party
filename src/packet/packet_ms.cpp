@@ -185,12 +185,16 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     }
 
     if (!ConfigManager::filterList().isEmpty()) {
+
+        QString l_censor_message = l_incoming_msg.toLower();
+
         foreach (const QString &regex, ConfigManager::filterList()) {
-            QRegularExpression re(regex, QRegularExpression::CaseInsensitiveOption);
+            //QRegularExpression re(regex, QRegularExpression::CaseInsensitiveOption);
             //l_incoming_msg.replace(re, "❌");
-            client.m_is_gimped = true;
+            if(l_censor_message.contains(regex.toLower())){
+                client.m_is_gimped = true;
+            }
         }
-        //mint wanted it so instead of censoring it gimps.
     }
 
     if (client.m_is_gimped) {
