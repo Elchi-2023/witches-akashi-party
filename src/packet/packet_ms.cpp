@@ -222,9 +222,6 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         l_incoming_msg = l_disemvoweled_message;
     }
 
-    client.m_last_message = l_incoming_msg;
-    l_args.append(l_incoming_msg);
-
     // side
     // this is validated clientside so w/e
     QString side = area->side();
@@ -332,8 +329,8 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         client.setCharacterName(l_incoming_showname);
 
         if(client.m_is_halloween){
-            int l_index = client.genRand(1, 2); //generate number between 1 and 50
-            if(l_index == 1){
+            int l_index = client.genRand(1, 50); //generate number between 1 and 50
+            if(l_index == 25){
                 QString l_evil_name = "👻Evil " + l_incoming_showname.trimmed() + "👻"; //if the number is 25, user name will be "Evil + [name]"
                 if (l_evil_name.length() > 30){
                     l_evil_name = "👻EvilLongName👻";
@@ -342,6 +339,10 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
                 l_incoming_msg = "Boo."; //if the number is 25, the message will be overwritten by "Boo."
             }
         }
+
+        client.m_last_message = l_incoming_msg;
+        l_args.append(l_incoming_msg);
+
 
         // other char id
         // things get a bit hairy here
