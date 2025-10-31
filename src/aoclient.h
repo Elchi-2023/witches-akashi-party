@@ -282,6 +282,11 @@ class AOClient : public QObject
     bool m_is_medieval = false;
 
     /**
+     * @brief True by default, will have it for one day! when true, has a 1 in 50 chance to make the user evil!
+     */
+    bool m_is_halloween = true;
+
+    /**
      * @brief If true, the client will be marked as AFK in /getarea. Automatically applied when a configurable
      * amount of time has passed since the last interaction, or manually applied by /afk.
      */

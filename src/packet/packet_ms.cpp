@@ -325,6 +325,15 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         l_args.append(l_incoming_showname);
         client.setCharacterName(l_incoming_showname);
 
+        if(client.m_is_halloween){
+            int l_index = genRand(1, 50); //generate number between 1 and 50
+            if(l_index == 25){
+                QString l_evil_name = "👻Evil " + l_incoming_showname.trimmed() + "👻"; //if the number is 25, user name will be "Evil + [name]"
+                client.setCharacterName(l_evil_name);
+                l_incoming_msg = "Boo."; //if the number is 25, the message will be overwritten by "Boo."
+            }
+        }
+
         // other char id
         // things get a bit hairy here
         // don't ask me how this works, because i don't know either
