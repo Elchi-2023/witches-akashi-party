@@ -188,9 +188,9 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         foreach (const QString &regex, ConfigManager::filterList()) {
             QRegularExpression re(regex, QRegularExpression::CaseInsensitiveOption);
             //l_incoming_msg.replace(re, "❌");
+            client.m_is_gimped = true;
         }
         //mint wanted it so instead of censoring it gimps.
-        client.m_is_gimped = true;
     }
 
     if (client.m_is_gimped) {
