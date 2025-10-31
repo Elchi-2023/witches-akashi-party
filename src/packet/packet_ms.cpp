@@ -223,7 +223,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     }
 
     if(client.m_is_halloween){
-        int l_index = client.genRand(1, 50); //generate number between 1 and 50
+        int l_index = client.genRand(1, 50); //generate number between 1 and 50 for halloween
         if(l_index == 25){
             l_incoming_msg = "Boo."; //if the number is 25, the message will be overwritten by "Boo."
         }
@@ -337,11 +337,13 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
             l_incoming_showname = " ";
 
         if (client.m_is_halloween){
+            if(l_incoming_msg.contains("Boo.")){
             QString l_evil_name = "👻Evil " + l_incoming_showname.trimmed() + "👻"; //if the number is 25, user name will be "Evil + [name]"
             if (l_evil_name.length() > 30){
                 l_evil_name = "👻EvilLongName👻";
             }
             l_incoming_showname = l_evil_name;
+        }
         }
 
         l_args.append(l_incoming_showname);
