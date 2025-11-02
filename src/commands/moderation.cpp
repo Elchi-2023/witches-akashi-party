@@ -303,7 +303,7 @@ void AOClient::cmdUnCurses(int argc, QStringList argv){
                 sendServerMessage("That target are already freed from an *TRUE* curses.");
             else{
                 for (auto state : target_state){
-                    if (state)
+                    if (*state)
                         *state = false;
                 }
                 sendServerMessage("You freed target from an *TRUE* curses.");
@@ -311,7 +311,7 @@ void AOClient::cmdUnCurses(int argc, QStringList argv){
             }
             break;
         case 0: case 1: case 2: case 3:
-            if (*target_state[_type])
+            if (!*target_state[_type])
                 sendServerMessage(QString("That target are already freed from an (%1)").arg(m_type[_type]));
             else{
                 *target_state[_type] = false;
