@@ -116,7 +116,7 @@ void AOClient::cmdRadio(int argc, QStringList argv)
     auto select = l_radio.value(id);
     QStringList link = {select.second};
 
-    cmdPlay(1, link); //send the url to the play command
+    cmdPlayOnce(1, link); //send the url to the play command
 
 }
 
