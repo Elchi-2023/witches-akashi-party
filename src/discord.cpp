@@ -27,7 +27,7 @@ Discord::Discord(QObject *parent) :
             this, &Discord::onReplyFinished);
 }
 
-void Discord::onModcallWebhookRequested(const QString &f_name, const QString &f_area, const QString &f_reason, const QQueue<QString> &f_buffer)
+void Discord::onModcallWebhookRequested(const QStringList &f_name, const QString &f_area, const QString &f_reason, const QQueue<QString> &f_buffer)
 {
     m_request.setUrl(QUrl(ConfigManager::discordModcallWebhookUrl()));
     QJsonDocument l_json = constructModcallJson(f_name, f_area, f_reason);
@@ -46,21 +46,52 @@ void Discord::onBanWebhookRequested(const QString &f_ipid, const QString &f_mode
     postJsonWebhook(l_json);
 }
 
-QJsonDocument Discord::constructModcallJson(const QString &f_name, const QString &f_area, const QString &f_reason) const
+QJsonDocument Discord::constructModcallJson(const QStringList &f_name, const QString &f_area, const QString &f_reason) const
 {
-    QJsonObject l_json;
-    QJsonArray l_array;
-    QJsonObject l_object{
-        {"color", ConfigManager::discordWebhookColor()},
-        {"title", f_name + " filed a modcall in " + f_area},
-        {"description", f_reason}};
-    l_array.append(l_object);
+    QJsonArray fields;
 
-    if (!ConfigManager::discordModcallWebhookContent().isEmpty())
-        l_json["content"] = ConfigManager::discordModcallWebhookContent();
-    l_json["embeds"] = l_array;
+    // Field 1: Who the caller
+    QJsonObject field1;
+    field1["name"] = "Who the caller";
+    field1["value"] = f_name[0];
+    field1["inline"] = true;
+    fields.append(field1);
 
-    return QJsonDocument(l_json);
+    // Field 2: On Area
+    QJsonObject field2;
+    field2["name"] = "In Area";
+    field2["value"] = f_area;
+    field2["inline"] = true;
+    fields.append(field2);
+
+    // Field 3: Reason
+    QJsonObject field3;
+    field3["name"] = "Reason";
+    field3["value"] = f_reason;
+    fields.append(field3);
+
+    if (f_name.size() >= 2){ /* Field 4: Regarding */
+        QJsonObject field4;
+        field4["name"] = "Regarding";
+        field4["value"] = f_reason;
+        fields.append(field4);
+    }
+
+    // Create the embed object
+    QJsonObject embed;
+    embed["title"] = "Modcall Report";
+    embed["fields"] = fields;
+    embed["color"] = ConfigManager::discordWebhookColor();
+
+    // Create the embeds array
+    QJsonArray embeds;
+    embeds.append(embed);
+
+    // Create the root object
+    QJsonObject root;
+    root["embeds"] = embeds;
+
+    return QJsonDocument(root);
 }
 
 QJsonDocument Discord::constructBanJson(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID)

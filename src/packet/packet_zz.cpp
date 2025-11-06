@@ -21,45 +21,32 @@ PacketInfo PacketZZ::getPacketInfo() const
 
 void PacketZZ::handlePacket(AreaData *area, AOClient &client) const
 {
-    QString l_name = client.name();
+    QStringList l_name(QString("[%1] %2 (%3)").arg(QString::number(client.clientId()), client.name(), client.getIpid()));
     if (client.name().isEmpty())
-        l_name = client.character();
+        l_name.replace(0, QString("[%1] %2 (%3)").arg(QString::number(client.clientId()), client.character().isEmpty() ? "Spectator" : client.character(), client.getIpid()));
 
-    QString l_areaName = area->name();
+    const QString l_areaName = area->name();
 
-    QString l_modcallNotice = "!!!MODCALL!!!\nArea: " + l_areaName + "\nCaller: " + l_name + "\n";
+    QStringList l_notification{"Area: " + l_areaName, "Caller: " + l_name.at(0)};
 
-    int target_id = m_content.at(1).toInt();
-    if (target_id != -1) {
-        AOClient *target = client.getServer()->getClientByID(target_id);
-        if (target) {
-            l_modcallNotice.append("Regarding: " + target->name() + "\n");
-        }
+    const int target_id = m_content.at(1).toInt();
+    if (target_id >= 0 && client.getServer()->getClientByID(target_id)){
+        const AOClient *target = client.getServer()->getClientByID(target_id);
+        if (target->character().isEmpty())
+            l_name.append(QString("[%1] %2 (%3)").arg(QString::number(target->clientId()), target->character().isEmpty() ? "Spectator" : target->character(), target->getIpid()));
+        else
+            l_name.append(QString("[%1] %2 (%3)").arg(QString::number(target->clientId()), target->name(), target->getIpid()));
+        l_notification.append("Regarding: " + l_name.last());
     }
-    l_modcallNotice.append("Reason: " + m_content[0]);
+    l_notification.append("Reason: " + m_content[0]);
 
     const QVector<AOClient *> l_clients = client.getServer()->getClients();
     for (AOClient *l_client : l_clients) {
         if (l_client->m_authenticated)
-            l_client->sendPacket(PacketFactory::createPacket("ZZ", {l_modcallNotice}));
+            l_client->sendPacket(PacketFactory::createPacket("ZZ", {"!!!MODCALL!!!\n" + l_notification.join('\n')}));
     }
     emit client.logModcall((client.character() + " " + client.characterName()), client.m_ipid, client.name(), client.getServer()->getAreaById(client.areaId())->name());
 
-    if (ConfigManager::discordModcallWebhookEnabled()) {
-        QString l_name = client.name();
-        if (client.name().isEmpty())
-            l_name = client.character();
-
-        QString l_areaName = area->name();
-
-        QString webhook_reason = m_content.value(0);
-        if (target_id != -1) {
-            AOClient *target = client.getServer()->getClientByID(target_id);
-            if (target) {
-                webhook_reason.append(" (Regarding: " + target->name() + ")");
-            }
-        }
-
-        emit client.getServer()->modcallWebhookRequest(l_name, l_areaName, webhook_reason, client.getServer()->getAreaBuffer(l_areaName));
-    }
+    if (ConfigManager::discordWebhookEnabled())
+        emit client.getServer()->modcallWebhookRequest(l_name, l_areaName, l_notification.last(), client.getServer()->getAreaBuffer(l_areaName));
 }
