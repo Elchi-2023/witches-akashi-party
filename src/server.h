@@ -403,7 +403,7 @@ class Server : public QObject
      * @param f_reason The reason for the ban.
      * @param f_banID The ID of the issued ban.
      */
-    void banWebhookRequest(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID);
+    void banWebhookRequest(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID, const int &f_count);
 
     /**
      * @brief Signal connected to universal logger. Logs a client connection attempt.

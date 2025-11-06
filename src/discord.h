@@ -77,7 +77,7 @@ class Discord : public QObject
      * @param f_duration The date the ban expires.
      * @param f_reason The reason of the ban.
      */
-    void onBanWebhookRequested(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID);
+    void onBanWebhookRequested(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID, const int &f_count);
 
   private:
     /**
@@ -142,7 +142,7 @@ class Discord : public QObject
      *
      * @return A JSON document for the ban.
      */
-    QJsonDocument constructBanJson(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID);
+    QJsonDocument constructBanJson(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID, const int &f_counts);
 };
 
 #endif // DISCORD_H

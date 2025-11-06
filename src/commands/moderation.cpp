@@ -56,8 +56,6 @@ void AOClient::cmdBan(int argc, QStringList argv)
         l_ban.ipid = argv[0];
     l_ban.reason = l_args_str;
     l_ban.time = QDateTime::currentDateTime().toSecsSinceEpoch();
-    bool l_ban_logged = false;
-    int l_kick_counter = 0;
 
     switch (ConfigManager::authType()) {
     case DataTypes::AuthType::SIMPLE:
@@ -69,41 +67,63 @@ void AOClient::cmdBan(int argc, QStringList argv)
     }
 
     const QList<AOClient *> l_targets = server->getClientsByIpid(l_ban.ipid);
-    for (int index = 0; index < l_targets.size(); ++index){
-        AOClient *l_client = l_targets[index];
-        if (!l_ban_logged) {
-            l_ban.ip = l_client->m_remote_ip;
-            l_ban.hdid = l_client->m_hwid;
-            server->getDatabaseManager()->addBan(l_ban);
-            sendServerMessage("Banned user with ipid " + l_ban.ipid + " for reason: " + l_ban.reason);
-            l_ban_logged = true;
-        }
-        QString l_ban_duration;
-        if (!(l_ban.duration == -2)) {
-            l_ban_duration = QDateTime::fromSecsSinceEpoch(l_ban.time).addSecs(l_ban.duration).toString("MM/dd/yyyy, hh:mm");
-        }
-        else {
-            l_ban_duration = "Permanently.";
-        }
-        int l_ban_id = server->getDatabaseManager()->getBanID(l_ban.ip);
-        l_client->m_is_multiclient = index != 0;
-        l_client->m_disconnect_reason = Disconnected::BAN;
-        l_client->sendPacket("KB", {l_ban.reason + "\nID: " + QString::number(l_ban_id) + "\nUntil: " + l_ban_duration});
-        l_client->m_socket->close();
-        l_kick_counter = index +1;
-
-        emit logBan(l_ban.moderator, l_ban.ipid, l_ban_duration, l_ban.reason);
-        if (ConfigManager::discordBanWebhookEnabled())
-            emit server->banWebhookRequest(l_ban.ipid, l_ban.moderator, l_ban_duration, l_ban.reason, l_ban_id);
-    }
-
-    if (l_kick_counter > 1)
-        sendServerMessage("Kicked " + QString::number(l_kick_counter) + " clients with matching ipids.");
-
-    // We're banning someone not connected.
-    if (!l_ban_logged) {
+    if (l_targets.isEmpty()){ /* We're banning someone not connected. */
         server->getDatabaseManager()->addBan(l_ban);
         sendServerMessage("Banned " + l_ban.ipid + " for reason: " + l_ban.reason);
+    }
+    else if (l_targets.size() == 1){
+        auto target = l_targets.first();
+        l_ban.ip = target->m_remote_ip;
+        l_ban.hdid = target->m_hwid;
+        server->getDatabaseManager()->addBan(l_ban);
+        sendServerMessage("Banned user with ipid " + l_ban.ipid + " for reason: " + l_ban.reason);
+
+        QDateTime ban_until = QDateTime::fromSecsSinceEpoch(l_ban.time);
+        const QString l_ban_duration = l_ban.duration >= 0 ? ban_until.addSecs(l_ban.duration).toString("MM/dd/yyyy, hh:mm") : "Permanently.";
+
+        const int l_ban_id = server->getDatabaseManager()->getBanID(l_ban.ip);
+        target->m_is_multiclient = false;
+        target->m_disconnect_reason = Disconnected::BAN;
+        target->sendPacket("KB", {QStringList({l_ban.reason, "ID: " + QString::number(l_ban_id), "Until: " + l_ban_duration}).join('\n')});
+        target->m_socket->close();
+
+        emit logBan(l_ban.moderator, l_ban.ipid, l_ban_duration, l_ban.reason);
+        if (ConfigManager::discordBanWebhookEnabled()){
+            QStringList Name{"[" + QString::number(clientId()) + "]", "(" + l_ban.moderator + ")"};
+            if (!name().isEmpty())
+                Name.insert(1, name());
+            const QString l_ban_duration_discord_format = l_ban.duration >= 0 ? QString("<t:%1:R>").arg(ban_until.addSecs(l_ban.duration).toSecsSinceEpoch()) : "Permanently";
+            emit server->banWebhookRequest(l_ban.ipid, Name.join(' '), l_ban_duration_discord_format, l_ban.reason, l_ban_id, l_targets.size());
+        }
+    }
+    else{
+        auto target = l_targets.first();
+        l_ban.ip = target->m_remote_ip;
+        l_ban.hdid = target->m_hwid;
+        server->getDatabaseManager()->addBan(l_ban);
+
+        QDateTime ban_until = QDateTime::fromSecsSinceEpoch(l_ban.time);
+        const int l_ban_id = server->getDatabaseManager()->getBanID(l_ban.ip);
+        int l_kick_counter = 0;
+
+        for (auto *target : l_targets){
+            const QString l_ban_duration = l_ban.duration >= 0 ? ban_until.addSecs(l_ban.duration).toString("MM/dd/yyyy, hh:mm") : "Permanently.";
+            target->m_is_multiclient = l_kick_counter != 0;
+            target->m_disconnect_reason = Disconnected::BAN;
+            target->sendPacket("KB", {QStringList({l_ban.reason, "ID: " + QString::number(l_ban_id), "Until: " + l_ban_duration}).join('\n')});
+            target->m_socket->close();
+            l_kick_counter += 1;
+        }
+
+        emit logBan(l_ban.moderator, l_ban.ipid, l_ban.duration >= 0 ? ban_until.addSecs(l_ban.duration).toString("MM/dd/yyyy, hh:mm") : "Permanently.", l_ban.reason);
+        if (ConfigManager::discordBanWebhookEnabled()){
+            QStringList Name{"[" + QString::number(clientId()) + "]", "(" + l_ban.moderator + ")"};
+            if (!name().isEmpty())
+                Name.insert(1, name());
+            const QString l_ban_duration_discord_format = l_ban.duration >= 0 ? QString("<t:%1:R>").arg(ban_until.addSecs(l_ban.duration).toSecsSinceEpoch()) : "Permanently";
+            emit server->banWebhookRequest(l_ban.ipid, Name.join(' '), l_ban_duration_discord_format, l_ban.reason, l_ban_id, l_targets.size());
+        }
+        sendServerMessage(QString("Banned user with ipid [%1] for reason: [%2] and kicked %3 clients with matching ipids.").arg(l_ban.ipid, l_ban.reason, QString::number(l_targets.size())));
     }
 }
 

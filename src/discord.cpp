@@ -39,10 +39,10 @@ void Discord::onModcallWebhookRequested(const QStringList &f_name, const QString
     }
 }
 
-void Discord::onBanWebhookRequested(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID)
+void Discord::onBanWebhookRequested(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID, const int &f_count)
 {
     m_request.setUrl(QUrl(ConfigManager::discordBanWebhookUrl()));
-    QJsonDocument l_json = constructBanJson(f_ipid, f_moderator, f_duration, f_reason, f_banID);
+    QJsonDocument l_json = constructBanJson(f_ipid, f_moderator, f_duration, f_reason, f_banID, f_count);
     postJsonWebhook(l_json);
 }
 
@@ -73,7 +73,7 @@ QJsonDocument Discord::constructModcallJson(const QStringList &f_name, const QSt
     if (f_name.size() >= 2){ /* Field 4: Regarding */
         QJsonObject field4;
         field4["name"] = "Regarding";
-        field4["value"] = f_name[0];
+        field4["value"] = f_name[1] == f_name[0] ? "[the caller itself]" : f_name[1];
         fields.append(field4);
     }
 
@@ -96,18 +96,49 @@ QJsonDocument Discord::constructModcallJson(const QStringList &f_name, const QSt
     return QJsonDocument(root);
 }
 
-QJsonDocument Discord::constructBanJson(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID)
+QJsonDocument Discord::constructBanJson(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID, const int &f_counts)
 {
-    QJsonObject l_json;
-    QJsonArray l_array;
-    QJsonObject l_object{
-        {"color", ConfigManager::discordWebhookColor()},
-        {"title", "Ban issued by " + f_moderator},
-        {"description", "Client IPID : " + f_ipid + "\nBan ID: " + QString::number(f_banID) + "\nBan reason : " + f_reason + "\nBanned until : " + f_duration}};
-    l_array.append(l_object);
-    l_json["embeds"] = l_array;
+    const QJsonObject discordBanData = {
+        {"embeds", QJsonArray{
+            QJsonObject{
+                {"title", "Ban Report"},
+                {"color", ConfigManager::discordWebhookColor()},
+                {"fields", QJsonArray{
+                    QJsonObject{
+                        {"name", "IPID"},
+                        {"value", f_ipid},
+                        {"inline", true}
+                    },
+                    QJsonObject{
+                        {"name", "ID"},
+                        {"value", QString::number(f_banID)},
+                        {"inline", true}
+                    },
+                    QJsonObject{
+                        {"name", "Issued by"},
+                        {"value", f_moderator},
+                        {"inline", true}
+                    },
+                    QJsonObject{
+                        {"name", "Until"},
+                        {"value", f_duration},
+                        {"inline", true}
+                    },
+                    QJsonObject{
+                        {"name", "Clients Count"},
+                        {"value", f_counts},
+                        {"inline", true}
+                    },
+                    QJsonObject{
+                        {"name", "Reason"},
+                        {"value", f_reason}
+                    }
+                }}
+            }
+        }}
+    };
 
-    return QJsonDocument(l_json);
+    return QJsonDocument(discordBanData);
 }
 
 QHttpMultiPart *Discord::constructLogMultipart(const QQueue<QString> &f_buffer) const

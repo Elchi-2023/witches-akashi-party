@@ -22,6 +22,11 @@ void PacketMA::handlePacket(AreaData *area, AOClient &client) const
 {
     Q_UNUSED(area);
 
+    if (!client.m_joined){ /* reject */
+        client.m_socket->close();
+        return;
+    }
+
     if (!client.m_authenticated) {
         client.sendServerMessage("You are not logged in!");
         return;
@@ -52,12 +57,10 @@ void PacketMA::handlePacket(AreaData *area, AOClient &client) const
     }
 
     QString moderator_name;
-    if (ConfigManager::authType() == DataTypes::AuthType::ADVANCED) {
+    if (ConfigManager::authType() == DataTypes::AuthType::ADVANCED)
         moderator_name = client.m_moderator_name;
-    }
-    else {
+    else
         moderator_name = "Moderator";
-    }
 
     QList<AOClient *> clients = client.getServer()->getClientsByIpid(target->m_ipid);
     if (is_kick) {
@@ -106,9 +109,13 @@ void PacketMA::handlePacket(AreaData *area, AOClient &client) const
 
         client.sendServerMessage("Banned " + QString::number(clients.size()) + " client(s) with ipid " + target->m_ipid + " for reason: " + reason);
 
-        int ban_id = client.getServer()->getDatabaseManager()->getBanID(ban.ip);
-        if (ConfigManager::discordBanWebhookEnabled()) {
-            Q_EMIT client.getServer()->banWebhookRequest(ban.ipid, ban.moderator, timestamp, ban.reason, ban_id);
+        const int ban_id = client.getServer()->getDatabaseManager()->getBanID(ban.ip);
+        if (ConfigManager::discordBanWebhookEnabled()){
+            QStringList Name{"[" + QString::number(client.clientId()) + "]", "(" + ban.moderator + ")"};
+            if (!client.name().isEmpty() && client.name().toLower() != ban.moderator.toLower())
+                Name.insert(1, client.name());
+            const QString l_ban_duration_discord_format = ban.duration >= 0 ? QString("<t:%1:R>").arg(QDateTime::fromSecsSinceEpoch(ban.time).addSecs(ban.duration).toSecsSinceEpoch()) : "Permanently";
+            emit client.getServer()->banWebhookRequest(ban.ipid, Name.join(' '), l_ban_duration_discord_format, ban.reason, ban_id, clients.size());
         }
     }
 }
