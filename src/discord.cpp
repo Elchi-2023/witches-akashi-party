@@ -73,7 +73,7 @@ QJsonDocument Discord::constructModcallJson(const QStringList &f_name, const QSt
     if (f_name.size() >= 2){ /* Field 4: Regarding */
         QJsonObject field4;
         field4["name"] = "Regarding";
-        field4["value"] = f_reason;
+        field4["value"] = f_name[0];
         fields.append(field4);
     }
 
@@ -90,6 +90,8 @@ QJsonDocument Discord::constructModcallJson(const QStringList &f_name, const QSt
     // Create the root object
     QJsonObject root;
     root["embeds"] = embeds;
+    if (!ConfigManager::discordModcallWebhookContent().isEmpty())
+        root["content"] = ConfigManager::discordModcallWebhookContent();
 
     return QJsonDocument(root);
 }

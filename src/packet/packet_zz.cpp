@@ -48,5 +48,5 @@ void PacketZZ::handlePacket(AreaData *area, AOClient &client) const
     emit client.logModcall((client.character() + " " + client.characterName()), client.m_ipid, client.name(), client.getServer()->getAreaById(client.areaId())->name());
 
     if (ConfigManager::discordWebhookEnabled())
-        emit client.getServer()->modcallWebhookRequest(l_name, l_areaName, l_notification.last(), client.getServer()->getAreaBuffer(l_areaName));
+        emit client.getServer()->modcallWebhookRequest(l_name, l_areaName, m_content[0], client.getServer()->getAreaBuffer(l_areaName));
 }
