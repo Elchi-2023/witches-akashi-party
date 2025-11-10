@@ -47,11 +47,10 @@ void PlayerStateObserver::unregisterClient(AOClient *client)
 }
 
 void PlayerStateObserver::UploadListStateToClients(const AOClient *client, const PacketPR &State){
-    const QString get_ipid = client->m_ipid; /* avoiding "warning : unused client" */
     for (AOClient *clients : qAsConst(m_client_list)){
         clients->sendPacket(&const_cast<PacketPR &>(State));
         if (clients->isAuthenticated() && const_cast<PacketPR &>(State).getContent()[1].toInt() == PacketPR::ADD)
-            clients->sendPacket(QSharedPointer<PacketPU>::create(const_cast<PacketPR &>(State).getContent()[0].toInt(), PacketPU::NAME, "(" + get_ipid + ")").get());
+            clients->sendPacket(QSharedPointer<PacketPU>::create(client->clientId(), PacketPU::NAME, "(" + client->m_ipid + ")").get());
     }
 }
 
@@ -66,7 +65,7 @@ void PlayerStateObserver::UploadStateToClients(const AOClient *client, const AOP
         return;
 
     for (AOClient *clients : qAsConst(m_client_list)){
-        if (client->isAuthenticated()){
+        if (clients->isAuthenticated()){
             const QStringList args = const_cast<AOPacket &>(packet).getContent();
             if (args[1].toInt() == PacketPU::NAME)
                 clients->sendPacket(QSharedPointer<PacketPU>::create(args[0].toInt(), PacketPU::NAME, QStringList({args[2], "(" + client->m_ipid + ")"}).join(' ')).get());
