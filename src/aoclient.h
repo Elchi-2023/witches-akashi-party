@@ -704,10 +704,12 @@ class AOClient : public QObject
      */
     void joined();
 
+    /* ==== playerstateobserver === */
     void nameChanged(const QString &);
     void characterChanged(const QString &);
     void characterNameChanged(const QString &);
     void areaIdChanged(int);
+    void ModeratorObserver();
 
   private:
     /**

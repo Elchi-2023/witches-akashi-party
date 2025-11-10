@@ -111,6 +111,7 @@ void AOClient::loginAttempt(QString message)
                 sendServerMessage("Logged in as a moderator.");
             m_authenticated = true;
             m_acl_role_id = ACLRolesHandler::SUPER_ID;
+            Q_EMIT ModeratorObserver();
         }
         else {
             sendPacket("AUTH", {"0"}); // Client: "Login unsuccessful."
@@ -138,6 +139,7 @@ void AOClient::loginAttempt(QString message)
             if (m_version.release <= 2 && m_version.major <= 9 && m_version.minor <= 0)
                 sendServerMessage(QString("Logged in as a %1.").arg(m_authenticated ? "moderator" : "VIP"));
             sendServerMessage("Welcome, " + username);
+            Q_EMIT ModeratorObserver();
         }
         else {
             sendPacket("AUTH", {"0"});

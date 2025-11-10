@@ -204,6 +204,7 @@ void AOClient::cmdLogout(int argc, QStringList argv)
         m_acl_role_id = "";
         m_moderator_name = "";
         sendPacket("AUTH", {"-1"}); // Client: "You were logged out."
+        Q_EMIT ModeratorObserver();
     }
     else if (m_vip_authenticated){
         sendServerMessage("You are logout from VIP.");

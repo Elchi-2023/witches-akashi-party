@@ -38,7 +38,7 @@ class AOClient;
 class AOPacket
 {
   public:
-    AOPacket(QStringList p_contents);
+    AOPacket(QStringList p_contents = {});
 
     /**
      * @brief Destructor for the AOPacket
