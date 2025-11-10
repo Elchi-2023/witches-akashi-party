@@ -10,6 +10,8 @@ void PlayerStateObserver::registerClient(AOClient *client)
 {
     Q_ASSERT(!m_client_list.contains(client));
 
+    if (client->m_ipid.isEmpty())
+        client->calculateIpid();
     UploadListStateToClients(client, PacketPR(client->clientId(), PacketPR::ADD));
 
     m_client_list.append(client);
@@ -49,7 +51,7 @@ void PlayerStateObserver::unregisterClient(AOClient *client)
 void PlayerStateObserver::UploadListStateToClients(const AOClient *client, const PacketPR &State){
     for (AOClient *clients : qAsConst(m_client_list)){
         clients->sendPacket(&const_cast<PacketPR &>(State));
-        if (clients->isAuthenticated() && const_cast<PacketPR &>(State).getContent()[1].toInt() == PacketPR::ADD)
+        if (clients->isAuthenticated() && const_cast<PacketPR &>(State).getContent()[1].toInt() == PacketPR::ADD && !client->m_ipid.isEmpty())
             clients->sendPacket(QSharedPointer<PacketPU>::create(client->clientId(), PacketPU::NAME, "(" + client->m_ipid + ")").get());
     }
 }

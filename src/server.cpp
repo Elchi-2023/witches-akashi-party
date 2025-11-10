@@ -157,7 +157,8 @@ void Server::clientConnected()
 
     int multiclient_count = 1;
     bool is_at_multiclient_limit = false;
-    client->calculateIpid();
+    if (client->m_ipid.isEmpty())
+        client->calculateIpid();
     auto ban = db_manager->isIPBanned(client->getIpid());
     bool is_banned = ban.first;
     for (AOClient *joined_client : qAsConst(m_clients)) {
