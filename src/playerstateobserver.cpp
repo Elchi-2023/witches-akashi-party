@@ -48,10 +48,10 @@ void PlayerStateObserver::unregisterClient(AOClient *client)
 
 void PlayerStateObserver::UploadListStateToClients(const AOClient *client, const PacketPR &State){
     const QString get_ipid = client->m_ipid; /* avoiding "warning : unused client" */
-    for (AOClient *client : qAsConst(m_client_list)){
-        client->sendPacket(&const_cast<PacketPR &>(State));
-        if (client->isAuthenticated() && const_cast<PacketPR &>(State).getContent()[1].toInt() == PacketPR::ADD)
-            client->sendPacket(QSharedPointer<PacketPU>::create(const_cast<PacketPR &>(State).getContent()[0].toInt(), PacketPU::NAME, "(" + get_ipid + ")").get());
+    for (AOClient *clients : qAsConst(m_client_list)){
+        clients->sendPacket(&const_cast<PacketPR &>(State));
+        if (clients->isAuthenticated() && const_cast<PacketPR &>(State).getContent()[1].toInt() == PacketPR::ADD)
+            clients->sendPacket(QSharedPointer<PacketPU>::create(const_cast<PacketPR &>(State).getContent()[0].toInt(), PacketPU::NAME, "(" + get_ipid + ")").get());
     }
 }
 
@@ -65,18 +65,18 @@ void PlayerStateObserver::UploadStateToClients(const AOClient *client, const AOP
     if (client == nullptr || const_cast<AOPacket &>(packet).getContent()[0].toInt() != client->clientId())
         return;
 
-    for (AOClient *client : qAsConst(m_client_list)){
+    for (AOClient *clients : qAsConst(m_client_list)){
         if (client->isAuthenticated()){
             const QStringList args = const_cast<AOPacket &>(packet).getContent();
             if (args[1].toInt() == PacketPU::NAME)
-                client->sendPacket(QSharedPointer<PacketPU>::create(args[0].toInt(), PacketPU::NAME, QStringList({args[2], "(" + client->m_ipid + ")"}).join(' ')).get());
+                clients->sendPacket(QSharedPointer<PacketPU>::create(args[0].toInt(), PacketPU::NAME, QStringList({args[2], "(" + client->m_ipid + ")"}).join(' ')).get());
             else{
-                client->sendPacket(&const_cast<AOPacket &>(packet));
-                client->sendPacket(QSharedPointer<PacketPU>::create(args[0].toInt(), PacketPU::NAME, QStringList({args[2], "(" + client->m_ipid + ")"}).join(' ')).get());
+                clients->sendPacket(&const_cast<AOPacket &>(packet));
+                clients->sendPacket(QSharedPointer<PacketPU>::create(args[0].toInt(), PacketPU::NAME, QStringList({args[2], "(" + client->m_ipid + ")"}).join(' ')).get());
             }
         }
         else
-            client->sendPacket(&const_cast<AOPacket &>(packet));
+            clients->sendPacket(&const_cast<AOPacket &>(packet));
     }
 }
 
