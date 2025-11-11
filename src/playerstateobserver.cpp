@@ -73,7 +73,9 @@ void PlayerStateObserver::UploadStateToClients(const AOClient *client, const AOP
                 clients->sendPacket(QSharedPointer<PacketPU>::create(args[0].toInt(), PacketPU::NAME, QStringList({args[2], "(" + client->m_ipid + ")"}).join(' ')).get());
             else{
                 clients->sendPacket(&const_cast<AOPacket &>(packet));
-                clients->sendPacket(QSharedPointer<PacketPU>::create(args[0].toInt(), PacketPU::NAME, QStringList({args[2], "(" + client->m_ipid + ")"}).join(' ')).get());
+                QStringList l_name({client->name(), "(" + client->m_ipid + ")"});
+                if (client->m_is_afk) l_name.prepend("[💤]");
+                clients->sendPacket(QSharedPointer<PacketPU>::create(args[0].toInt(), PacketPU::NAME, l_name.join(' ')).get());
             }
         }
         else
