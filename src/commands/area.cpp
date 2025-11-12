@@ -522,6 +522,7 @@ void AOClient::cmdWebfiles(int argc, QStringList argv)
         }
     }
     sendServerMessage("Character files:\n" + l_weblinks.join("\n"));
+    sendServerMessage("\nIf you want to download any char or BG head to: http://umineko.online/webDownloader/dist/");
 }
 
 void AOClient::cmdMedievalMode(int argc, QStringList argv)
