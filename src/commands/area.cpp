@@ -513,15 +513,28 @@ void AOClient::cmdWebfiles(int argc, QStringList argv)
     const QVector<AOClient *> l_clients = server->getClients();
     QStringList l_weblinks;
     for (AOClient *l_client : l_clients) {
-        if (l_client->m_current_iniswap.isEmpty() || l_client->areaId() != areaId()) {
+
+        if (l_client->areaId() != areaId()) {
             continue;
         }
 
-        if (l_client->character().toLower() != l_client->m_current_iniswap.toLower()) {
-            l_weblinks.append("https://attorneyonline.github.io/webDownloader/index.html?char=" + l_client->m_current_iniswap);
+        //if (l_client->character().toLower() != l_client->m_current_iniswap.toLower()) {
+            //l_weblinks.append("https://attorneyonline.github.io/webDownloader/index.html?char=" + l_client->m_current_iniswap);
+        //}
+
+        if (l_client->m_current_iniswap.isEmpty()) {
+            l_weblinks.append(l_client->characterName() + " is using: " +l_client->character()); //if no iniswap, return char name
         }
+
+        if (!l_client->m_current_iniswap.isEmpty()) {
+            l_weblinks.append(l_client->characterName() + " is using: " +l_client->m_current_iniswap); //if there is iniswap, return it
+        }
+
     }
-    sendServerMessage("Character files:\n" + l_weblinks.join("\n"));
+
+    //for WTP, we use a website that shows the characters and backgrounds and people can download from there
+    //so instead of a direct link, we send what the people are iniswapped to, if they aren't iniswapped, we return the character name
+    sendServerMessage("Characters list:\n" + l_weblinks.join("\n"));
     sendServerMessage("\nIf you want to download any char or BG head to: http://umineko.online/webDownloader/dist/");
 }
 
