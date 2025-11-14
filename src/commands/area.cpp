@@ -517,8 +517,8 @@ void AOClient::cmdWebfiles(int argc, QStringList argv)
             continue;
         if (l_client->m_current_iniswap.isEmpty())
             l_weblinks.append(QString("[%1] %2 using: %3").arg(QString::number(l_client->clientId()), l_client->characterName().isEmpty() ? l_client->name() : l_client->characterName(), l_client->character()));
-        else if (l_client->character().toLower() != l_client->m_current_iniswap.toLower())
-            l_weblinks.append(QString("[%1] %2 using: %3").arg(QString::number(l_client->clientId()), l_client->characterName().isEmpty() ? l_client->name().isEmpty() ? l_client->character() : l_client->name() : l_client->characterName(), l_client->character()));
+        else if (!l_client->m_current_iniswap.isEmpty())
+            l_weblinks.append(QString("[%1] %2 using: %3").arg(QString::number(l_client->clientId()), l_client->characterName().isEmpty() ? l_client->name().isEmpty() ? l_client->character() : l_client->name() : l_client->characterName(), l_client->m_current_iniswap));
             
     }
     if (l_weblinks.isEmpty())
