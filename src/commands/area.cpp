@@ -512,16 +512,19 @@ void AOClient::cmdWebfiles(int argc, QStringList argv)
 
     const QVector<AOClient *> l_clients = server->getClients();
     QStringList l_weblinks;
-    for (AOClient *l_client : l_clients) {
-        if (l_client->m_current_iniswap.isEmpty() || l_client->areaId() != areaId()) {
+    for (const auto *l_client : l_clients){
+        if (l_client->areaId() != areaId() || l_client->character().isEmpty())
             continue;
-        }
-
-        if (l_client->character().toLower() != l_client->m_current_iniswap.toLower()) {
-            l_weblinks.append("https://attorneyonline.github.io/webDownloader/index.html?char=" + l_client->m_current_iniswap);
-        }
+        if (l_client->m_current_iniswap.isEmpty())
+            l_weblinks.append(QString("[%1] %2 using: %3").arg(QString::number(l_client->clientId()), l_client->characterName().isEmpty() ? l_client->name() : l_client->characterName(), l_client->character()));
+        else if (!l_client->m_current_iniswap.isEmpty())
+            l_weblinks.append(QString("[%1] %2 using: %3").arg(QString::number(l_client->clientId()), l_client->characterName().isEmpty() ? l_client->name().isEmpty() ? l_client->character() : l_client->name() : l_client->characterName(), l_client->m_current_iniswap));
+            
     }
-    sendServerMessage("Character files:\n" + l_weblinks.join("\n"));
+    if (l_weblinks.isEmpty())
+        sendServerMessage("[Webfiles]: theres nothing on the list.");
+    else
+        sendServerMessage(QString("\n=== [Webfiles] ===\n%1\n=== total: %2 ===\nIf you want to download any char or BG head to: http://umineko.online/webDownloader/dist/").arg(l_weblinks.join('\n'), QString::number(l_weblinks.size())));
 }
 
 void AOClient::cmdMedievalMode(int argc, QStringList argv)
