@@ -45,7 +45,7 @@ void Discord::onBanWebhookRequested(const QString &f_ipid, const QString &f_mode
     QJsonDocument l_json = constructBanJson(f_ipid, f_moderator, f_duration, f_reason, f_banID, f_count);
     postJsonWebhook(l_json);
 }
-void Discord::onUnbanWebhookRequested(const QString &f_ipid, const QString &f_moderator, const int &f_banID, const int &f_ban_duration, const QDateTime &f_date){
+void Discord::onUnbanWebhookRequested(const QString &f_ipid, const QStringList &f_moderator, const int &f_banID, const int &f_ban_duration, const QDateTime &f_date, const QString &f_reason){
     m_request.setUrl(QUrl(ConfigManager::discordBanWebhookUrl()));
     postJsonWebhook(constructUnbanJson(f_ipid, f_moderator, f_banID, f_ban_duration, f_date));
 }
@@ -145,7 +145,7 @@ QJsonDocument Discord::constructBanJson(const QString &f_ipid, const QString &f_
     return QJsonDocument(discordBanData);
 }
 
-QJsonDocument Discord::constructUnbanJson(const QString &f_ipid, const QString &f_moderator, const int &f_banID, const int &f_ban_duration, const QDateTime &f_date){
+QJsonDocument Discord::constructUnbanJson(const QString &f_ipid, const QStringList &f_moderator, const int &f_banID, const int &f_ban_duration, const QDateTime &f_date, const QString &f_reason){
     // --- fields array ---
     QJsonArray fields;
 
@@ -162,8 +162,13 @@ QJsonDocument Discord::constructUnbanJson(const QString &f_ipid, const QString &
                   });
 
     fields.append(QJsonObject{
+                      {"name", "Banned by"},
+                      {"value", f_moderator[0]},
+                      {"inline", true}
+                  });
+    fields.append(QJsonObject{
                       {"name", "Revoked by"},
-                      {"value", f_moderator},
+                      {"value", f_moderator[1]},
                       {"inline", true}
                   });
 
@@ -176,6 +181,10 @@ QJsonDocument Discord::constructUnbanJson(const QString &f_ipid, const QString &
                       {"name", "Revoked Date"},
                       {"value", QString("<t:%1:R>").arg(QDateTime::currentDateTime().toSecsSinceEpoch())},
                       {"inline", true}
+                  });
+    fields.append(QJsonObject{
+                      {"name", "The Ban Reason"},
+                      {"value", f_reason.isEmpty() ? "No Reason Provided" : f_reason}
                   });
 
     // --- embed object ---

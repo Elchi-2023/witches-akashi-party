@@ -461,7 +461,7 @@ void AOClient::cmdUnBan(int argc, QStringList argv)
                 QStringList m_name({"[" + QString::number(clientId()) + "]", "(" + m_moderator_name + ")"});
                 if (name().toLower() != m_moderator_name.toLower())
                     m_name.insert(1, name());
-                Q_EMIT server->UnbanWebhookRequested(current.ipid, m_name.join(' '), current.id, current.duration, QDateTime::fromSecsSinceEpoch(current.time));
+                Q_EMIT server->UnbanWebhookRequested(current.ipid, {current.moderator, m_name.join(' ')}, current.id, current.duration, QDateTime::fromSecsSinceEpoch(current.time), current.reason);
             }
         }
         else
