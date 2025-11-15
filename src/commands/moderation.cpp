@@ -450,14 +450,25 @@ void AOClient::cmdUnBan(int argc, QStringList argv)
 
     bool ok;
     int l_target_ban = argv[0].toInt(&ok);
-    if (!ok) {
-        sendServerMessage("Invalid ban ID.");
-        return;
+    if (ok){
+        const auto list = server->getDatabaseManager()->getBanInfo("banid", QString::number(l_target_ban));
+        if (list.isEmpty())
+            sendServerMessage("That ban ID not exists.");
+        else if (server->getDatabaseManager()->invalidateBan(l_target_ban)){
+            const auto current = list.first();
+            sendServerMessage("Successfully invalidated ban " + argv[0] + ".");
+            if (ConfigManager::discordBanWebhookEnabled()){
+                QStringList m_name({"[" + QString::number(clientId()) + "]", "(" + m_moderator_name + ")"});
+                if (name().toLower() != m_moderator_name.toLower())
+                    m_name.insert(1, name());
+                Q_EMIT server->UnbanWebhookRequested(current.ipid, m_name.join(' '), current.id, current.duration, QDateTime::fromSecsSinceEpoch(current.time));
+            }
+        }
+        else
+            sendServerMessage("Couldn't invalidate ban " + argv[0] + ".");
     }
-    else if (server->getDatabaseManager()->invalidateBan(l_target_ban))
-        sendServerMessage("Successfully invalidated ban " + argv[0] + ".");
     else
-        sendServerMessage("Couldn't invalidate ban " + argv[0] + ", are you sure it exists?");
+        sendServerMessage("Invalid ban ID.");
 }
 
 void AOClient::cmdAbout(int argc, QStringList argv)

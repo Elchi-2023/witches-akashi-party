@@ -79,6 +79,8 @@ class Discord : public QObject
      */
     void onBanWebhookRequested(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID, const int &f_count);
 
+    void onUnbanWebhookRequested(const QString &f_ipid, const QString &f_moderator, const int &f_banID, const int &f_ban_duration ,const QDateTime &f_date);
+
   private:
     /**
      * @brief The QNetworkAccessManager for webhooks.
@@ -143,6 +145,8 @@ class Discord : public QObject
      * @return A JSON document for the ban.
      */
     QJsonDocument constructBanJson(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID, const int &f_counts);
+
+    QJsonDocument constructUnbanJson(const QString &f_ipid, const QString &f_moderator, const int &f_banID, const int &f_ban_duration, const QDateTime &f_date);
 };
 
 #endif // DISCORD_H

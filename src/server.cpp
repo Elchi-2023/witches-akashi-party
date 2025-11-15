@@ -500,8 +500,10 @@ void Server::handleDiscordIntegration()
         if (ConfigManager::discordModcallWebhookEnabled())
             connect(this, &Server::modcallWebhookRequest, discord, &Discord::onModcallWebhookRequested);
 
-        if (ConfigManager::discordBanWebhookEnabled())
+        if (ConfigManager::discordBanWebhookEnabled()){
             connect(this, &Server::banWebhookRequest, discord, &Discord::onBanWebhookRequested);
+            connect(this, &Server::UnbanWebhookRequested, discord, &Discord::onUnbanWebhookRequested);
+        }
     }
     return;
 }

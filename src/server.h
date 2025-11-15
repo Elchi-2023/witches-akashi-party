@@ -405,6 +405,8 @@ class Server : public QObject
      */
     void banWebhookRequest(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID, const int &f_count);
 
+    void UnbanWebhookRequested(const QString &f_ipid, const QString &f_moderator, const int &f_banID, const int &f_ban_duration ,const QDateTime &f_date);
+
     /**
      * @brief Signal connected to universal logger. Logs a client connection attempt.
      * @param f_ip_address The IP Address of the incoming connection.
