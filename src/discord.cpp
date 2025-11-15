@@ -47,7 +47,7 @@ void Discord::onBanWebhookRequested(const QString &f_ipid, const QString &f_mode
 }
 void Discord::onUnbanWebhookRequested(const QString &f_ipid, const QStringList &f_moderator, const int &f_banID, const int &f_ban_duration, const QDateTime &f_date, const QString &f_reason){
     m_request.setUrl(QUrl(ConfigManager::discordBanWebhookUrl()));
-    postJsonWebhook(constructUnbanJson(f_ipid, f_moderator, f_banID, f_ban_duration, f_date));
+    postJsonWebhook(constructUnbanJson(f_ipid, f_moderator, f_banID, f_ban_duration, f_date, f_reason));
 }
 
 QJsonDocument Discord::constructModcallJson(const QStringList &f_name, const QString &f_area, const QString &f_reason) const
