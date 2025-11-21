@@ -188,10 +188,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
 
         foreach (const QString &regex, ConfigManager::filterList()) {
             QRegularExpression re(regex, QRegularExpression::CaseInsensitiveOption);
-            //l_incoming_msg.replace(re, "❌");
-            if(re.match(l_incoming_msg).hasMatch()){
-                client.m_is_gimped = true;
-            }
+            l_incoming_msg.replace(re, "❌");
         }
     }
 

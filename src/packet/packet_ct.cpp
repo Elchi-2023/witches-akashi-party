@@ -53,11 +53,8 @@ void PacketCT::handlePacket(AreaData *area, AOClient &client) const
         QString l_censor_message = l_message.toLower();
 
         foreach (const QString &regex, ConfigManager::filterList()) {
-            //QRegularExpression re(regex, QRegularExpression::CaseInsensitiveOption);
-            //l_message.replace(re, "❌");
-            if(l_censor_message.contains(regex.toLower())){
-                client.m_is_gimped = true;
-            }
+            QRegularExpression re(regex, QRegularExpression::CaseInsensitiveOption);
+            l_message.replace(re, "❌");
         }
     }
 
