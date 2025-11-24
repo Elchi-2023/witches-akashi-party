@@ -390,7 +390,7 @@ void AOClient::cmdUserInfo(int argc, QStringList argv){
                 QStringList other_data(QString("[%1] %2").arg(QString::number(other_client->clientId()), other_client->isSpectator() ? "[Spectator]" : other_client->character()));
                 const auto area = server->getAreaById(qMax(0, other_client->areaId()));
                 if (other_client->m_vip_authenticated || other_client->m_authenticated)
-                    other_data.append(other_client->m_vip_authenticated ? "[VIP]" : "[M]");
+                    other_data.prepend(other_client->m_vip_authenticated ? "[VIP]" : "[M]");
 
                 if (other_client->m_version.is_webao)
                     other_data.prepend("[🌐]");
