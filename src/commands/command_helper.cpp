@@ -56,7 +56,7 @@ QStringList AOClient::buildAreaList(int area_idx)
         if (!l_clients.value(Indexs, nullptr)) /* this will skip if invaild index or null */
             continue;
         const auto client = l_clients[Indexs];
-        QStringList Entry("[" + QString::number(client->clientId()) + "]");
+        QStringList Entry("[" + QString::number(client->clientId()) + "] ");
         Entry.append(client->isSpectator() ? "Spectator" : client->character());
         if (!client->characterName().isEmpty())
             Entry.replace(Entry.size() -1, Entry.last() + " (" + client->characterName() + ")");
