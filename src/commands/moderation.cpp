@@ -383,30 +383,34 @@ void AOClient::cmdUserInfo(int argc, QStringList argv){
         const auto current_area = server->getAreaById(qMax(0, client->areaId()));
         Data.append(QString("AREA: [%1] %2").arg(QString::number(current_area->index()), current_area->name()));
         auto clients = server->getClientsByIpid(client->m_ipid);
-        clients.removeAll(client);
         const auto client_version = client->m_version;
         Data.append(QString("Clients: %1 | [%2]").arg(QString::number(qMax(1, clients.size())), client_version.is_webao ? "[WEB]" : client_version.get_string_version()));
-        for (const auto other_client : clients){
-            QStringList other_data(QString("[%1] %2").arg(QString::number(other_client->clientId()), other_client->isSpectator() ? "[Spectator]" : other_client->character()));
-            const auto area = server->getAreaById(qMax(0, other_client->areaId()));
-            if (other_client->m_vip_authenticated || other_client->m_authenticated)
-                other_data.append(other_client->m_vip_authenticated ? "[VIP]" : "[M]");
+        if (clients.size() >= 2){
+            for (const auto other_client : clients){
+                QStringList other_data(QString("[%1] %2").arg(QString::number(other_client->clientId()), other_client->isSpectator() ? "[Spectator]" : other_client->character()));
+                const auto area = server->getAreaById(qMax(0, other_client->areaId()));
+                if (other_client->m_vip_authenticated || other_client->m_authenticated)
+                    other_data.append(other_client->m_vip_authenticated ? "[VIP]" : "[M]");
 
-            if (other_client->m_version.is_webao)
-                other_data.prepend("[🌐]");
+                if (other_client->m_version.is_webao)
+                    other_data.prepend("[🌐]");
 
-            QStringList Info;
-            const ClientVersion other_version = other_client->m_version;
-            if (!other_version.is_webao && !client->m_version.is_webao && other_version != client->m_version)
-                Info.append("[" + other_version.get_string_version() + "]");
-            if (!other_client->characterName().trimmed().isEmpty() && !other_client->name().isEmpty())
-                Info.append(QString("(%1 | %2)").arg(other_client->characterName().trimmed(), other_client->name()));
-            else if (!other_client->characterName().trimmed().isEmpty())
-                Info.append("(" + other_client->characterName().trimmed() + ")");
-            else if (!other_client->name().isEmpty())
-                Info.append("(" + other_client->name() + ")");
-            other_data.prepend(QString("[%1] ").arg(area->index() == current_area->index() ? "*THIS AREA*" : area->name()));
-            Data.append(" · " + other_data.join(""));
+                QStringList Info;
+                const ClientVersion other_version = other_client->m_version;
+                if (!other_version.is_webao && !client->m_version.is_webao && other_version != client->m_version)
+                    Info.append("[" + other_version.get_string_version() + "]");
+                if (!other_client->characterName().trimmed().isEmpty() && !other_client->name().isEmpty())
+                    Info.append(QString("(%1 | %2)").arg(other_client->characterName().trimmed(), other_client->name()));
+                else if (!other_client->characterName().trimmed().isEmpty())
+                    Info.append("(" + other_client->characterName().trimmed() + ")");
+                else if (!other_client->name().isEmpty())
+                    Info.append("(" + other_client->name() + ")");
+                if (other_client == client)
+                    other_data.prepend("[THIS] ");
+                else
+                    other_data.prepend(QString("[%1] ").arg(area->index() == current_area->index() ? "*THIS AREA*" : area->name()));
+                Data.append(" · " + other_data.join(""));
+            }
         }
         if (client == this)
             sendServerMessage(QString("=== [YOU] UserInfo ===\n%1\n=========").arg(Data.join('\n')));
