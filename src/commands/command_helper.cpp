@@ -37,9 +37,8 @@ void AOClient::cmdDefault(int argc, QStringList argv)
 QStringList AOClient::buildAreaList(int area_idx)
 {
     QStringList entries;
-    QString area_name = server->getAreaName(area_idx);
-    AreaData *area = server->getAreaById(area_idx);
-    entries.append("=== " + area_name + " ===");
+    const AreaData *area = server->getAreaById(area_idx);
+    entries.append(QString("=== [%1] %2 ===").arg(QString::number(area_idx), area->name()));
     switch (area->lockStatus()) {
     case AreaData::LockStatus::LOCKED:
         entries.append("[LOCKED]");
@@ -51,29 +50,33 @@ QStringList AOClient::buildAreaList(int area_idx)
     default:
         break;
     }
-    entries.append("[" + QString::number(area->playerCount()) + " users][" + QVariant::fromValue(area->status()).toString().replace("_", "-") + "]");
+    entries.append(QString("[%1 users][%2]").arg(QString::number(area->playerCount()), QVariant::fromValue(area->status()).toString().replace("_", "-")));
     const QVector<AOClient *> l_clients = server->getClients();
-    for (AOClient *l_client : l_clients) {
-        if (l_client->areaId() == area_idx && l_client->hasJoined()) {
-            QString char_entry = "[" + QString::number(l_client->clientId()) + "] " + l_client->character();
-            if (l_client->character() == "")
-                char_entry += "Spectator";
-            if (l_client->characterName() != "")
-                char_entry += " (" + l_client->characterName() + ")";
-            if (area->owners().contains(l_client->clientId()))
-                char_entry.insert(0, "[CM] ");
-            if (l_client->m_version.is_webao)
-                char_entry.insert(0, "[🌐]");
-            if (l_client->UserAFK())
-                char_entry.insert(0, "[💤]");
-            if (l_client->m_vip_authenticated && !l_client->m_authenticated)
-                char_entry.insert(0, "[VIP]");
-            if (l_client == this)
-                char_entry.insert(0, "[🔖] ");
-            if (m_authenticated)
-                char_entry += " (" + l_client->getIpid() + "): " + l_client->name();
-            entries.append(char_entry);
+    for (auto Indexs : area->joinedIDs()){
+        if (!l_clients.value(Indexs, nullptr)) /* this will skip if invaild index or null */
+            continue;
+        const auto client = l_clients[Indexs];
+        QStringList Entry("[" + QString::number(client->clientId()) + "]");
+        Entry.append(client->isSpectator() ? "Spectator" : client->character());
+        if (!client->characterName().isEmpty())
+            Entry.replace(Entry.size() -1, Entry.last() + " (" + client->characterName() + ")");
+        if (area->owners().contains(client->clientId()))
+            Entry.prepend("[CM]");
+        if (client->m_version.is_webao)
+            Entry.prepend("[🌐]");
+        if (client->UserAFK())
+            Entry.prepend("[💤]");
+        if (client->m_vip_authenticated)
+            Entry.prepend("[VIP]");
+        if (client == this)
+            Entry.prepend("[🔖] ");
+        if (m_authenticated){
+            QStringList info(client->getIpid());
+            if (!client->name().isEmpty())
+                info.append(client->name());
+            Entry.append(" | [" + info.join(" | ") + "]");
         }
+        entries.append(Entry.join(""));
     }
     return entries;
 }

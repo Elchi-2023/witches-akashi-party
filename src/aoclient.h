@@ -247,6 +247,17 @@ class AOClient : public QObject
         int major = -1;
         int minor = -1;
         bool is_webao = false;
+
+        QString get_string_version() const{
+            return QStringList({QString::number(release), QString::number(major), QString::number(minor)}).join('.');
+        }
+
+        bool operator==(const ClientVersion &c) const{
+            return release == c.release && major == c.major && minor == c.minor && is_webao == c.is_webao;
+        }
+        bool operator!=(const ClientVersion &c) const{
+            return !(*this == c);
+        }
     };
 
     /**
@@ -1709,6 +1720,12 @@ class AOClient : public QObject
      * @iscommand
      */
     void cmdUnCurses(int argc, QStringList argv);
+
+    /**
+     * @brief Identify a target client (moderator only)
+     * @details This useful for staff want Identify someone..
+     */
+    void cmdUserInfo(int argc, QStringList argv);
 
     /**
      * @brief Replaces a target client's in-character messages with strings randomly selected from gimp.txt.

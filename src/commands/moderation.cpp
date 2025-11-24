@@ -181,17 +181,24 @@ void AOClient::cmdMods(int argc, QStringList argv)
     Q_UNUSED(argv);
 
     QMap<int, QStringList> EntriesMap; /* why use qmap?.. because we needs area_id for get areas name */
-    for (AOClient *client : server->getClients()){
+    for (const AOClient *client : server->getClients()){
         if (client->m_authenticated){
-            QString user_entry = QString("· [%1] %2").arg(QString::number(client->clientId()), client->character().isEmpty() ? "[Spectator]" : client->character());
-            if (!client->name().trimmed().isEmpty() && m_authenticated) /* moderator can see ooc name when other moderator had ooc name on it */
-                user_entry.append(" (" + client->name().trimmed() + ")");
+            QStringList user_entry(QString("[%1] %2").arg(QString::number(client->clientId()), client->character().isEmpty() ? "[Spectator]" : client->character()));
+            if (m_authenticated){ /* only moderator can see names */
+                if (client->m_moderator_name == "root") /* marked the "👑" for "root"/owner */
+                    user_entry.replace(0, QString("[👑][%1] %2").arg(QString::number(client->clientId()), client->character().isEmpty() ? "[Spectator]" : client->character()));
+                else if (!client->name().trimmed().isEmpty() && client->name().trimmed().toLower() != client->m_moderator_name.toLower()) /* capture the diff name between their oocname and their moderator name */
+                    user_entry.append("(" + QStringList({client->name().trimmed(), client->m_moderator_name}).join(" | ") + ")");
+                else /* otherwise.. just shown their moderator name instead */
+                    user_entry.append("(" + client->m_moderator_name + ")");
+            }
+            user_entry.prepend(client == this ? " ➤ " : " · "); /* if /getarea(s) has user marked.. why not we do the same for this */
             if (EntriesMap.contains(client->areaId())) /* if area_id was on enteriesmap, we adds another entry */
-                EntriesMap[client->areaId()].append(user_entry);
+                EntriesMap[client->areaId()].append(user_entry.join(' '));
             else /* otherwise, we needs captures area_id and entry */
-                EntriesMap.insert(client->areaId(), {user_entry});
+                EntriesMap.insert(client->areaId(), {user_entry.join(' ')});
         }
-    } /* if you wander about where's akashi profiles stuff?.. mint don't want that stuff (unless if he change mind) */
+    }
 
     /* kfo/tsu-like behavior */
     QStringList entry("=== Moderator ===");
@@ -349,6 +356,62 @@ void AOClient::cmdUnCurses(int argc, QStringList argv){
             }
         }
         break;
+    }
+}
+
+void AOClient::cmdUserInfo(int argc, QStringList argv){
+    Q_UNUSED(argc)
+    if (m_vip_authenticated){
+        return; /* just in case if vip has "ban" perms */
+    }
+
+    bool vaild;
+    const int ID = argv[0].toInt(&vaild);
+    if (!vaild || !server->getClientByID(ID))
+        sendServerMessage("Invalid user ID or Client.");
+    else{
+        const auto client = server->getClientByID(ID);
+        QStringList Data(QString("ID: %1 | %2").arg(QString::number(client->clientId()), client->m_ipid));
+        if (!client->name().isEmpty())
+            Data.append("OOC: " + client->name());
+        if (!client->characterName().trimmed().isEmpty())
+            Data.append("Showname: " + client->characterName().trimmed());
+        if (client->m_vip_authenticated || client->m_authenticated)
+            Data.append(QString("%1 As: %2").arg(client->m_vip_authenticated ? "VIP" : "Logging", client->m_moderator_name));
+        Data.append("HDID:" + client->m_hwid);
+        Data.append(QString("Character: %1").arg(client->isSpectator() ? "[Spectator]" : client->character()));
+        const auto current_area = server->getAreaById(qMax(0, client->areaId()));
+        Data.append(QString("AREA: [%1] %2").arg(QString::number(current_area->index()), current_area->name()));
+        auto clients = server->getClientsByIpid(client->m_ipid);
+        clients.removeAll(client);
+        const auto client_version = client->m_version;
+        Data.append(QString("Clients: %1 | [%2]").arg(QString::number(qMax(1, clients.size())), client_version.is_webao ? "[WEB]" : client_version.get_string_version()));
+        for (const auto other_client : clients){
+            QStringList other_data(QString("[%1] %2").arg(QString::number(other_client->clientId()), other_client->isSpectator() ? "[Spectator]" : other_client->character()));
+            const auto area = server->getAreaById(qMax(0, other_client->areaId()));
+            if (other_client->m_vip_authenticated || other_client->m_authenticated)
+                other_data.append(other_client->m_vip_authenticated ? "[VIP]" : "[M]");
+
+            if (other_client->m_version.is_webao)
+                other_data.prepend("[🌐]");
+
+            QStringList Info;
+            const ClientVersion other_version = other_client->m_version;
+            if (!other_version.is_webao && !client->m_version.is_webao && other_version != client->m_version)
+                Info.append("[" + other_version.get_string_version() + "]");
+            if (!other_client->characterName().trimmed().isEmpty() && !other_client->name().isEmpty())
+                Info.append(QString("(%1 | %2)").arg(other_client->characterName().trimmed(), other_client->name()));
+            else if (!other_client->characterName().trimmed().isEmpty())
+                Info.append("(" + other_client->characterName().trimmed() + ")");
+            else if (!other_client->name().isEmpty())
+                Info.append("(" + other_client->name() + ")");
+            other_data.prepend(QString("[%1] ").arg(area->index() == current_area->index() ? "*THIS AREA*" : area->name()));
+            Data.append(" · " + other_data.join(""));
+        }
+        if (client == this)
+            sendServerMessage(QString("=== [YOU] UserInfo ===\n%1\n=========").arg(Data.join('\n')));
+        else
+            sendServerMessage(QString("=== UserInfo ===\n%1\n=========").arg(Data.join('\n')));
     }
 }
 
