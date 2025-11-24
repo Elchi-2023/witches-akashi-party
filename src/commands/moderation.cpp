@@ -405,6 +405,9 @@ void AOClient::cmdUserInfo(int argc, QStringList argv){
                     Info.append("(" + other_client->characterName().trimmed() + ")");
                 else if (!other_client->name().isEmpty())
                     Info.append("(" + other_client->name() + ")");
+                if (!Info.isEmpty())
+                    other_data.append(" : " + Info.join(' '));
+
                 if (other_client == client)
                     other_data.prepend("[THIS] ");
                 else
