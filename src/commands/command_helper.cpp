@@ -52,31 +52,30 @@ QStringList AOClient::buildAreaList(int area_idx)
     }
     entries.append(QString("[%1 users][%2]").arg(QString::number(area->playerCount()), QVariant::fromValue(area->status()).toString().replace("_", "-")));
     const QVector<AOClient *> l_clients = server->getClients();
-    for (auto Indexs : area->joinedIDs()){
-        if (!l_clients.value(Indexs, nullptr)) /* this will skip if invaild index or null */
-            continue;
-        const auto client = l_clients[Indexs];
-        QStringList Entry("[" + QString::number(client->clientId()) + "] ");
-        Entry.append(client->isSpectator() ? "Spectator" : client->character());
-        if (!client->characterName().isEmpty())
-            Entry.replace(Entry.size() -1, Entry.last() + " (" + client->characterName() + ")");
-        if (area->owners().contains(client->clientId()))
-            Entry.prepend("[CM]");
-        if (client->m_version.is_webao)
-            Entry.prepend("[🌐]");
-        if (client->UserAFK())
-            Entry.prepend("[💤]");
-        if (client->m_vip_authenticated)
-            Entry.prepend("[VIP]");
-        if (client == this)
-            Entry.prepend("[🔖] ");
-        if (m_authenticated){
-            QStringList info(client->getIpid());
-            if (!client->name().isEmpty())
-                info.append(client->name());
-            Entry.append(" | [" + info.join(" | ") + "]");
+    for (auto client : server->getClients()){
+        if (client->areaId() == area->index() && client->hasJoined()){
+            QStringList Entry("[" + QString::number(client->clientId()) + "] ");
+            Entry.append(client->isSpectator() ? "Spectator" : client->character());
+            if (!client->characterName().isEmpty())
+                Entry.replace(Entry.size() -1, Entry.last() + " (" + client->characterName() + ")");
+            if (area->owners().contains(client->clientId()))
+                Entry.prepend("[CM]");
+            if (client->m_version.is_webao)
+                Entry.prepend("[🌐]");
+            if (client->UserAFK())
+                Entry.prepend("[💤]");
+            if (client->m_vip_authenticated)
+                Entry.prepend("[VIP]");
+            if (client == this)
+                Entry.prepend("[🔖] ");
+            if (m_authenticated){
+                QStringList info(client->getIpid());
+                if (!client->name().isEmpty())
+                    info.append(client->name());
+                Entry.append(" | [" + info.join(" | ") + "]");
+            }
+            entries.append(Entry.join(""));
         }
-        entries.append(Entry.join(""));
     }
     return entries;
 }
