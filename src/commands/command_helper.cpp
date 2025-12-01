@@ -38,19 +38,15 @@ QStringList AOClient::buildAreaList(int area_idx)
 {
     QStringList entries;
     const AreaData *area = server->getAreaById(area_idx);
-    entries.append(QString("=== [%1] %2 ===").arg(QString::number(area_idx), area->name()));
-    switch (area->lockStatus()) {
-    case AreaData::LockStatus::LOCKED:
-        entries.append("[LOCKED]");
-        break;
-    case AreaData::LockStatus::SPECTATABLE:
-        entries.append("[SPECTATABLE]");
-        break;
-    case AreaData::LockStatus::FREE:
-    default:
-        break;
-    }
-    entries.append(QString("[%1 users][%2]").arg(QString::number(area->playerCount()), QVariant::fromValue(area->status()).toString().replace("_", "-")));
+    QStringList title{"[" + QString::number(area_idx) + "]", area->name()};
+    if (area->lockStatus() > AreaData::LockStatus::FREE)
+        title[0].prepend(QStringList({"[🔒]", "[🔐👁]"})[area->lockStatus() -1]);
+    if (area->playerCount() > 0)
+        title.append("[👥: " + QString::number(area->playerCount()) + "]");
+    if (area->status() > AreaData::Status::IDLE)
+        title.append(QStringList({"🎭", "[💼]", "[🔍]", "[⏳]", "[🎲]"})[area->status() -1]);
+    entries.append("=== " + title.join(" ") + "===");
+
     const QVector<AOClient *> l_clients = server->getClients();
     for (auto client : server->getClients()){
         if (client->areaId() == area->index() && client->hasJoined()){
@@ -66,8 +62,7 @@ QStringList AOClient::buildAreaList(int area_idx)
                 Entry.prepend("[💤]");
             if (client->m_vip_authenticated)
                 Entry.prepend("[VIP]");
-            if (client == this)
-                Entry.prepend("[🔖] ");
+            Entry.prepend(client == this ? " ➤ " : " · ");
             if (m_authenticated){
                 QStringList info(client->getIpid());
                 if (!client->name().isEmpty())
