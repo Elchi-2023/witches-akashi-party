@@ -44,7 +44,7 @@ QStringList AOClient::buildAreaList(int area_idx)
     if (area->playerCount() > 0)
         title.append("[👥: " + QString::number(area->playerCount()) + "]");
     if (area->status() > AreaData::Status::IDLE)
-        title.append(QStringList({"🎭", "[💼]", "[🔍]", "[⏳]", "[🎲]"})[area->status() -1]);
+        title.append(QStringList({"[🎭]", "[💼]", "[🔍]", "[⏳]", "[🎲]"})[area->status() -1]);
     entries.append("=== " + title.join(" ") + "===");
 
     const QVector<AOClient *> l_clients = server->getClients();
