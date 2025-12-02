@@ -1673,6 +1673,15 @@ class AOClient : public QObject
     void cmdAnnounce(int argc, QStringList argv);
 
     /**
+     * @brief Sends corn to area.
+     *
+     * @details No arguments, sends a corn emoji.
+     *
+     * @iscommand
+     */
+    void cmdCorn(int argc, QStringList argv);
+
+    /**
      * @brief Sends a message in the server-wide, moderator only chat.
      *
      * @details The arguments are **the message** that the client wants to send.

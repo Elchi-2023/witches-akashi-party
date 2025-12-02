@@ -157,6 +157,14 @@ void AOClient::cmdNeed(int argc, QStringList argv)
     server->broadcast(PacketFactory::createPacket("CT", {ConfigManager::serverTag(), "=== Advert ===\n[" + l_sender_area + "] needs " + l_sender_message + "."}), Server::TARGET_TYPE::ADVERT);
 }
 
+void AOClient::cmdCorn(int argc, QStringList argv)
+{
+    Q_UNUSED(argc);
+    Q_UNUSED(argv);
+
+    sendServerMessageArea("🌽");    //yes that's it for now...
+}
+
 void AOClient::cmdSwitch(int argc, QStringList argv)
 {
     Q_UNUSED(argc);
