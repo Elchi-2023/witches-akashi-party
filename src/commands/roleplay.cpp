@@ -196,7 +196,7 @@ void AOClient::cmdRps(int argc, QStringList argv)
         QString l_sender_name = name();
         sendServerMessageArea("⚔️" + l_sender_name + " wants to play Rock Paper Scissors! Use /rps [choice] to play against them⚔️");
 
-        QTimer::singleShot(600000, this, [this]() {
+        QTimer::singleShot(120000, this, [this]() {
             if (rps_waiting) {
                 rps_waiting = false;
                 rps_choice.clear();
