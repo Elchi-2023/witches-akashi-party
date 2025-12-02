@@ -171,7 +171,7 @@ void AOClient::cmdCorn(int argc, QStringList argv)
     }
 
     if (m_corn_count <= 3){
-    sendServerMessageArea("🌽" + l_sender_name + "corned 🌽");        //yes that's it for now...
+    sendServerMessageArea("🌽" + l_sender_name + " corned 🌽");        //yes that's it for now...
     }
 
     QTimer::singleShot(600000, this, [this]() {
