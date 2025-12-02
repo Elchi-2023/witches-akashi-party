@@ -162,7 +162,24 @@ void AOClient::cmdCorn(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    sendServerMessageArea("🌽");    //yes that's it for now...
+    QString l_sender_name = name();
+
+    m_corn_count++;
+
+    if (m_corn_count > 3) {
+        sendServerMessage("You already corned.");
+    }
+
+    if (m_corn_count <= 3){
+    sendServerMessageArea("🌽" + l_sender_name + "corned 🌽");        //yes that's it for now...
+    }
+
+    QTimer::singleShot(600000, this, [this]() {
+        if (m_corn_count > 3) {
+            m_corn_count = 0;
+        }
+    });
+
 }
 
 void AOClient::cmdSwitch(int argc, QStringList argv)

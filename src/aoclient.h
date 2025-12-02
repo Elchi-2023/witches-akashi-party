@@ -651,6 +651,11 @@ class AOClient : public QObject
     QString m_other_emote = "";
     QString m_other_offset = "";
     QString m_other_flip = "";
+
+    /**
+     * @brief Counting how many times /corn was casted.
+     */
+    int m_corn_count = 0;
     
 
     ///@}
