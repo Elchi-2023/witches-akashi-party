@@ -50,6 +50,10 @@ void AOClient::cmdPlay(int argc, QStringList argv)
         sendServerMessage("Free music play is disabled in this area.");
         return;
     }
+    else if(!m_music_manager->validateSong(l_song, ConfigManager::cdnList())){
+        sendServerMessage("That link/urls weren't Allowed.");
+        return;
+    }
 
     l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), l_song, true);
     AOPacket *music_change = PacketFactory::createPacket("MC", {l_song, QString::number(server->getCharID(character())), characterName(), "1", "0"});
@@ -75,6 +79,9 @@ void AOClient::cmdPlayOnce(int argc, QStringList argv){
         }
         else if (!current_area->owners().contains(clientId()) && !current_area->isPlayEnabled() && !current_role.checkPermission(ACLRole::CM)) // Make sure we have permission to play music
             sendServerMessage("Free music play is disabled in this area.");
+        else if(!m_music_manager->validateSong(Song, ConfigManager::cdnList())){
+            sendServerMessage("That link/urls weren't Allowed.");
+        }
         else{
             current_area->changeMusic(characterName().isEmpty() ? character() : characterName(), Song, false);
             AOPacket *music_change = PacketFactory::createPacket("MC", {Song, QString::number(server->getCharID(character())), characterName(), "0", "0"});
@@ -116,8 +123,15 @@ void AOClient::cmdRadio(int argc, QStringList argv)
     auto select = l_radio.value(id);
     QStringList link = {select.second};
 
-    cmdPlayOnce(1, link); //send the url to the play command
-
+    AreaData *current_area = server->getAreaById(areaId());
+    const ACLRole current_role = server->getACLRolesHandler()->getRoleById(m_acl_role_id);
+    if (m_vip_authenticated || m_authenticated){ /* bypassed for vip and mods, no matter if area not free play or has cms on it*/
+        current_area->changeMusic(characterName().isEmpty() ? character() : characterName(), select.second, false);
+        AOPacket *music_change = PacketFactory::createPacket("MC", {select.second, QString::number(server->getCharID(character())), characterName(), "0", "0"});
+        server->broadcast(music_change, areaId());
+    }
+    else if (!current_area->owners().contains(clientId()) && !current_area->isPlayEnabled() && !current_role.checkPermission(ACLRole::CM)) // Make sure we have permission to play music
+        sendServerMessage("Free music play is disabled in this area.");
 }
 
 void AOClient::cmdPlayAmbience(int argc, QStringList argv)
