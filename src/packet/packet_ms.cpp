@@ -203,7 +203,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     }
 
     if (client.m_is_shaken) {
-        QStringList l_parts = l_incoming_msg.split(" ");
+        QStringList l_parts = l_incoming_msg.split(QRegularExpression(R"([^A-Za-z0-9]+)"));
 
         std::random_device rng;
         std::mt19937 urng(rng());

@@ -73,7 +73,7 @@ void PacketCT::handlePacket(AreaData *area, AOClient &client) const
         if (client.m_is_gimped)
             l_message = ConfigManager::gimpList().at((client.genRand(1, ConfigManager::gimpList().size() - 1)));
         if (client.m_is_shaken) {
-            QStringList l_parts = l_message.split(" ");
+            QStringList l_parts = l_message.split(QRegularExpression(R"([^A-Za-z0-9]+)"));
 
             std::random_device rng;
             std::mt19937 urng(rng());

@@ -510,18 +510,19 @@ void AOClient::cmdWebfiles(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    const QVector<AOClient *> l_clients = server->getClients();
     QStringList l_weblinks;
-    for (const auto *l_client : l_clients){
-        if (l_client->areaId() != areaId() || l_client->isSpectator())
-            continue;
-        if (l_client->m_current_iniswap.isEmpty())
-            l_weblinks.append(QString("%1 [%2] %3 using: %4").arg(l_client == this ? " ➤ " : " · ", QString::number(l_client->clientId()), l_client->characterName().isEmpty() ? l_client->name().isEmpty() ? "[Unknown]" : l_client->name() : l_client->characterName(), l_client->character()));
-        else if (l_client->m_current_iniswap.toLower() != l_client->character().toLower()){
-            QStringList m_name(l_client->characterName());
-            if (!l_client->characterName().isEmpty() || !l_client->name().isEmpty())
-                m_name.append("(" + QString(l_client->characterName().isEmpty() ? l_client->name() : l_client->characterName()) + ")");
-            l_weblinks.append(QString("%1 [%2] %3 using: %4").arg(l_client == this ? " ➤ " : " · ", QString::number(l_client->clientId()), m_name.join(' '), l_client->m_current_iniswap));
+    const auto clients = server->getAreaById(areaId())->joinedIDs();
+    for (int Index : clients){
+        if (server->getClientByID(Index) && !server->getClientByID(Index)->character().isEmpty()){ /* it just me.. or AOClient::isSpectator() buggy?.. unsure yet.. */
+            const auto l_client = server->getClientByID(Index);
+            if (l_client->m_current_iniswap.isEmpty())
+                l_weblinks.append(QString("%1 [%2] %3 using: %4").arg(l_client == this ? " ➤ " : " · ", QString::number(l_client->clientId()), l_client->characterName().isEmpty() ? l_client->name().isEmpty() ? "[Unknown]" : l_client->name() : l_client->characterName(), l_client->character()));
+            else if (l_client->m_current_iniswap.toLower() != l_client->character().toLower()){
+                QStringList m_name(l_client->character());
+                if (!l_client->characterName().isEmpty() || !l_client->name().isEmpty())
+                    m_name.append("(" + QString(l_client->characterName().isEmpty() ? l_client->name() : l_client->characterName()) + ")");
+                l_weblinks.append(QString("%1 [%2] %3 using: %4").arg(l_client == this ? " ➤ " : " · ", QString::number(l_client->clientId()), m_name.join(' '), l_client->m_current_iniswap));
+            }
         }
     }
     if (l_weblinks.isEmpty())
