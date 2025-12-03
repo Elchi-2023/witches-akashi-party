@@ -731,6 +731,10 @@ QUrl ConfigManager::serverlistURL()
     return m_settings->value("Advertiser/ms_ip", "").toUrl();
 }
 
+QUrl ConfigManager::ServerWebdownloaderURL(){
+    return m_settings->value("Options/webdownloader_url", "https://attorneyonline.github.io/webDownloader/index.html").toString();
+}
+
 QString ConfigManager::serverDomainName()
 {
     return m_settings->value("Advertiser/hostname", "").toString();

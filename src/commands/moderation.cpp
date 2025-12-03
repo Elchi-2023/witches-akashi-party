@@ -528,10 +528,12 @@ void AOClient::cmdUnBan(int argc, QStringList argv)
             const auto current = list.first();
             sendServerMessage("Successfully invalidated ban " + argv[0] + ".");
             if (ConfigManager::discordBanWebhookEnabled()){
-                QStringList m_name({"[" + QString::number(clientId()) + "]", "(" + m_moderator_name + ")"});
+                QStringList m_name({"[" + QString::number(clientId()) + "]", "(" + m_moderator_name + ")"}), m_reason(current.reason);
                 if (name().toLower() != m_moderator_name.toLower())
                     m_name.insert(1, name());
-                Q_EMIT server->UnbanWebhookRequested(current.ipid, {current.moderator, m_name.join(' ')}, current.id, current.duration, QDateTime::fromSecsSinceEpoch(current.time), current.reason);
+                if (argv.size() > 1)
+                    m_reason.append(argv.mid(1).join(" "));
+                Q_EMIT server->UnbanWebhookRequested(current.ipid, {current.moderator, m_name.join(' ')}, current.id, current.duration, QDateTime::fromSecsSinceEpoch(current.time), m_reason);
             }
         }
         else

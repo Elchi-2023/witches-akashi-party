@@ -45,7 +45,7 @@ void Discord::onBanWebhookRequested(const QString &f_ipid, const QString &f_mode
     QJsonDocument l_json = constructBanJson(f_ipid, f_moderator, f_duration, f_reason, f_banID, f_count);
     postJsonWebhook(l_json);
 }
-void Discord::onUnbanWebhookRequested(const QString &f_ipid, const QStringList &f_moderator, const int &f_banID, const int &f_ban_duration, const QDateTime &f_date, const QString &f_reason){
+void Discord::onUnbanWebhookRequested(const QString &f_ipid, const QStringList &f_moderator, const int &f_banID, const int &f_ban_duration, const QDateTime &f_date, const QStringList &f_reason){
     m_request.setUrl(QUrl(ConfigManager::discordBanWebhookUrl()));
     postJsonWebhook(constructUnbanJson(f_ipid, f_moderator, f_banID, f_ban_duration, f_date, f_reason));
 }
@@ -145,7 +145,7 @@ QJsonDocument Discord::constructBanJson(const QString &f_ipid, const QString &f_
     return QJsonDocument(discordBanData);
 }
 
-QJsonDocument Discord::constructUnbanJson(const QString &f_ipid, const QStringList &f_moderator, const int &f_banID, const int &f_ban_duration, const QDateTime &f_date, const QString &f_reason){
+QJsonDocument Discord::constructUnbanJson(const QString &f_ipid, const QStringList &f_moderator, const int &f_banID, const int &f_ban_duration, const QDateTime &f_date, const QStringList &f_reason){
     // --- fields array ---
     QJsonArray fields;
 
@@ -171,7 +171,6 @@ QJsonDocument Discord::constructUnbanJson(const QString &f_ipid, const QStringLi
                       {"value", f_moderator[1]},
                       {"inline", true}
                   });
-
     fields.append(QJsonObject{
                       {"name", "Ban Date"},
                       {"value", f_ban_duration >= 0 ? QString("<t:%1:R>").arg(f_date.addSecs(f_ban_duration).toSecsSinceEpoch()) : "Undefined / Permanently"},
@@ -182,10 +181,11 @@ QJsonDocument Discord::constructUnbanJson(const QString &f_ipid, const QStringLi
                       {"value", QString("<t:%1:R>").arg(QDateTime::currentDateTime().toSecsSinceEpoch())},
                       {"inline", true}
                   });
-    fields.append(QJsonObject{
-                      {"name", "The Ban Reason"},
-                      {"value", f_reason.isEmpty() ? "No Reason Provided" : f_reason}
-                  });
+    if (!f_reason.isEmpty()){
+        fields.append(QJsonObject{{"name", "The Ban Reason"},{"value", f_reason[0].isEmpty() ? "No Reason Provided" : f_reason[0]}, {"inline", true}});
+        if (f_reason.size() > 1)
+            fields.append(QJsonObject{{"name", "Reason of Revoked"},{"value", f_reason[1].isEmpty() ? "No Reason Provided" : f_reason[1]}});
+    }
 
     // --- embed object ---
     QJsonObject embed{

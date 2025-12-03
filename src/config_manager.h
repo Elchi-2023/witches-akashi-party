@@ -355,6 +355,11 @@ class ConfigManager
     static QUrl serverlistURL();
 
     /**
+     * @brief Returns the URL of the webdownloader.
+     */
+    static QUrl ServerWebdownloaderURL();
+
+    /**
      * @brief Returns an optional hostname paramemter for the advertiser.
      * If used allows user to set a custom IP or domain name.
      */
