@@ -1,0 +1,16 @@
+{
+    "halloween":{
+        "word before name": "Evil",
+        "replacement word": "Boo",
+        "emoji before name": "👻",
+        "emoji after name": "👻",
+        "chance": 31
+    },
+    "christmas":{
+        "word before name": "Jolly",
+        "replacement word": "Merry Witchmas",
+        "emoji before name": "🎅",
+        "emoji after name": "🎄",
+        "chance": 27
+    }
+}

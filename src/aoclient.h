@@ -293,9 +293,9 @@ class AOClient : public QObject
     bool m_is_medieval = false;
 
     /**
-     * @brief True by default, will have it for one day! when true, has a 1 in 50 chance to make the user evil!
+     * @brief I was asked to make something configurable for all holidays, so here we go! It has a chance to change a person's message and name
      */
-    bool m_is_halloween = false;
+    QString m_holiday_mode = "";
 
     /**
      * @brief If true, the client will be marked as AFK in /getarea. Automatically applied when a configurable
@@ -1566,6 +1566,24 @@ class AOClient : public QObject
      * that are also related to messages or the client's self-management in some way.
      */
     ///@{
+
+    /**
+     * @brief Make the server into one of the holiday modes from a JSON, changing the user name and message.
+     *
+     * @details Usage: /holiday [holiday name].
+     *
+     * @iscommand
+     */
+    void cmdHoliday(int argc, QStringList argv);
+
+    /**
+     * @brief Disable holiday mode.
+     *
+     * @details Usage: /unholiday.
+     *
+     * @iscommand
+     */
+    void cmdUnHoliday(int argc, QStringList argv);
 
         /**
      * @brief Pairs with someone.

@@ -26,6 +26,56 @@
 // This file is for commands under the messaging category in aoclient.h
 // Be sure to register the command in the header before adding it here!
 
+void AOClient::cmdHoliday(int argc, QStringList argv)
+{
+    Q_UNUSED(argc);
+
+    const auto& l_holiday = ConfigManager::holidaylist();
+
+    if (!m_authenticated){
+        sendServerMessage("You are not authorized to do that.");
+        return;
+    }
+
+    if(argv.isEmpty()){
+
+        QStringList l_holiday_list;
+
+        for (auto i = l_holiday.begin(); i != l_holiday.end(); i++)
+            l_holiday_list.append(QString("[%1]").arg(i.key()));
+
+        sendServerMessage(l_holiday_list.isEmpty() ? "The holiday list available." : "\n=== [Holidays] ===\n" + l_holiday_list.join('\n') + "\n=========");
+        return;
+    } //if there are no arguments, send the holiday list to ooc.
+
+    QString Holiday_Choice = argv[0].toLower();
+
+    if (!l_holiday.contains(Holiday_Choice)) {
+        sendServerMessage("Invalid input.");
+        return;
+    } //check if the input exists in the JSON, aka QMap here.
+
+    else {
+        m_holiday_mode = Holiday_Choice;
+        sendServerMessage(QString("Changed Holiday mode to %1.").arg(m_holiday_mode));
+    } //if it exists, activate holiday mode with the mode of it.
+
+}
+
+void AOClient::cmdUnHoliday(int argc, QStringList argv)
+{
+    if (m_authenticated){
+    m_holiday_mode = ""; //turn the holiday mode off.
+    sendServerMessage("Holiday mode off.");
+    return;
+    }
+
+    else {
+        sendServerMessage("You are not authorized to do that.");
+        return;
+    }
+}
+
 void AOClient::cmdPair(int argc, QStringList argv)
 {
     if (argc < 1){

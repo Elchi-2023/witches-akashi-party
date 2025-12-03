@@ -43,6 +43,8 @@ const QMap<QString, AOClient::CommandInfo> AOClient::COMMANDS{
     {"listperms", {{ACLRole::NONE}, 0, &AOClient::cmdListPerms}},
     {"logout", {{ACLRole::NONE}, 0, &AOClient::cmdLogout}},
     {"pos", {{ACLRole::NONE}, 1, &AOClient::cmdPos}},
+    {"holiday", {{ACLRole::NONE}, 0, &AOClient::cmdHoliday}},
+    {"unholiday", {{ACLRole::NONE}, 0, &AOClient::cmdUnHoliday}},
     {"pair", {{ACLRole::NONE}, 1, &AOClient::cmdPair}},
     {"unpair", {{ACLRole::NONE}, 0, &AOClient::cmdUnPair}},
     {"g", {{ACLRole::NONE}, 1, &AOClient::cmdG}},
