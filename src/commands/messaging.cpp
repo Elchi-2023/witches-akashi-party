@@ -32,10 +32,10 @@ void AOClient::cmdHoliday(int argc, QStringList argv)
 
     const auto& l_holiday = ConfigManager::holidaylist();
 
-    if (!m_authenticated){
-        sendServerMessage("You are not authorized to do that.");
-        return;
-    }
+    //if (!m_authenticated){
+        //sendServerMessage("You are not authorized to do that.");
+        //return;
+    //}
 
     if(argv.isEmpty()){
 
@@ -64,16 +64,16 @@ void AOClient::cmdHoliday(int argc, QStringList argv)
 
 void AOClient::cmdUnHoliday(int argc, QStringList argv)
 {
-    if (m_authenticated){
+    //if (m_authenticated){
     m_holiday_mode = ""; //turn the holiday mode off.
     sendServerMessage("Holiday mode off.");
-    return;
-    }
+    //return;
+    //}
 
-    else {
-        sendServerMessage("You are not authorized to do that.");
-        return;
-    }
+    //else {
+        //sendServerMessage("You are not authorized to do that.");
+        //return;
+    //}
 }
 
 void AOClient::cmdPair(int argc, QStringList argv)
