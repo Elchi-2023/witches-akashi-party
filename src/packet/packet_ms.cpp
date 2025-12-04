@@ -155,9 +155,12 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
             if (!client.getServer()->getCharacters().contains(l_character_split.at(0), Qt::CaseInsensitive) || l_character_split.contains(".."))
                 return l_invalid;
         }
-        qDebug() << "INI swap detected from " << client.getIpid();
+        // qDebug() << "INI swap detected from " << client.getIpid(); /* disable this, don't want bloating the consoles */
+        client.m_current_iniswap = l_incoming_args[2].toString();
     }
-    client.m_current_iniswap = l_incoming_args[2].toString();
+    else if (!client.m_current_iniswap.isEmpty())
+        client.m_current_iniswap.clear();
+
     l_args.append(l_incoming_args[2].toString());
 
     // emote
@@ -179,28 +182,23 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         && !msg_is_testimony_cmd)                  // and it's not a testimony command,
         return l_invalid;                          // get it the hell outta here!
 
-    if (l_incoming_msg == "" && area->blankpostingAllowed() == false) {
+    if (l_incoming_msg.trimmed().isEmpty() && area->blankpostingAllowed() == false) {
         client.sendServerMessage("Blankposting has been forbidden in this area.");
         return l_invalid;
     }
 
     if (!ConfigManager::filterList().isEmpty()) {
-
         foreach (const QString &regex, ConfigManager::filterList()) {
             QRegularExpression re(regex, QRegularExpression::CaseInsensitiveOption);
             l_incoming_msg.replace(re, "❌");
         }
     }
 
-    if (client.m_is_gimped) {
-        QString l_gimp_message = ConfigManager::gimpList().at((client.genRand(1, ConfigManager::gimpList().size() - 1)));
-        l_incoming_msg = l_gimp_message;
-    }
+    if (client.m_is_gimped)
+        l_incoming_msg = ConfigManager::gimpList().at((client.genRand(1, ConfigManager::gimpList().size() - 1)));
 
-    if (client.m_is_medieval || area->isMedievalMode()) {
-        QString l_medieval_message = client.getServer()->getMedievalParser()->degrootify(l_incoming_msg);
-        l_incoming_msg = l_medieval_message;
-    }
+    if (client.m_is_medieval || area->isMedievalMode())
+        l_incoming_msg = client.getServer()->getMedievalParser()->degrootify(l_incoming_msg);
 
     if (client.m_is_shaken) {
         QStringList l_parts = l_incoming_msg.split(QRegularExpression(R"([^A-Za-z0-9]+)"));
@@ -212,12 +210,10 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         l_incoming_msg = l_parts.join(" ");
     }
 
-    if (client.m_is_disemvoweled) {
-        QString l_disemvoweled_message = l_incoming_msg.remove(QRegularExpression("[AEIOUaeiou]")); // john madden
-        l_incoming_msg = l_disemvoweled_message;
-    }
+    if (client.m_is_disemvoweled)
+        l_incoming_msg = l_incoming_msg.remove(QRegularExpression("[AEIOUaeiou]")); /* john madden */
 
-    if(client.m_is_halloween){
+    if (client.m_is_halloween){
         int l_index = client.genRand(1, 31); //generate number between 1 and 31 for halloween
         if(l_index == 25){
             l_incoming_msg = "Boo!"; //if the number is 25, the message will be overwritten by "Boo."

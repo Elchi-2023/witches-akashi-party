@@ -130,7 +130,7 @@ void AOClient::cmdG(int argc, QStringList argv)
     if (m_is_gimped)
         l_sender_message = ConfigManager::gimpList().at((genRand(1, ConfigManager::gimpList().size() - 1)));
     if (m_is_shaken) {
-        QStringList l_parts = l_sender_message.split(" ");
+        QStringList l_parts = l_sender_message.split(QRegularExpression(R"([^A-Za-z0-9]+)"));
 
         std::random_device rng;
         std::mt19937 urng(rng());
@@ -251,7 +251,7 @@ void AOClient::cmdPM(int argc, QStringList argv)
     if (m_is_gimped)
         l_message = ConfigManager::gimpList().at((genRand(1, ConfigManager::gimpList().size() - 1)));
     if (m_is_shaken) {
-        QStringList l_parts = l_message.split(" ");
+        QStringList l_parts = l_message.split(QRegularExpression(R"([^A-Za-z0-9]+)"));
 
         std::random_device rng;
         std::mt19937 urng(rng());
