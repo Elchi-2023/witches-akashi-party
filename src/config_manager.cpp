@@ -160,6 +160,7 @@ QStringList ConfigManager::charlist()
         qWarning() << "[CharLoader]: Loaded an Empty contexts";
     else{
         l_charlist = Readed.split('\n');
+        l_charlist.removeAll("");
         qInfo() << "[CharLoader]: Loaded, Total: " << l_charlist.size();
     }
     l_file.close();

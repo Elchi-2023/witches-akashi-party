@@ -213,8 +213,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     if (client.m_is_disemvoweled)
         l_incoming_msg = l_incoming_msg.remove(QRegularExpression("[AEIOUaeiou]")); /* john madden */
 
-    if(!client.m_holiday_mode.isEmpty()){
-
+    if (!client.m_holiday_mode.isEmpty()){
         const auto& l_holiday_desc = ConfigManager::m_holidayList->value(client.m_holiday_mode); //this is a struct for the holiday description
         int l_chance = l_holiday_desc.chance;
         QString l_message_change = l_holiday_desc.msg_replacement;
@@ -333,7 +332,6 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
             l_incoming_showname = " ";
 
         if (!client.m_holiday_mode.isEmpty()){
-
             const auto& l_holiday_desc = ConfigManager::m_holidayList->value(client.m_holiday_mode); //struct reference again from JSON
             QString l_before_name = l_holiday_desc.pre_name;
             QString l_before_emoji = l_holiday_desc.emoji_before;
@@ -362,6 +360,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         // don't ask me how this works, because i don't know either
         const QStringList l_pair_data = l_incoming_args[16].toString().split("^");
         QPair<int, QStringList> l_other_data = qMakePair(0, QStringList{"", "", ""});
+
         if (area->checkPairSync(client.clientId())){ /* server-side */
             auto target_synced = client.getServer()->getClientByID(area->getPairSyncList()[client.clientId()]);
             if (target_synced != nullptr && area->joinedIDs().contains(target_synced->clientId())){ /* capture target from current area */
@@ -382,6 +381,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         }
         else /* client-side */
             client.m_pairing_with = l_pair_data[0].toInt();
+
         int l_front_back = -1;
         if (l_pair_data.length() > 1)
             l_front_back = l_pair_data[1].toInt();
@@ -389,8 +389,8 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         bool l_pairing = false;
         for (int l_client_id : area->joinedIDs()) {
             const AOClient *l_client = client.getServer()->getClientByID(l_client_id);
-            if (l_client->m_pairing_with == client.m_char_id && l_other_charid != client.m_char_id && l_client->m_char_id == client.m_pairing_with && l_client->m_pos == client.m_pos) {
-                l_other_data = qMakePair(l_client->m_flipping.toInt(), QStringList{l_client->m_current_iniswap, l_client->m_emote, l_client->m_offset});
+            if (!l_client->isSpectator() && l_client->m_pairing_with == client.m_char_id && l_other_charid != client.m_char_id && l_client->m_char_id == client.m_pairing_with && l_client->m_pos == client.m_pos) {
+                l_other_data = qMakePair(l_client->m_flipping.toInt(), QStringList{l_client->m_current_iniswap.isEmpty() ? l_client->character() : l_client->m_current_iniswap, l_client->m_emote, l_client->m_offset});
                 l_pairing = true;
             }
         }
