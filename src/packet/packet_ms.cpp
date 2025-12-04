@@ -213,10 +213,15 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     if (client.m_is_disemvoweled)
         l_incoming_msg = l_incoming_msg.remove(QRegularExpression("[AEIOUaeiou]")); /* john madden */
 
-    if(client.m_is_halloween){
-        int l_index = client.genRand(1, 31); //generate number between 1 and 31 for halloween
-        if(l_index == 25){
-            l_incoming_msg = "Boo!"; //if the number is 25, the message will be overwritten by "Boo."
+    if(!client.m_holiday_mode.isEmpty()){
+
+        const auto& l_holiday_desc = ConfigManager::m_holidayList->value(client.m_holiday_mode); //this is a struct for the holiday description
+        int l_chance = l_holiday_desc.chance;
+        QString l_message_change = l_holiday_desc.msg_replacement;
+
+        int l_index = client.genRand(1, l_chance); //generate number between 1 and chance.
+        if(l_index == 1){
+            l_incoming_msg = QString("%1").arg(l_message_change); //if the number is 1, the message will be overwritten by replacement word in the JSON
         }
     }
 
