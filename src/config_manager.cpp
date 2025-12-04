@@ -27,6 +27,7 @@ QSettings *ConfigManager::m_ambience = new QSettings("config/ambience.ini", QSet
 ConfigManager::CommandSettings *ConfigManager::m_commands = new CommandSettings();
 MusicList *ConfigManager::m_musicList = new MusicList;
 QMap<int, QPair<QString, QString>> *ConfigManager::m_radioList = new QMap<int, QPair<QString, QString>>;
+QMap<QString, ConfigManager::HolidaysDesc> *ConfigManager::m_holidayList = new QMap<QString, ConfigManager::HolidaysDesc>;
 QHash<QString, ConfigManager::help> *ConfigManager::m_commands_help = new QHash<QString, ConfigManager::help>;
 QStringList *ConfigManager::m_ordered_list = new QStringList;
 
@@ -44,7 +45,8 @@ bool ConfigManager::verifyServerConfig()
     // Verify config files
     QStringList l_config_files{"config/config.ini", "config/areas.ini", "config/backgrounds.txt", "config/characters.txt", "config/music.json",
                                "config/radio.json", "config/discord.ini", "config/text/8ball.txt", "config/text/gimp.txt", "config/text/praise.txt",
-                               "config/text/reprimands.txt", "config/text/commandhelp.json", "config/text/cdns.txt", "config/ipbans.json"};
+                               "config/text/holiday.json", "config/text/reprimands.txt", "config/text/commandhelp.json",
+                               "config/text/cdns.txt", "config/ipbans.json"};
     for (const QString &l_file : l_config_files) {
         if (!fileExists(QFileInfo(l_file))) {
             qCritical() << l_file + " does not exist!";
@@ -719,6 +721,42 @@ QStringList ConfigManager::filterList()
 QStringList ConfigManager::cdnList()
 {
     return m_commands->cdns;
+}
+
+QMap<QString, ConfigManager::HolidaysDesc> ConfigManager::holidaylist(){
+
+    QFile l_holiday_json("config/text/holiday.json");
+    l_holiday_json.open(QIODevice::ReadOnly | QIODevice::Text);
+
+    QJsonParseError l_error;
+    QJsonDocument l_holiday_list_json = QJsonDocument::fromJson(l_holiday_json.readAll(), &l_error);
+    if (!(l_error.error == QJsonParseError::NoError)) { // Non-Terminating error.
+        qWarning() << "Unable to load holidaylist. The following error was encounted : " + l_error.errorString();
+        return QMap<QString, HolidaysDesc>{};
+    }
+
+           // The root is a json object in this case.
+    QJsonObject l_Json_root_object = l_holiday_list_json.object();
+
+    for (const QString &holidayName : l_Json_root_object.keys()) { // Iterate trough entire JSON file, with holidayName as the key
+
+        QJsonObject l_child_obj = l_Json_root_object[holidayName].toObject();
+
+        HolidaysDesc l_holidaydesc; //struct to keep the data of each holiday
+
+        l_holidaydesc.pre_name = l_child_obj["word before name"].toString();
+        l_holidaydesc.msg_replacement = l_child_obj["replacement word"].toString();
+        l_holidaydesc.emoji_before = l_child_obj["emoji before name"].toString();
+        l_holidaydesc.emoji_after = l_child_obj["emoji after name"].toString();
+        l_holidaydesc.chance = l_child_obj["chance"].toInt();
+
+        m_holidayList->insert(holidayName, l_holidaydesc); //mapping each name to the descriptions inside it
+    }
+
+    l_holiday_json.close();
+
+    return *m_holidayList;
+
 }
 
 bool ConfigManager::publishServerEnabled()

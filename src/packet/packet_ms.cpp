@@ -213,7 +213,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     if (client.m_is_disemvoweled)
         l_incoming_msg = l_incoming_msg.remove(QRegularExpression("[AEIOUaeiou]")); /* john madden */
 
-    if (client.m_is_halloween){
+    if(client.m_is_halloween){
         int l_index = client.genRand(1, 31); //generate number between 1 and 31 for halloween
         if(l_index == 25){
             l_incoming_msg = "Boo!"; //if the number is 25, the message will be overwritten by "Boo."
@@ -327,12 +327,23 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         if (l_incoming_showname.isEmpty() && !l_incoming_args[15].toString().isEmpty())
             l_incoming_showname = " ";
 
-        if (client.m_is_halloween){
-            QRegularExpression re("\\bboo\\b", QRegularExpression::CaseInsensitiveOption); //if a user message has "boo" in it, the evil showname triggers.
+        if (!client.m_holiday_mode.isEmpty()){
+
+            const auto& l_holiday_desc = ConfigManager::m_holidayList->value(client.m_holiday_mode); //struct reference again from JSON
+            QString l_before_name = l_holiday_desc.pre_name;
+            QString l_before_emoji = l_holiday_desc.emoji_before;
+            QString l_after_emoji = l_holiday_desc.emoji_after;
+            QString l_message_change = l_holiday_desc.msg_replacement;
+
+            //basically the name will change to "[emoji][word][showname][emoji2]
+
+            QString l_expression = "\\b" + l_message_change + "\\b";
+
+            QRegularExpression re(l_expression, QRegularExpression::CaseInsensitiveOption); //if a user message has replacement word in it, the showname changes too.
             if (re.match(l_incoming_msg).hasMatch()) {
-                QString l_evil_name = "👻Evil " + l_incoming_showname.trimmed() + "👻";
+                QString l_evil_name = QString("%1%2 " + l_incoming_showname.trimmed() + "%3").arg(l_before_emoji, l_before_name, l_after_emoji);
                 if (l_evil_name.length() > 30){
-                    l_evil_name = "👻EvilLongName👻";
+                    l_evil_name = QString("%1%2LongName%3").arg(l_before_emoji, l_before_name, l_after_emoji);
                 }
                 l_incoming_showname = l_evil_name;
             }

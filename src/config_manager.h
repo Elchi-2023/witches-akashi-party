@@ -335,6 +335,22 @@ class ConfigManager
     static QStringList gimpList();
 
     /**
+     * @brief A struct for storing data from holiday json, it's a silly thing...
+     */
+    struct HolidaysDesc
+    {
+        QString pre_name;   //a word before the name, in the holiday json
+        QString msg_replacement;    //message sent can be replaced to this
+        QString emoji_before;   //emoji that comes before the pre_name
+        QString emoji_after; // emoji that comes after person's name
+        int chance;     //the chance of all of this thingamajig to happen (1 in chance)
+    };
+
+    static QMap<QString, HolidaysDesc> holidaylist();
+
+    static QMap<QString, HolidaysDesc> *m_holidayList;
+
+    /**
      * @brief Returns the server regex filter list.
      */
     static QStringList filterList();
