@@ -155,8 +155,10 @@ QStringList ConfigManager::charlist()
     QStringList l_charlist;
     QFile l_file("config/characters.txt");
     l_file.open(QIODevice::ReadOnly | QIODevice::Text);
-    while (!l_file.atEnd()) {
-        l_charlist.append(l_file.readLine().trimmed());
+    while (!l_file.atEnd()){
+        l_charlist.append(l_file.readLine());
+        if (l_charlist.last().trimmed().isEmpty())
+            qWarning() << "[CharLoader]: an empty value at line:" << l_charlist.size() -1;
     }
     l_file.close();
 
