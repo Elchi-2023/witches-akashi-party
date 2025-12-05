@@ -6,6 +6,7 @@
 
 #include <QDebug>
 #include <QRegularExpression>
+#include <QPointer>
 
 PacketCT::PacketCT(QStringList &contents) :
     AOPacket(contents)
@@ -38,8 +39,29 @@ void PacketCT::handlePacket(AreaData *area, AOClient &client) const
     }
 
     client.setName(Name);
-    if (client.m_is_logging_in) {
-        client.loginAttempt(m_content[1]);
+    if (client.m_is_logging_in){
+        if (m_content[1].toLower() == "/cancel"){
+            client.m_is_logging_in = false;
+            client.sendServerMessage("Exiting login prompt.");
+            client.totalAttempt = qMakePair(0, 0); /* reset the counts */
+            return;
+        }
+
+        const bool Pass = client.loginAttempt(m_content[1]);
+        if (Pass)
+            client.totalAttempt = qMakePair(0, 0); /* reset the counts */
+        else{
+            ++client.totalAttempt.first;
+            if (client.totalAttempt.first > 3){
+                ++client.totalAttempt.second;
+                for (auto I : client.getServer()->getClients()){
+                    if (!QPointer<AOClient>(I).isNull() && I->m_authenticated)
+                        I->sendPacket("CT", {"[LOGIN]", QString("A user %1 (aka %2) attempted to logining, %3 tries.").arg(client.m_ipid, client.name(), QString::number(client.totalAttempt.second)), "1"});
+                }
+                client.totalAttempt.first = 0;
+            }
+            client.sendServerMessage("Try again.");
+        }
         return;
     }
 

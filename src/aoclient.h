@@ -497,7 +497,8 @@ class AOClient : public QObject
      *
      * @param message The OOC message the client has sent.
      */
-    void loginAttempt(QString message);
+    bool loginAttempt(QString message);
+    QPair<int, int> totalAttempt = qMakePair(0, 0);
 
     /**
      * @brief Changes the area the client is in.
