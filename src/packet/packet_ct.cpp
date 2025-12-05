@@ -48,8 +48,10 @@ void PacketCT::handlePacket(AreaData *area, AOClient &client) const
         }
 
         const bool Pass = client.loginAttempt(m_content[1]);
-        if (Pass)
+        if (Pass){
+            client.m_is_logging_in = false;
             client.totalAttempt = qMakePair(0, 0); /* reset the counts */
+        }
         else{
             ++client.totalAttempt.first;
             if (client.totalAttempt.first > 3){
@@ -58,9 +60,10 @@ void PacketCT::handlePacket(AreaData *area, AOClient &client) const
                     if (!QPointer<AOClient>(I).isNull() && I->m_authenticated)
                         I->sendPacket("CT", {"[LOGIN]", QString("A user %1 (aka %2) attempted to logining, %3 tries.").arg(client.m_ipid, client.name(), QString::number(client.totalAttempt.second)), "1"});
                 }
+                qInfo() << "[Login Manager]: " << client.m_ipid << " (aka " << client.name() << ") attempting to logining, " << client.totalAttempt.second << " tries.";
                 client.totalAttempt.first = 0;
             }
-            client.sendServerMessage("Try again.");
+            client.sendServerMessage("Please try again or /cancel to exit");
         }
         return;
     }
