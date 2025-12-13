@@ -199,9 +199,9 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         l_incoming_msg = ConfigManager::gimpList().at((client.genRand(1, ConfigManager::gimpList().size() - 1)));
 
     if (client.m_is_medieval || area->isMedievalMode()){
-        auto Parser = QPointer<MedievalParser>(client.getServer()->getMedievalParser()); /* smart pointer added, just in case */
-        if (Parser.isNull()){
-            qWarning() << "[Smart Pointer Guard][MedievalParser]: An null pointer detects at client id: " << client.clientId() << " prevented.";
+        auto Parser = client.getServer()->getMedievalParser(); /* smart pointer added, just in case */
+        if (Parser == nullptr || !Parser){
+            qWarning() << "[MedievalParser]: An null [MedievalParser] pointer detects at client id: " << client.clientId() << " prevented.";
             return l_invalid;
         }
         l_incoming_msg = Parser->degrootify(l_incoming_msg);
