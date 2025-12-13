@@ -294,8 +294,10 @@ class AOClient : public QObject
 
     /**
      * @brief I was asked to make something configurable for all holidays, so here we go! It has a chance to change a person's message and name
+     *
+     * @details <bool> were on/off, <QString> were Value
      */
-    QString m_holiday_mode = "";
+    QPair<bool, QString> m_holiday_mode = qMakePair(false, QString());
 
     /**
      * @brief If true, the client will be marked as AFK in /getarea. Automatically applied when a configurable

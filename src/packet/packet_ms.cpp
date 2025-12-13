@@ -5,6 +5,7 @@
 
 #include <QDebug>
 #include <QRegularExpression>
+#include <QPointer>
 
 PacketMS::PacketMS(QStringList &contents) :
     AOPacket(contents)
@@ -197,8 +198,14 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     if (client.m_is_gimped)
         l_incoming_msg = ConfigManager::gimpList().at((client.genRand(1, ConfigManager::gimpList().size() - 1)));
 
-    if (client.m_is_medieval || area->isMedievalMode())
-        l_incoming_msg = client.getServer()->getMedievalParser()->degrootify(l_incoming_msg);
+    if (client.m_is_medieval || area->isMedievalMode()){
+        auto Parser = QPointer<MedievalParser>(client.getServer()->getMedievalParser()); /* smart pointer added, just in case */
+        if (Parser.isNull()){
+            qWarning() << "[Smart Pointer Guard][MedievalParser]: An null pointer detects at client id: " << client.clientId() << " prevented.";
+            return l_invalid;
+        }
+        l_incoming_msg = Parser->degrootify(l_incoming_msg);
+    }
 
     if (client.m_is_shaken) {
         QStringList l_parts = l_incoming_msg.split(QRegularExpression(R"([^A-Za-z0-9]+)"));
@@ -213,15 +220,11 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     if (client.m_is_disemvoweled)
         l_incoming_msg = l_incoming_msg.remove(QRegularExpression("[AEIOUaeiou]")); /* john madden */
 
-    if (!client.m_holiday_mode.isEmpty()){
-        const auto& l_holiday_desc = ConfigManager::m_holidayList->value(client.m_holiday_mode); //this is a struct for the holiday description
-        int l_chance = l_holiday_desc.chance;
-        QString l_message_change = l_holiday_desc.msg_replacement;
-
-        int l_index = client.genRand(1, l_chance); //generate number between 1 and chance.
-        if(l_index == 1){
-            l_incoming_msg = QString("%1").arg(l_message_change); //if the number is 1, the message will be overwritten by replacement word in the JSON
-        }
+    /* Capture current m_holiday_mode (param) and target [Value] struct of holiday JSON*/
+    const QPair<QPair<bool, QString>, ConfigManager::HolidaysDesc> HolidayState = qMakePair(client.m_holiday_mode, ConfigManager::m_holidayList->value(client.m_holiday_mode.second));
+    if (HolidayState.first.first){
+        if (client.genRand(1, HolidayState.second.chance) == 1) /* generate number between 1 and chance */
+            l_incoming_msg = HolidayState.second.msg_replacement; /* if the number is 1, the message will be overwritten by replacement word in the JSON */
     }
 
     client.m_last_message = l_incoming_msg;
@@ -331,26 +334,9 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         if (l_incoming_showname.isEmpty() && !l_incoming_args[15].toString().isEmpty())
             l_incoming_showname = " ";
 
-        if (!client.m_holiday_mode.isEmpty()){
-            const auto& l_holiday_desc = ConfigManager::m_holidayList->value(client.m_holiday_mode); //struct reference again from JSON
-            QString l_before_name = l_holiday_desc.pre_name;
-            QString l_before_emoji = l_holiday_desc.emoji_before;
-            QString l_after_emoji = l_holiday_desc.emoji_after;
-            QString l_message_change = l_holiday_desc.msg_replacement;
-
-            //basically the name will change to "[emoji][word][showname][emoji2]
-
-            QString l_expression = "\\b" + l_message_change + "\\b";
-
-            QRegularExpression re(l_expression, QRegularExpression::CaseInsensitiveOption); //if a user message has replacement word in it, the showname changes too.
-            if (re.match(l_incoming_msg).hasMatch()) {
-                QString l_evil_name = QString("%1%2 " + l_incoming_showname.trimmed() + "%3").arg(l_before_emoji, l_before_name, l_after_emoji);
-                if (l_evil_name.length() > 30){
-                    l_evil_name = QString("%1%2LongName%3").arg(l_before_emoji, l_before_name, l_after_emoji);
-                }
-                l_incoming_showname = l_evil_name;
-            }
-        }
+        /* [Holiday Mode] if a user message has replacement word in it, the showname changes too. */
+        if (HolidayState.first.first && QRegularExpression(QString("\\b" + HolidayState.second.msg_replacement + "\\b"), QRegularExpression::CaseInsensitiveOption).match(l_incoming_msg).hasMatch())
+            l_incoming_showname = QStringList({HolidayState.second.emoji_before, HolidayState.second.pre_name, l_incoming_showname.size() > 30 ? "LongName" : " " + l_incoming_showname + " ", HolidayState.second.emoji_after}).join(""); /* basically the name will change to "[emoji][word][showname][emoji2] */
 
         l_args.append(l_incoming_showname);
         client.setCharacterName(l_incoming_showname);
@@ -362,8 +348,8 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         QPair<int, QStringList> l_other_data = qMakePair(0, QStringList{"", "", ""});
 
         if (area->checkPairSync(client.clientId())){ /* server-side */
-            auto target_synced = client.getServer()->getClientByID(area->getPairSyncList()[client.clientId()]);
-            if (target_synced != nullptr && area->joinedIDs().contains(target_synced->clientId())){ /* capture target from current area */
+            auto target_synced = QPointer<AOClient>(client.getServer()->getClientByID(area->getPairSyncList()[client.clientId()]));
+            if (!target_synced.isNull() && area->joinedIDs().contains(target_synced->clientId())){ /* capture target from current area */
                 if (area->checkPairSync(target_synced->clientId())){ /* target were in pair_sync list */
                     if (area->get_pair_sync_clientID(target_synced->clientId()) == client.clientId()){ /* when user been targeted by that targets */
                         client.m_pairing_with = target_synced->m_char_id; /* syncing by /pair, no matter if target were switching chars. */
@@ -387,13 +373,21 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
             l_front_back = l_pair_data[1].toInt();
         int l_other_charid = client.m_pairing_with;
         bool l_pairing = false;
-        for (int l_client_id : area->joinedIDs()) {
-            const AOClient *l_client = client.getServer()->getClientByID(l_client_id);
-            if (!l_client->isSpectator() && l_client->m_pairing_with == client.m_char_id && l_other_charid != client.m_char_id && l_client->m_char_id == client.m_pairing_with && l_client->m_pos == client.m_pos) {
-                l_other_data = qMakePair(l_client->m_flipping.toInt(), QStringList{l_client->m_current_iniswap.isEmpty() ? l_client->character() : l_client->m_current_iniswap, l_client->m_emote, l_client->m_offset});
+
+        /* heavy scans clients on current area */
+        for (int _clientid : area->joinedIDs()){
+            const auto Target_client = QPointer<AOClient>(client.getServer()->getClientByID(_clientid));
+            if (Target_client.isNull()) /* another smart pointer guards */
+                continue; /* Prevented */
+
+            /* Capture an target which paired with *this* client */
+            if (!Target_client->isSpectator() && Target_client->m_pairing_with == client.m_char_id && l_other_charid != client.m_char_id && Target_client->m_char_id == client.m_pairing_with && Target_client->m_pos == client.m_pos) {
+                l_other_data = qMakePair(Target_client->m_flipping.toInt(), QStringList{Target_client->m_current_iniswap.isEmpty() ? Target_client->character() : Target_client->m_current_iniswap, Target_client->m_emote, Target_client->m_offset});
                 l_pairing = true;
+                break;
             }
         }
+
         if (!l_pairing) {
             l_other_charid = -1;
             l_front_back = -1;
