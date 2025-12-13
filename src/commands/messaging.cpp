@@ -62,7 +62,7 @@ void AOClient::cmdHoliday(int argc, QStringList argv)
         }
         else if (l_holiday.contains(target.toLower())){
             sendPacket("CT", {"[Holiday Mode]", QString("Holiday Mode enable and set to %2 mode.").arg(target), "1"});
-            m_holiday_mode.second = target;
+            m_holiday_mode = qMakePair(true, target);
         }
         else
             sendPacket("CT", {"[Holiday Mode]", QString("%1 Not exist on the holiday list.").arg(target), "1"});
