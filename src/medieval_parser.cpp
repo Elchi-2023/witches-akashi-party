@@ -441,19 +441,18 @@ QString MedievalParser::modifySpeech(QString text, bool generate_pre_and_post, b
                 }
             }
 
+
             if (changed) {
                 stored_word = current_word;
 
                 // match case of the first letter in the word we're replacing
-                if (text[current_word_cur] >= 'A' && text[current_word_cur] <= 'Z') {
-                    stored_word[0] = stored_word[0].toUpper();
+                if (!stored_word.isEmpty() && current_word_cur < text.length()) {
+                    QChar originalFirst = text[current_word_cur];
+                    if (originalFirst.isUpper())
+                        stored_word.replace(0, 1, stored_word[0].toUpper());
+                    else if (originalFirst.isLower())
+                        stored_word.replace(0, 1, stored_word[0].toLower());
                 }
-                else if (text[current_word_cur] >= 'a' && text[current_word_cur] <= 'z') {
-                    stored_word[0] = stored_word[0].toLower();
-                }
-            }
-            else {
-                stored_word = check.word;
             }
         }
 
