@@ -37,8 +37,8 @@ void AOClient::cmdHoliday(int argc, QStringList argv)
         if (target.isEmpty()){ /* if there are no arguments, send the holiday list to ooc. */
             QStringList l_holiday_list;
             for (auto i = l_holiday.begin(); i != l_holiday.end(); i++)
-                l_holiday_list << QString(i.key() == m_holiday_mode.second.toLower() ? "👉 [" + i.key() + "]" : "[" + i.key() + "]"); /* pointing out which user holiday mode on, otherwise */
-            sendServerMessage(l_holiday_list.isEmpty() ? "The holiday list available." : "\n=== [Holidays] ===\n" + l_holiday_list.join('\n') + "\n=========");
+                l_holiday_list << QString(i.key().toLower() == m_holiday_mode.second.toLower() ? " 👉 [" + i.key() + "]" : " · [" + i.key() + "]"); /* pointing out which user holiday mode on, otherwise */
+            sendPacket("CT", {"[Holiday Mode]", l_holiday_list.isEmpty() ? "The holiday list unavailable." : "The holiday list available as follows:\n" + l_holiday_list.join('\n') , "1"});
         }
         else{
             if (l_holiday.contains(target.toLower())){
@@ -54,8 +54,14 @@ void AOClient::cmdHoliday(int argc, QStringList argv)
         }
     }
     else{
-        if (l_holiday.contains(target.toLower())){
-            sendPacket("CT", {"[Holiday Mode]", QString("Holiday Mode enable and set to %2.").arg(target), "1"});
+        if (target.isEmpty()){
+            QStringList l_holiday_list;
+            for (auto i = l_holiday.begin(); i != l_holiday.end(); i++)
+                l_holiday_list << " · [" + i.key() + "]";
+            sendPacket("CT", {"[Holiday Mode]", l_holiday_list.isEmpty() ? "The holiday list unavailable." : "The holiday list available as follows:\n" + l_holiday_list.join('\n') , "1"});
+        }
+        else if (l_holiday.contains(target.toLower())){
+            sendPacket("CT", {"[Holiday Mode]", QString("Holiday Mode enable and set to %2 mode.").arg(target), "1"});
             m_holiday_mode.second = target;
         }
         else
