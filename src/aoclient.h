@@ -2385,6 +2385,13 @@ class AOClient : public QObject
      * @brief Signals the server that the client has disconnected and marks its userID as free again.
      */
     void clientSuccessfullyDisconnected(const int &f_user_id);
+
+    /**
+     * @brief The corn delay timer 🌽
+     *
+     * @see AOClient::cmdCorn
+     */
+    QTimer *Corndelay;
 };
 
 #endif // AOCLIENT_H

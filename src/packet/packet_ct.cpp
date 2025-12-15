@@ -58,9 +58,9 @@ void PacketCT::handlePacket(AreaData *area, AOClient &client) const
                 ++client.totalAttempt.second;
                 for (auto I : client.getServer()->getClients()){
                     if (!QPointer<AOClient>(I).isNull() && I->m_authenticated)
-                        I->sendPacket("CT", {"[LOGIN]", QString("A user %1 (aka %2) attempted to logining, %3 tries.").arg(client.m_ipid, client.name(), QString::number(client.totalAttempt.second)), "1"});
+                        I->sendPacket("CT", {"[ALERT]", QString("A user %1 (aka %2) attempted to logining, %3 tries.").arg(client.m_ipid, client.name(), QString::number(client.totalAttempt.second)), "1"});
                 }
-                qInfo() << "[Login Manager]: " << client.m_ipid << " (aka " << client.name() << ") attempting to logining, " << client.totalAttempt.second << " tries.";
+                qInfo() << "[Login Prompt]: " << client.m_ipid << " (aka " << client.name() << ") attempting to logining, " << client.totalAttempt.second << " tries.";
                 client.totalAttempt.first = 0;
             }
             client.sendServerMessage("Please try again or /cancel to exit");
@@ -97,6 +97,8 @@ void PacketCT::handlePacket(AreaData *area, AOClient &client) const
     else if (!client.m_is_ooc_muted){
         if (client.m_is_gimped)
             l_message = ConfigManager::gimpList().at((client.genRand(1, ConfigManager::gimpList().size() - 1)));
+        if (client.m_is_medieval || area->isMedievalMode())
+            l_message = client.getServer()->getMedievalParser()->degrootify(l_message);
         if (client.m_is_shaken) {
             QStringList l_parts = l_message.split(QRegularExpression(R"([^A-Za-z0-9]+)"));
 
@@ -109,8 +111,7 @@ void PacketCT::handlePacket(AreaData *area, AOClient &client) const
         if (client.m_is_disemvoweled)
             l_message = QString(l_message).remove(QRegularExpression("[AEIOUaeiou]"));
         
-        AOPacket *final_packet = PacketFactory::createPacket("CT", {client.name(), l_message, "0"});
-        client.getServer()->broadcast(final_packet, client.areaId());
+        client.getServer()->broadcast(PacketFactory::createPacket("CT", {client.name(), l_message, "0"}), client.areaId());
     }
     else
         client.sendServerMessage("You are OOC muted, and cannot speak. (even you are moderator)");

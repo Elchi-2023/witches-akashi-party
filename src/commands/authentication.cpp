@@ -30,7 +30,7 @@ void AOClient::cmdLogin(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    if (m_authenticated) {
+    if (m_authenticated || m_vip_authenticated) {
         sendServerMessage("You are already logged in!");
         return;
     }

@@ -697,6 +697,12 @@ AOClient::AOClient(Server *p_server, NetworkSocket *socket, QObject *parent, int
     m_afk_timer = new QTimer;
     m_afk_timer->setSingleShot(true);
     connect(m_afk_timer, &QTimer::timeout, this, &AOClient::onAfkTimeout);
+    Corndelay = new QTimer;
+    Corndelay->setSingleShot(true);
+    connect(Corndelay, &QTimer::timeout, this, [this]{
+        if (m_corn_count >= 8)
+            m_corn_count = 0;
+    });
 }
 
 AOClient::~AOClient()

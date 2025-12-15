@@ -198,14 +198,8 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     if (client.m_is_gimped)
         l_incoming_msg = ConfigManager::gimpList().at((client.genRand(1, ConfigManager::gimpList().size() - 1)));
 
-    if (client.m_is_medieval || area->isMedievalMode()){
-        auto Parser = client.getServer()->getMedievalParser(); /* smart pointer added, just in case */
-        if (Parser == nullptr || !Parser){
-            qWarning() << "[MedievalParser]: An null [MedievalParser] pointer detects at client id: " << client.clientId() << " prevented.";
-            return l_invalid;
-        }
-        l_incoming_msg = Parser->degrootify(l_incoming_msg);
-    }
+    if (client.m_is_medieval || area->isMedievalMode())
+        l_incoming_msg = client.getServer()->getMedievalParser()->degrootify(l_incoming_msg);
 
     if (client.m_is_shaken) {
         QStringList l_parts = l_incoming_msg.split(QRegularExpression(R"([^A-Za-z0-9]+)"));
@@ -339,7 +333,8 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
             l_incoming_showname = QStringList({HolidayState.second.emoji_before, HolidayState.second.pre_name, l_incoming_showname.size() > 30 ? "LongName" : " " + l_incoming_showname + " ", HolidayState.second.emoji_after}).join(""); /* basically the name will change to "[emoji][word][showname][emoji2] */
 
         l_args.append(l_incoming_showname);
-        client.setCharacterName(l_incoming_showname);
+        if (!HolidayState.first.first) /* don't set real showname when [Holiday Mode] enabled */
+            client.setCharacterName(l_incoming_showname);
 
         // other char id
         // things get a bit hairy here
@@ -347,7 +342,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         const QStringList l_pair_data = l_incoming_args[16].toString().split("^");
         QPair<int, QStringList> l_other_data = qMakePair(0, QStringList{"", "", ""});
 
-        if (area->checkPairSync(client.clientId())){ /* server-side */
+        if (area->checkPairSync(client.clientId())){ /* [Pair Sync] server-side */
             auto target_synced = QPointer<AOClient>(client.getServer()->getClientByID(area->getPairSyncList()[client.clientId()]));
             if (!target_synced.isNull() && area->joinedIDs().contains(target_synced->clientId())){ /* capture target from current area */
                 if (area->checkPairSync(target_synced->clientId())){ /* target were in pair_sync list */
