@@ -100,49 +100,56 @@ QJsonDocument Discord::constructModcallJson(const QStringList &f_name, const QSt
     return QJsonDocument(root);
 }
 
-QJsonDocument Discord::constructBanJson(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID, const int &f_counts)
-{
-    const QJsonObject discordBanData = {
+QJsonDocument Discord::constructBanJson(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID, const int &f_counts){
+    QJsonArray fields;
+
+    fields.append(QJsonObject{
+                      {"name", "IPID"},
+                      {"value", f_ipid},
+                      {"inline", true}
+                  });
+
+    fields.append(QJsonObject{
+                      {"name", "ID"},
+                      {"value", QString::number(f_banID)},
+                      {"inline", true}
+                  });
+
+    fields.append(QJsonObject{
+                      {"name", "Issued by"},
+                      {"value", f_moderator},
+                      {"inline", true}
+                  });
+
+    fields.append(QJsonObject{
+                      {"name", "Until"},
+                      {"value", f_duration},
+                      {"inline", true}
+                  });
+
+    if (f_counts >= 1){ /* if target is online */
+        fields.append(QJsonObject{
+                          {"name", "Matched Client/IPIDs Count"},
+                          {"value", f_counts == 1 ? "Single" : QString::number(f_counts)},
+                          {"inline", true}
+                      });
+
+    fields.append(QJsonObject{
+                      {"name", "Reason"},
+                      {"value", f_reason}
+                  });
+
+    const QJsonObject Root = {
         {"embeds", QJsonArray{
              QJsonObject{
                  {"title", "Ban Report"},
                  {"color", ConfigManager::discordWebhookColor()},
-                 {"fields", QJsonArray{
-                      QJsonObject{
-                          {"name", "IPID"},
-                          {"value", f_ipid},
-                          {"inline", true}
-                      },
-                      QJsonObject{
-                          {"name", "ID"},
-                          {"value", QString::number(f_banID)},
-                          {"inline", true}
-                      },
-                      QJsonObject{
-                          {"name", "Issued by"},
-                          {"value", f_moderator},
-                          {"inline", true}
-                      },
-                      QJsonObject{
-                          {"name", "Until"},
-                          {"value", f_duration},
-                          {"inline", true}
-                      },
-                      QJsonObject{
-                          {"name", "Clients Count"},
-                          {"value", f_counts},
-                          {"inline", true}
-                      },
-                      QJsonObject{
-                          {"name", "Reason"},
-                          {"value", f_reason}
-                      }
-                  }}
-             }
-         }}
+                 {"fields", fields}
+             }}
+        }
     };
 
-    return QJsonDocument(discordBanData);
+    return QJsonDocument(Root);
 }
 
 QJsonDocument Discord::constructUnbanJson(const QString &f_ipid, const QStringList &f_moderator, const int &f_banID, const int &f_ban_duration, const QDateTime &f_date, const QStringList &f_reason){

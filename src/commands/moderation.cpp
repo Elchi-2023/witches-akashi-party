@@ -23,16 +23,14 @@
 #include "db_manager.h"
 #include "server.h"
 
+#include <QPointer>
+
 // This file is for commands under the moderation category in aoclient.h
 // Be sure to register the command in the header before adding it here!
 
 void AOClient::cmdBan(int argc, QStringList argv)
 {
-    QString l_args_str = argv[2];
-    if (argc > 3) {
-        for (int i = 3; i < argc; i++)
-            l_args_str += " " + argv[i];
-    }
+    Q_UNUSED(argc)
 
     DBManager::BanInfo l_ban;
 
@@ -50,11 +48,22 @@ void AOClient::cmdBan(int argc, QStringList argv)
     bool isclientID;
     int clientID = argv[0].toInt(&isclientID);
     l_ban.duration = l_duration_seconds;
-    if (isclientID && server->getClientByID(clientID) != nullptr)
-        l_ban.ipid = server->getClientByID(clientID)->m_ipid;
+    if (isclientID){
+        const auto target = QPointer<AOClient>(server->getClientByID(clientID));
+        if (target.isNull()){
+            sendServerMessage("Target ID are not exist or invaild.");
+            return;
+        }
+        l_ban.ipid = target->m_ipid;
+    }
+    else if (argv[0].size() != 8){
+        sendServerMessage("Invaild target ipid, length must exacty 8.");
+        return;
+    }
     else
         l_ban.ipid = argv[0];
-    l_ban.reason = l_args_str;
+
+    l_ban.reason = argv.mid(3).join(" ");
     l_ban.time = QDateTime::currentDateTime().toSecsSinceEpoch();
 
     switch (ConfigManager::authType()) {
@@ -69,14 +78,27 @@ void AOClient::cmdBan(int argc, QStringList argv)
     const QList<AOClient *> l_targets = server->getClientsByIpid(l_ban.ipid);
     if (l_targets.isEmpty()){ /* We're banning someone not connected. */
         server->getDatabaseManager()->addBan(l_ban);
-        sendServerMessage("Banned " + l_ban.ipid + " for reason: " + l_ban.reason);
+        sendPacket("CT", {"[Moderation]", "You are banned ipid of " + l_ban.ipid + " with reason: " + l_ban.reason, "1"});
+        if (ConfigManager::discordBanWebhookEnabled()){
+            QDateTime ban_until = QDateTime::fromSecsSinceEpoch(l_ban.time);
+            const QString l_ban_duration = l_ban.duration >= 0 ? ban_until.addSecs(l_ban.duration).toString("MM/dd/yyyy, hh:mm") : "Permanently.";
+
+            const int l_ban_id = server->getDatabaseManager()->getBanID(l_ban.ip);
+
+            QStringList Name{"[" + QString::number(clientId()) + "]", "(" + l_ban.moderator + ")"};
+            if (!name().isEmpty())
+                Name.insert(1, name());
+            const QString l_ban_duration_discord_format = l_ban.duration >= 0 ? QString("<t:%1:R>").arg(ban_until.addSecs(l_ban.duration).toSecsSinceEpoch()) : "Permanently";
+
+            emit server->banWebhookRequest(l_ban.ipid, Name.join(' '), l_ban_duration_discord_format, l_ban.reason, l_ban_id, 0); /* why "0" you wonder?.. cause not existing clients to be counts lol */
+        }
     }
     else if (l_targets.size() == 1){
         auto target = l_targets.first();
         l_ban.ip = target->m_remote_ip;
         l_ban.hdid = target->m_hwid;
         server->getDatabaseManager()->addBan(l_ban);
-        sendServerMessage("Banned user with ipid " + l_ban.ipid + " for reason: " + l_ban.reason);
+        sendPacket("CT", {"[Moderation]", "You are banned client id of [" + QString::number(target->clientId()) + "] (aka "+ l_ban.ipid + ") with reason: " + l_ban.reason, "1"});
 
         QDateTime ban_until = QDateTime::fromSecsSinceEpoch(l_ban.time);
         const QString l_ban_duration = l_ban.duration >= 0 ? ban_until.addSecs(l_ban.duration).toString("MM/dd/yyyy, hh:mm") : "Permanently.";
@@ -108,7 +130,7 @@ void AOClient::cmdBan(int argc, QStringList argv)
 
         for (auto *target : l_targets){
             const QString l_ban_duration = l_ban.duration >= 0 ? ban_until.addSecs(l_ban.duration).toString("MM/dd/yyyy, hh:mm") : "Permanently.";
-            target->m_is_multiclient = l_kick_counter != 0;
+            target->m_is_multiclient = l_kick_counter >= 1;
             target->m_disconnect_reason = Disconnected::BAN;
             target->sendPacket("KB", {QStringList({l_ban.reason, "ID: " + QString::number(l_ban_id), "Until: " + l_ban_duration}).join('\n')});
             target->m_socket->close();
@@ -123,21 +145,18 @@ void AOClient::cmdBan(int argc, QStringList argv)
             const QString l_ban_duration_discord_format = l_ban.duration >= 0 ? QString("<t:%1:R>").arg(ban_until.addSecs(l_ban.duration).toSecsSinceEpoch()) : "Permanently";
             emit server->banWebhookRequest(l_ban.ipid, Name.join(' '), l_ban_duration_discord_format, l_ban.reason, l_ban_id, l_targets.size());
         }
-        sendServerMessage(QString("Banned user with ipid [%1] for reason: [%2] and kicked %3 clients with matching ipids.").arg(l_ban.ipid, l_ban.reason, QString::number(l_targets.size())));
+        sendPacket("CT", {"[Moderation]", QString("You are banned client id of [%1] (aka %2) for reason: [%2] and kicked %3 clients with matching ipids.").arg(QString::number(target->clientId()), l_ban.ipid, l_ban.reason, QString::number(l_targets.size())), "1"});
     }
 }
 
 void AOClient::cmdKick(int argc, QStringList argv)
 {
+    Q_UNUSED(argc)
+
     QString l_target_ipid = argv[0];
-    QString l_reason = argv[1];
+    QString l_reason = argv.mid(2).join(" ");
     int l_kick_counter = 0;
 
-    if (argc > 2) {
-        for (int i = 2; i < argv.length(); i++) {
-            l_reason += " " + argv[i];
-        }
-    }
     bool isclientID;
     int clientID = l_target_ipid.toInt(&isclientID);
     if (isclientID && server->getClientByID(clientID) != nullptr)
