@@ -114,6 +114,20 @@ int DBManager::getBanID(QString hdid)
     }
 }
 
+int DBManager::getBanIDByIPID(QString ipid)
+{
+    QSqlQuery query;
+    query.prepare("SELECT ID FROM BANS WHERE IPID = ? ORDER BY TIME DESC");
+    query.addBindValue(ipid);
+    query.exec();
+    if (query.first()) {
+        return query.value(0).toInt();
+    }
+    else {
+        return -1;
+    }
+}
+
 int DBManager::getBanID(QHostAddress ip)
 {
     QSqlQuery query;

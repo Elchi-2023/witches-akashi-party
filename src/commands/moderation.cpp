@@ -63,7 +63,7 @@ void AOClient::cmdBan(int argc, QStringList argv)
     else
         l_ban.ipid = argv[0];
 
-    l_ban.reason = argv.mid(3).join(" ");
+    l_ban.reason = argv.mid(2).join(" ");
     l_ban.time = QDateTime::currentDateTime().toSecsSinceEpoch();
 
     switch (ConfigManager::authType()) {
@@ -83,7 +83,7 @@ void AOClient::cmdBan(int argc, QStringList argv)
             QDateTime ban_until = QDateTime::fromSecsSinceEpoch(l_ban.time);
             const QString l_ban_duration = l_ban.duration >= 0 ? ban_until.addSecs(l_ban.duration).toString("MM/dd/yyyy, hh:mm") : "Permanently.";
 
-            const int l_ban_id = server->getDatabaseManager()->getBanID(l_ban.ip);
+            const int l_ban_id = server->getDatabaseManager()->getBanIDByIPID(l_ban.ipid);
 
             QStringList Name{"[" + QString::number(clientId()) + "]", "(" + l_ban.moderator + ")"};
             if (!name().isEmpty())
