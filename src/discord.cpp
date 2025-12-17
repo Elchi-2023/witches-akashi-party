@@ -127,7 +127,7 @@ QJsonDocument Discord::constructBanJson(const QString &f_ipid, const QString &f_
                       {"inline", true}
                   });
 
-    if (f_counts >= 1){ /* if target is online */
+    if (f_counts >= 1) /* if target is online */
         fields.append(QJsonObject{
                           {"name", "Matched Client/IPIDs Count"},
                           {"value", f_counts == 1 ? "Single" : QString::number(f_counts)},
