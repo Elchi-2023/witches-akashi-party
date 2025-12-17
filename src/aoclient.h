@@ -2339,6 +2339,13 @@ class AOClient : public QObject
      */
     bool rps_waiting = false;
 
+    /**
+     * @brief The corn delay timer 🌽
+     *
+     * @see AOClient::cmdCorn
+     */
+    QTimer *Corndelay;
+
   signals:
 
     /**
@@ -2386,12 +2393,6 @@ class AOClient : public QObject
      */
     void clientSuccessfullyDisconnected(const int &f_user_id);
 
-    /**
-     * @brief The corn delay timer 🌽
-     *
-     * @see AOClient::cmdCorn
-     */
-    QTimer *Corndelay;
 };
 
 #endif // AOCLIENT_H
