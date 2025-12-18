@@ -154,7 +154,7 @@ void AOClient::cmdKick(int argc, QStringList argv)
     Q_UNUSED(argc)
 
     QString l_target_ipid = argv[0];
-    QString l_reason = argv.mid(2).join(" ");
+    QString l_reason = argv.mid(1).join(" ");
     int l_kick_counter = 0;
 
     bool isclientID;
