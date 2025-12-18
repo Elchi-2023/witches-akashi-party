@@ -41,7 +41,10 @@ void PacketZZ::handlePacket(AreaData *area, AOClient &client) const
     l_notification.append("Reason: " + m_content[0]);
 
     const QVector<AOClient *> l_clients = client.getServer()->getClients();
-    for (AOClient *l_client : l_clients) {
+    for (AOClient *l_client : l_clients){
+        if (QPointer<AOClient>(l_client).isNull())
+            continue;
+
         if (l_client->m_authenticated)
             l_client->sendPacket(PacketFactory::createPacket("ZZ", {"!!!MODCALL!!!\n" + l_notification.join('\n')}));
     }

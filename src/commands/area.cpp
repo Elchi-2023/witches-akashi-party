@@ -204,10 +204,12 @@ void AOClient::cmdLock(int argc, QStringList argv)
     sendServerMessageArea("This area is now locked.");
     area->lock();
     const QVector<AOClient *> l_clients = server->getClients();
-    for (AOClient *l_client : l_clients) {
-        if (l_client->areaId() == areaId() && l_client->hasJoined()) {
+    for (AOClient *l_client : l_clients){
+        if (QPointer<AOClient>(l_client).isNull())
+            continue;
+
+        if (l_client->areaId() == areaId() && l_client->hasJoined())
             area->invite(l_client->clientId());
-        }
     }
     arup(ARUPType::LOCKED, true);
 }
@@ -225,10 +227,12 @@ void AOClient::cmdSpectatable(int argc, QStringList argv)
     sendServerMessageArea("This area is now spectatable.");
     l_area->spectatable();
     const QVector<AOClient *> l_clients = server->getClients();
-    for (AOClient *l_client : l_clients) {
-        if (l_client->areaId() == areaId() && l_client->hasJoined()) {
+    for (AOClient *l_client : l_clients){
+        if (QPointer<AOClient>(l_client).isNull())
+            continue;
+
+        if (l_client->areaId() == areaId() && l_client->hasJoined())
             l_area->invite(l_client->clientId());
-        }
     }
     arup(ARUPType::LOCKED, true);
 }

@@ -47,9 +47,9 @@ QStringList AOClient::buildAreaList(int area_idx)
         title.append(QStringList({"[🎭]", "[💼]", "[🔍]", "[⏳]", "[🎲]"})[area->status() -1]);
     entries.append("=== " + title.join(" ") + " ===");
 
-    const QVector<AOClient *> l_clients = server->getClients();
-    for (auto client : server->getClients()){
-        if (client->areaId() == area->index() && client->hasJoined()){
+    for (int Index : area->joinedIDs()){
+        const auto client = QPointer<AOClient>(server->getClientByID(Index));
+        if (!client.isNull()){
             QStringList Entry("[" + QString::number(client->clientId()) + "] ");
             Entry.append(client->isSpectator() ? "Spectator" : client->character());
             if (!client->characterName().isEmpty())
@@ -72,6 +72,7 @@ QStringList AOClient::buildAreaList(int area_idx)
             entries.append(Entry.join(""));
         }
     }
+
     return entries;
 }
 

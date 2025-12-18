@@ -23,8 +23,6 @@
 #include "server.h"
 #include "packet/packet_ms.h"
 
-#include <QPointer> /* smart pointer (qobject) guards */
-
 // This file is for commands under the messaging category in aoclient.h
 // Be sure to register the command in the header before adding it here!
 

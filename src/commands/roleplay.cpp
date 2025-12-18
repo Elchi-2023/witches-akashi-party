@@ -181,8 +181,11 @@ void AOClient::cmdRps(int argc, QStringList argv)
 
     // Check if there's active game
     AOClient *challenger = nullptr;
-    for (AOClient *client : server->getClients()) {
-        if (client->rps_waiting && client != this) {
+    for (AOClient *client : server->getClients()){
+        if (QPointer<AOClient>(client).isNull())
+            continue;
+
+        if (client->rps_waiting && client != this){
             challenger = client;
             break;
         }
@@ -381,10 +384,12 @@ void AOClient::cmdSubTheme(int argc, QStringList argv)
     Q_UNUSED(argc);
 
     QString l_subtheme = argv.join(" ");
-    const QVector<AOClient *> l_clients = server->getClients();
-    for (AOClient *l_client : l_clients) {
-        if (l_client->areaId() == areaId())
-            l_client->sendPacket("ST", {l_subtheme, "1"});
+    const auto current_area = server->getAreaById(areaId());
+    for (int Index : current_area->joinedIDs()){
+        auto client = QPointer<AOClient>(server->getClientByID(Index));
+        if (client.isNull())
+            continue;
+        client->sendPacket("ST", {l_subtheme, "1"});
     }
     sendServerMessageArea("Subtheme was set to " + l_subtheme);
 }

@@ -160,8 +160,11 @@ void Server::clientConnected()
     if (client->m_ipid.isEmpty())
         client->calculateIpid();
     auto ban = db_manager->isIPBanned(client->getIpid());
-    bool is_banned = ban.first;
-    for (AOClient *joined_client : qAsConst(m_clients)) {
+    const bool is_banned = ban.first;
+    for (AOClient *joined_client : qAsConst(m_clients)){
+        if (QPointer<AOClient>(joined_client).isNull())
+            continue;
+
         if (client->m_remote_ip.isEqual(joined_client->m_remote_ip))
             multiclient_count++;
     }
@@ -171,12 +174,11 @@ void Server::clientConnected()
 
     if (is_banned) {
         QString ban_duration;
-        if (!(ban.second.duration == -2)) {
+        if (!(ban.second.duration == -2))
             ban_duration = QDateTime::fromSecsSinceEpoch(ban.second.time).addSecs(ban.second.duration).toString("MM/dd/yyyy, hh:mm");
-        }
-        else {
+        else
             ban_duration = "Permanently.";
-        }
+
         AOPacket *ban_reason = PacketFactory::createPacket("BD", {"Reason: " + ban.second.reason + "\nBan ID: " + QString::number(ban.second.id) + "\nUntil: " + ban_duration});
         socket->sendTextMessage(ban_reason->toUtf8());
     }
@@ -184,13 +186,13 @@ void Server::clientConnected()
         client->deleteLater();
         l_socket->close(QWebSocketProtocol::CloseCodeNormal);
         markIDFree(user_id);
+        l_socket->deleteLater();
         return;
     }
 
     QHostAddress l_remote_ip = client->m_remote_ip;
-    if (l_remote_ip.protocol() == QAbstractSocket::IPv6Protocol) {
+    if (l_remote_ip.protocol() == QAbstractSocket::IPv6Protocol)
         l_remote_ip = parseToIPv4(l_remote_ip);
-    }
 
     if (isIPBanned(l_remote_ip)) {
         QString l_reason = "Your IP has been banned by a moderator.";
@@ -199,14 +201,15 @@ void Server::clientConnected()
         client->deleteLater();
         l_socket->close(QWebSocketProtocol::CloseCodeNormal);
         markIDFree(user_id);
+        l_socket->deleteLater();
         return;
     }
 
     m_clients.append(client);
     connect(l_socket, &NetworkSocket::clientDisconnected, this, [=, this] {
-        if (client->hasJoined()) {
+        if (client->hasJoined())
             decreasePlayerCount();
-        }
+
         m_clients.removeAll(client);
         l_socket->deleteLater();
     });
@@ -231,16 +234,16 @@ void Server::updateCharsTaken(AreaData *area)
 
     AOPacket *response_cc = PacketFactory::createPacket("CharsCheck", chars_taken);
 
-    for (AOClient *l_client : qAsConst(m_clients)) {
-        if (l_client->areaId() == area->index()) {
-            if (!l_client->m_is_charcursed)
-                l_client->sendPacket(response_cc);
-            else {
-                QStringList chars_taken_cursed = getCursedCharsTaken(l_client, chars_taken);
-                AOPacket *response_cc_cursed = PacketFactory::createPacket("CharsCheck", chars_taken_cursed);
-                l_client->sendPacket(response_cc_cursed);
-            }
+    for (auto l_client : qAsConst(m_clients)){
+        if (QPointer<AOClient>(l_client).isNull() || l_client->areaId() != area->index())
+            continue;
+
+        if (l_client->m_is_charcursed){
+            AOPacket *response_cc_cursed = PacketFactory::createPacket("CharsCheck", getCursedCharsTaken(l_client, chars_taken));
+            l_client->sendPacket(response_cc_cursed);
         }
+        else
+            l_client->sendPacket(response_cc);
     }
 }
 
@@ -293,31 +296,39 @@ void Server::reloadSettings()
 void Server::broadcast(AOPacket *packet, int area_index)
 {
     QVector<int> l_client_ids = m_areas.value(area_index)->joinedIDs();
-    for (const int l_client_id : qAsConst(l_client_ids)) {
-        getClientByID(l_client_id)->sendPacket(packet);
+    for (const int l_client_id : qAsConst(l_client_ids)){
+        auto client = QPointer<AOClient>(getClientByID(l_client_id));
+        if (client.isNull())
+            continue;
+
+        client->sendPacket(packet);
     }
 }
 
 void Server::broadcast(AOPacket *packet)
 {
-    for (AOClient *l_client : qAsConst(m_clients)) {
+    for (AOClient *l_client : qAsConst(m_clients)){
+        if (QPointer<AOClient>(l_client).isNull())
+            continue;
+
         l_client->sendPacket(packet);
     }
 }
 
 void Server::broadcast(AOPacket *packet, TARGET_TYPE target)
 {
-    for (AOClient *l_client : qAsConst(m_clients)) {
+    for (AOClient *l_client : qAsConst(m_clients)){
+        if (QPointer<AOClient>(l_client).isNull())
+            continue;
+
         switch (target) {
         case TARGET_TYPE::MODCHAT:
-            if (l_client->checkPermission(ACLRole::MODCHAT)) {
+            if (l_client->checkPermission(ACLRole::MODCHAT))
                 l_client->sendPacket(packet);
-            }
             break;
         case TARGET_TYPE::ADVERT:
-            if (l_client->m_advert_enabled) {
+            if (l_client->m_advert_enabled)
                 l_client->sendPacket(packet);
-            }
             break;
         default:
             break;
@@ -329,20 +340,22 @@ void Server::broadcast(AOPacket *packet, AOPacket *other_packet, TARGET_TYPE tar
 {
     switch (target) {
     case TARGET_TYPE::AUTHENTICATED:
-        for (AOClient *l_client : qAsConst(m_clients)) {
-            if (l_client->isAuthenticated()) {
+        for (AOClient *l_client : qAsConst(m_clients)){
+            if (QPointer<AOClient>(l_client).isNull())
+                continue;
+
+            if (l_client->isAuthenticated())
                 l_client->sendPacket(other_packet);
-            }
-            else {
+            else
                 l_client->sendPacket(packet);
-            }
         }
+        break;
     default:
         // Unimplemented, so not handled.
         break;
     }
 }
-
+/* this originally unused by the devs, i'll keep this */
 void Server::unicast(AOPacket *f_packet, int f_client_id)
 {
     AOClient *l_client = getClientByID(f_client_id);
@@ -355,7 +368,10 @@ void Server::unicast(AOPacket *f_packet, int f_client_id)
 QList<AOClient *> Server::getClientsByIpid(QString ipid)
 {
     QList<AOClient *> return_clients;
-    for (AOClient *l_client : qAsConst(m_clients)) {
+    for (AOClient *l_client : qAsConst(m_clients)){
+        if (QPointer<AOClient>(l_client).isNull())
+            continue;
+
         if (l_client->getIpid() == ipid)
             return_clients.append(l_client);
     }
@@ -365,7 +381,10 @@ QList<AOClient *> Server::getClientsByIpid(QString ipid)
 QList<AOClient *> Server::getClientsByHwid(QString f_hwid)
 {
     QList<AOClient *> return_clients;
-    for (AOClient *l_client : qAsConst(m_clients)) {
+    for (AOClient *l_client : qAsConst(m_clients)){
+        if (QPointer<AOClient>(l_client).isNull())
+            continue;
+
         if (l_client->getHwid() == f_hwid)
             return_clients.append(l_client);
     }
@@ -405,10 +424,9 @@ QString Server::getCharacterById(int f_chr_id)
 
 int Server::getCharID(QString char_name)
 {
-    for (int i = 0; i < m_characters.length(); i++) {
-        if (m_characters[i].toLower() == char_name.toLower()) {
+    for (int i = 0; i < m_characters.length(); i++){
+        if (m_characters[i].toLower() == char_name.toLower())
             return i;
-        }
     }
 
     return -1; // character does not exist
@@ -449,9 +467,8 @@ QString Server::getAreaName(int f_area_id)
 {
     QString l_name;
 
-    if (f_area_id >= 0 && f_area_id < m_area_names.length()) {
+    if (f_area_id >= 0 && f_area_id < m_area_names.length())
         l_name = m_area_names.at(f_area_id);
-    }
 
     return l_name;
 }
@@ -554,7 +571,10 @@ bool Server::isIPBanned(QHostAddress f_remote_IP)
 
 Server::~Server()
 {
-    for (AOClient *l_client : qAsConst(m_clients)) {
+    for (AOClient *l_client : qAsConst(m_clients)){
+        if (QPointer<AOClient>(l_client).isNull())
+            continue;
+
         l_client->deleteLater();
     }
     server->deleteLater();

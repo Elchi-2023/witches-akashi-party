@@ -28,6 +28,7 @@
 #include <QTimer>
 #include <QWebSocket>
 #include <QWebSocketServer>
+#include <QPointer> /* smart pointer (qobject) guards */
 
 #include "medieval_parser.h"
 #include "network/aopacket.h"

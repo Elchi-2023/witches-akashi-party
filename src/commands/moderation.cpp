@@ -23,8 +23,6 @@
 #include "db_manager.h"
 #include "server.h"
 
-#include <QPointer>
-
 // This file is for commands under the moderation category in aoclient.h
 // Be sure to register the command in the header before adding it here!
 
@@ -200,7 +198,10 @@ void AOClient::cmdMods(int argc, QStringList argv)
     Q_UNUSED(argv);
 
     QMap<int, QStringList> EntriesMap; /* why use qmap?.. because we needs area_id for get areas name */
-    for (const AOClient *client : server->getClients()){
+    for (AOClient *client : server->getClients()){
+        if (QPointer<AOClient>(client).isNull())
+            continue;
+
         if (client->m_authenticated){
             QStringList user_entry(QString("[%1] %2").arg(QString::number(client->clientId()), client->character().isEmpty() ? "[Spectator]" : client->character()));
             if (m_authenticated){ /* only moderator can see names */
@@ -944,9 +945,13 @@ void AOClient::cmdKickUid(int argc, QStringList argv)
     sendServerMessage("Kicked client with UID " + argv[0] + " for reason: " + l_reason);
     if (m_vip_authenticated){
         const QString userdata(QString("[%1] %2").arg(QString::number(clientId()), name().isEmpty() ? character().isEmpty() ? "Spectator" : character() : name()));
-        for (auto C : server->getClients())
+        for (auto C : server->getClients()){
+            if (QPointer<AOClient>(C).isNull())
+                continue;
+
             if (m_authenticated)
                 C->sendServerMessage(QString("[VIP]%1 was kicking %2: %3").arg(userdata, targetData, l_reason));
+        }
     }
 }
 

@@ -6,7 +6,6 @@
 
 #include <QDebug>
 #include <QRegularExpression>
-#include <QPointer>
 
 PacketCT::PacketCT(QStringList &contents) :
     AOPacket(contents)

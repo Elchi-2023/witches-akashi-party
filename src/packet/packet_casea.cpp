@@ -47,7 +47,10 @@ void PacketCasea::handlePacket(AreaData *area, AOClient &client) const
     QSet<bool> l_needs_set(l_needs_list.begin(), l_needs_list.end());
 
     const QVector<AOClient *> l_clients = client.getServer()->getClients();
-    for (AOClient *l_client : l_clients) {
+    for (AOClient *l_client : l_clients){
+        if (QPointer<AOClient>(l_client).isNull())
+            continue;
+
         QSet<bool> l_matches(l_client->m_casing_preferences.begin(), l_client->m_casing_preferences.end());
         l_matches.intersect(l_needs_set);
 
@@ -55,7 +58,10 @@ void PacketCasea::handlePacket(AreaData *area, AOClient &client) const
             l_clients_to_alert.append(l_client);
     }
 
-    for (AOClient *l_client : l_clients_to_alert) {
+    for (AOClient *l_client : l_clients_to_alert){
+        if (QPointer<AOClient>(l_client).isNull())
+            continue;
+
         l_client->sendPacket(PacketFactory::createPacket("CASEA", {l_message, m_content[1], m_content[2], m_content[3], m_content[4], m_content[5], "1"}));
         // you may be thinking, "hey wait a minute the network protocol documentation doesn't mention that last argument!"
         // if you are in fact thinking that, you are correct! it is not in the documentation!

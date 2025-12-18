@@ -5,7 +5,6 @@
 
 #include <QDebug>
 #include <QRegularExpression>
-#include <QPointer>
 
 PacketMS::PacketMS(QStringList &contents) :
     AOPacket(contents)
@@ -55,28 +54,26 @@ void PacketMS::handlePacket(AreaData *area, AOClient &client) const
         }
     }
 
-    if (evidence_presented) {
-        // Send individual packets to each client with correct evidence indices
-        const QVector<AOClient *> l_clients = client.getServer()->getClients();
-        for (AOClient *l_client : l_clients) {
-            if (l_client->areaId() == client.areaId()) {
-                // Create a copy of the packet content
-                QStringList packet_content = validated_packet->getContent();
+    if (evidence_presented){ /* Send individual packets to each client with correct evidence indices */
+        for (int Index : area->joinedIDs()){
+            auto l_client = QPointer<AOClient>(client.getServer()->getClientByID(Index));
+            if (l_client.isNull())
+                continue;
 
-                // Convert the real evidence index to visible index for this client
-                int visible_idx = area->getVisibleIndexByEvidenceIndex(real_evidence_idx, l_client->m_pos, l_client->checkPermission(ACLRole::CM));
-                packet_content[11] = QString::number(visible_idx);
+            // Create a copy of the packet content
+            QStringList packet_content = validated_packet->getContent();
 
-                // Send the customized packet to this client
-                AOPacket *custom_packet = PacketFactory::createPacket("MS", packet_content);
-                l_client->sendPacket(custom_packet);
-            }
+            // Convert the real evidence index to visible index for this client
+            int visible_idx = area->getVisibleIndexByEvidenceIndex(real_evidence_idx, l_client->m_pos, l_client->checkPermission(ACLRole::CM));
+            packet_content[11] = QString::number(visible_idx);
+
+            // Send the customized packet to this client
+            AOPacket *custom_packet = PacketFactory::createPacket("MS", packet_content);
+            l_client->sendPacket(custom_packet);
         }
     }
-    else {
-        // Normal broadcast for non-evidence messages or non-HIDDEN_CM areas
+    else /* Normal broadcast for non-evidence messages or non-HIDDEN_CM areas */
         client.getServer()->broadcast(validated_packet, client.areaId());
-    }
 
     emit client.logIC((client.character() + " " + client.characterName()), client.name(), client.m_ipid, client.getServer()->getAreaById(client.areaId())->name(), client.m_last_message);
     area->updateLastICMessage(validated_packet->getContent());
