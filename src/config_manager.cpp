@@ -174,7 +174,7 @@ QStringList ConfigManager::charlist()
             qInfo() << "[CharLoader]: Writing characters.txt..";
             l_file.write(l_currentlist.join('\n').toUtf8());
             qInfo() << "[CharLoader]: Done, Total now: " << l_currentlist.size();
-            l_currentlist = l_charlist;
+            l_charlist = l_currentlist;
         }
         else
             qInfo() << "[CharLoader]: Nothing to be found, all good to go.";
