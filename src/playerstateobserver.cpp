@@ -25,8 +25,9 @@ void PlayerStateObserver::registerClient(AOClient *client)
     QVector<QSharedPointer<AOPacket>> packets; /* why QSharedPointer (smart pointer)?.. because we need release packets after. (unlike the originally code) */
     for (AOClient *i_client : qAsConst(m_client_list)) {
         packets.append(QSharedPointer<PacketPR>::create(i_client->clientId(), PacketPR::ADD));
-        QStringList l_name(i_client->name());
+        QStringList l_name;
         if (i_client->m_is_afk) l_name.prepend("[💤]");
+        if (!i_client->name().isEmpty()) l_name << i_client->name();
         packets.append(QSharedPointer<PacketPU>::create(i_client->clientId(), PacketPU::NAME, l_name.join(' ')));
         packets.append(QSharedPointer<PacketPU>::create(i_client->clientId(), PacketPU::CHARACTER, i_client->character()));
         packets.append(QSharedPointer<PacketPU>::create(i_client->clientId(), PacketPU::CHARACTER_NAME, i_client->characterName()));
@@ -73,8 +74,9 @@ void PlayerStateObserver::UploadStateToClients(const AOClient *client, const AOP
                 clients->sendPacket(QSharedPointer<PacketPU>::create(args[0].toInt(), PacketPU::NAME, QStringList({args[2], "(" + client->m_ipid + ")"}).join(' ')).get());
             else{
                 clients->sendPacket(&const_cast<AOPacket &>(packet));
-                QStringList l_name({client->name(), "(" + client->m_ipid + ")"});
+                QStringList l_name("(" + client->m_ipid + ")");
                 if (client->m_is_afk) l_name.prepend("[💤]");
+                if (!client->name().isEmpty()) l_name.insert(1, client->name());
                 clients->sendPacket(QSharedPointer<PacketPU>::create(args[0].toInt(), PacketPU::NAME, l_name.join(' ')).get());
             }
         }
@@ -108,8 +110,9 @@ void PlayerStateObserver::ModeratorRequestsData(){
     if (client_sender == nullptr)
         return;
     for (AOClient *client : qAsConst(m_client_list)){
-        QStringList l_name(client->name());
+        QStringList l_name;
         if (client->m_is_afk) l_name.prepend("[💤]");
+        if (!client->name().isEmpty()) l_name << client->name();
         if (client_sender->m_authenticated)
             client_sender->sendPacket(QSharedPointer<PacketPU>::create(client->clientId(), PacketPU::NAME, QStringList({l_name.join(' '), "(" + client->m_ipid + ")"}).join(' ')).get());
         else
