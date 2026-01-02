@@ -204,10 +204,11 @@ void AOClient::cmdMods(int argc, QStringList argv)
 
         if (client->m_authenticated){
             QStringList user_entry(QString("[%1] %2").arg(QString::number(client->clientId()), client->character().isEmpty() ? "[Spectator]" : client->character()));
+            if (client->m_moderator_name == "root") /* marked the "👑" for "root"/owner */
+                user_entry.replace(0, QString("[👑][%1] %2").arg(QString::number(client->clientId()), client->character().isEmpty() ? "[Spectator]" : client->character()));
+
             if (m_authenticated){ /* only moderator can see names */
-                if (client->m_moderator_name == "root") /* marked the "👑" for "root"/owner */
-                    user_entry.replace(0, QString("[👑][%1] %2").arg(QString::number(client->clientId()), client->character().isEmpty() ? "[Spectator]" : client->character()));
-                else if (!client->name().trimmed().isEmpty() && client->name().trimmed().toLower() != client->m_moderator_name.toLower()) /* capture the diff name between their oocname and their moderator name */
+                if (!client->name().trimmed().isEmpty() && client->name().trimmed().toLower() != client->m_moderator_name.toLower()) /* capture the diff name between their oocname and their moderator name */
                     user_entry.append("(" + QStringList({client->name().trimmed(), client->m_moderator_name}).join(" | ") + ")");
                 else /* otherwise.. just shown their moderator name instead */
                     user_entry.append("(" + client->m_moderator_name + ")");
@@ -404,7 +405,7 @@ void AOClient::cmdUserInfo(int argc, QStringList argv){
         Data.append(QString("AREA: [%1] %2").arg(QString::number(current_area->index()), current_area->name()));
         auto clients = server->getClientsByIpid(client->m_ipid);
         const auto client_version = client->m_version;
-        Data.append(QString("Clients: %1 | [%2]").arg(QString::number(qMax(1, clients.size())), client_version.is_webao ? "[WEB]" : client_version.get_string_version()));
+        Data.append(QString("Clients: %1 | [%2]").arg(QString::number(qMax(1, clients.size())), client_version.is_webao ? "WEB" : client_version.get_string_version()));
         if (clients.size() >= 2){
             for (const auto other_client : clients){
                 QStringList other_data(QString("[%1] %2").arg(QString::number(other_client->clientId()), other_client->isSpectator() ? "[Spectator]" : other_client->character()));

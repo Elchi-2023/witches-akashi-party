@@ -1369,7 +1369,7 @@ class AreaData : public QObject
      * @brief The collection of all currently /pair sync clients.
      */
     QMap<int, int> m_clients_pairing_sync;
-    
+
   private slots:
     /**
      * @brief Allow game messages to be broadcasted.

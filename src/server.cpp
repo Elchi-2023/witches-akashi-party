@@ -355,14 +355,11 @@ void Server::broadcast(AOPacket *packet, AOPacket *other_packet, TARGET_TYPE tar
         break;
     }
 }
-/* this originally unused by the devs, i'll keep this */
-void Server::unicast(AOPacket *f_packet, int f_client_id)
-{
-    AOClient *l_client = getClientByID(f_client_id);
-    if (l_client != nullptr) { // This should never happen, but safety first.
-        l_client->sendPacket(f_packet);
+void Server::unicast(AOPacket *f_packet, int f_client_id){
+    auto l_client = QPointer<AOClient>(getClientByID(f_client_id));
+    if (l_client.isNull()) /* This should never happen, but safety first. */
         return;
-    }
+    l_client->sendPacket(f_packet);
 }
 
 QList<AOClient *> Server::getClientsByIpid(QString ipid)
