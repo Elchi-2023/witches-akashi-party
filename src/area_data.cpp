@@ -371,11 +371,13 @@ bool AreaData::addPairSync(const int self, const int target){
     return true;
 }
 
-bool AreaData::removePairSync(const int self){
+bool AreaData::removePairSync(const int self, const int other){
     if (self < 0)
         return false;
 
     if (m_clients_pairing_sync.contains(self)){
+        if (other >= 0 && checkPairSync(other) && get_pair_sync_clientID(self))
+            m_clients_pairing_sync.remove(other);
         m_clients_pairing_sync.remove(self);
         return true;
     }

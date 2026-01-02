@@ -1026,7 +1026,7 @@ class AreaData : public QObject
      * @return True if success, false otherwise.
      */
 
-    bool removePairSync(const int self);
+    bool removePairSync(const int self, const int other = -1);
     /**
      * @brief check if client id were on /pair sync list.
      *

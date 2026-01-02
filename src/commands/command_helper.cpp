@@ -70,6 +70,8 @@ QStringList AOClient::buildAreaList(int area_idx)
                 if (!client->name().isEmpty())
                     info.append(client->name());
                 Entry.append(" | [" + info.join(" | ") + "]");
+                if (client->m_vip_authenticated)
+                    Entry.append(" | [" + client->m_moderator_name + "]");
             }
             entries.append(Entry.join(""));
         }

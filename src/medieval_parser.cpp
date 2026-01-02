@@ -454,6 +454,8 @@ QString MedievalParser::modifySpeech(QString text, bool generate_pre_and_post, b
                         stored_word.replace(0, 1, stored_word[0].toLower());
                 }
             }
+            else
+                stored_word = check.word;
         }
 
         // Finished?

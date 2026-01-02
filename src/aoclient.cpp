@@ -190,8 +190,7 @@ void AOClient::clientDisconnected()
 
                 if (current_area->get_pair_sync_clientID(l_client->clientId()) == clientId() && current_area->get_pair_sync_clientID(clientId()) == l_client_id){ /* you know how this checkers goes, right? */
                     l_client->sendServerMessage("You aren't longer synced pairing with target, target not longer exists."); /* we notfy the target about user weren't longer exists for pairs sync */
-                    current_area->removePairSync(clientId());
-                    current_area->removePairSync(l_client_id); /* freed both ids from pairs sync list.. */
+                    current_area->removePairSync(clientId(), l_client->clientId()); /* freed both ids from pairs sync list.. */
                 }
             }
         }
@@ -669,7 +668,10 @@ void AOClient::onAfkTimeout()
     if (!UserAFK()) {
         auto current_area = server->getAreaById(areaId());
         for (const int client_id : current_area->joinedIDs()){
-            auto l_client = server->getClientByID(client_id);
+            auto l_client = QPointer<AOClient>(server->getClientByID(client_id));
+            if (l_client.isNull())
+                continue;
+
             if (l_client == this) /* "this" ... current client (aka user) lol */
                 sendServerMessage("You are now AFK (due to inactivity).");
             else if (!l_client->isSpectator()) /* lgnored spectator for moment.. */

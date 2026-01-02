@@ -88,10 +88,9 @@ void PacketMC::handlePacket(AreaData *area, AOClient &client) const
         return;
     }
 
-    for (int i = 0; i < client.getServer()->getAreaCount(); i++) {
-        QString l_area = client.getServer()->getAreaName(i);
-        if (l_area == l_argument) {
-            client.changeArea(i);
+    for (auto Area : client.getServer()->getAreas()){
+        if (Area->name() == l_argument){
+            client.changeArea(Area->index());
             break;
         }
     }

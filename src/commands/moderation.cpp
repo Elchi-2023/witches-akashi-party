@@ -226,12 +226,12 @@ void AOClient::cmdMods(int argc, QStringList argv)
     int entry_count = 0;
 
     for (auto EMap = EntriesMap.begin(); EMap != EntriesMap.end(); ++EMap){
-        entry.append(QString("=== %1 ===\n%2").arg(server->getAreaById(EMap.key())->name(), EMap.value().join('\n')));
+        entry.append(QString("=== [%1] %2 ===\n%3").arg(QString::number(server->getAreaById(EMap.key())->index()), server->getAreaById(EMap.key())->name(), EMap.value().join('\n')));
         entry_count += EMap.value().size();
     }
     entry.append(QString("=== Total online : %1 ===").arg(QString::number(entry_count)));
 
-    sendServerMessage(entry.join('\n'));
+    sendServerMessage('\n' + entry.join('\n'));
 }
 
 void AOClient::cmdCurses(int argc, QStringList argv){
