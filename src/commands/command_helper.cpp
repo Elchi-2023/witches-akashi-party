@@ -64,7 +64,7 @@ QStringList AOClient::buildAreaList(int area_idx)
                 Entry.prepend("[VIP]");
             Entry.prepend(client == this ? " ➤ " : " · ");
             if (!client->m_pos.isEmpty())
-                Entry.append("<" + client->m_pos + ">");
+                Entry.append(" <" + client->m_pos + ">");
             if (m_authenticated){
                 QStringList info(client->getIpid());
                 if (!client->name().isEmpty())
