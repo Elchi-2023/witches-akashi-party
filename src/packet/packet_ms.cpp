@@ -361,7 +361,9 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
             client.m_pairing_with = l_pair_data[0].toInt();
 
         int l_front_back = -1;
-        if (l_pair_data.length() > 1)
+        if (client.m_pair_order > -1)
+            l_front_back = client.m_pair_order;
+        else if (l_pair_data.length() > 1)
             l_front_back = l_pair_data[1].toInt();
         int l_other_charid = client.m_pairing_with;
         bool l_pairing = false;

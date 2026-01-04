@@ -647,7 +647,7 @@ class AOClient : public QObject
      */
     QString m_pos = "";
 
-    QString m_front_back = "";
+    int m_pair_order = -1;
     int m_other_charid = -1;
     bool m_pairing = false;
     QString m_other_name = "";
@@ -1605,6 +1605,15 @@ class AOClient : public QObject
      * @iscommand
      */
     void cmdUnPair(int argc, QStringList argv);
+
+    /**
+     * @brief Change the pairing order (front or behind).
+     *
+     * @details The argument is 0/front and 1/behind.
+     *
+     * @iscommand
+     */
+    void cmdPairOrder(int argc, QStringList argv);
 
     /**
      * @brief Changes the client's position.

@@ -131,6 +131,27 @@ void AOClient::cmdUnPair(int argc, QStringList argv)
         sendServerMessage("You are not pairing with anyone, do /pair id if you want pairing someone.");
 }
 
+void AOClient::cmdPairOrder(int argc, QStringList argv)
+{
+    if(argc < 1){
+        sendServerMessage("Please insert argument: front (or 0) or behind (or 1).");
+        return;
+    }
+
+    if(argv[0].compare("behind", Qt::CaseInsensitive) == 0 || argv[0] == "1"){
+        m_pair_order = 1;
+        sendServerMessage("Order changed to: Behind.");
+    }
+    else if (argv[0].compare("front", Qt::CaseInsensitive) == 0 || argv[0] == "0"){
+        m_pair_order = 0;
+        sendServerMessage("Order changed to: Front.");
+    }
+    else {
+        sendServerMessage("Invalid input. Please insert argument: front (or 0) or behind (or 1).");
+    }
+
+}
+
 void AOClient::cmdPos(int argc, QStringList argv)
 {
     Q_UNUSED(argc);
