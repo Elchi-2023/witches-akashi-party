@@ -85,7 +85,7 @@ void Server::start()
     server_publisher = new ServerPublisher(server->serverPort(), &m_player_count, this);
 
     // Get characters from config file
-    m_characters = ConfigManager::charlist();
+    m_characters = ConfigManager::charlist(true);
 
     // Get backgrounds from config file
     m_backgrounds = ConfigManager::backgrounds();

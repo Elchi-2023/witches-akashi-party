@@ -150,36 +150,41 @@ QString ConfigManager::bindIP()
     return m_settings->value("Options/bind_ip", "all").toString();
 }
 
-QStringList ConfigManager::charlist()
+QStringList ConfigManager::charlist(const bool write)
 {
-    QFile l_file("config/characters.txt");
-    l_file.open(QIODevice::ReadWrite | QIODevice::Text);
-    QStringList l_charlist = QString(l_file.readAll()).split('\n');
-    l_charlist.removeAll("");
-    if (l_charlist.isEmpty())
-        qWarning() << "[CharLoader]: Loaded an empty contexts.";
-    else{
-        QStringList l_currentlist = l_charlist;
-        qInfo().nospace() << "[CharLoader]: Loaded an " << l_charlist.size() << " contexts..\n[CharLoader]: Scanning any of duplicated...";
-        const int duplicatedCount = l_currentlist.removeDuplicates();
-        if (duplicatedCount > 0){
-            QVector<QPair<QString, int>> duplicatedList;
-            for (const auto I : l_charlist){
-                if (l_currentlist.count(I) == 1 && l_charlist.count(I) > 1 && !duplicatedList.contains(qMakePair(I, l_charlist.count(I) -1)))
-                    duplicatedList.append(qMakePair(I, l_charlist.count(I) -1));
+    QFile l_read("config/characters.txt");
+    l_read.open(QIODevice::ReadOnly | QIODevice::Text);
+    QStringList l_charlist = QString::fromUtf8(l_read.readAll()).split('\n', Qt::SkipEmptyParts); /* skip empty newline */
+    l_read.close();
+
+    if (write){
+        if (l_charlist.isEmpty())
+            qWarning() << "[CharLoader]: Loaded an empty contexts.";
+        else{
+            QStringList l_currentlist = l_charlist;
+            qInfo().nospace() << "[CharLoader]: Loaded an " << l_charlist.size() << " contexts..\n[CharLoader]: Scanning any of duplicated...";
+            const int duplicatedCount = l_currentlist.removeDuplicates();
+            if (duplicatedCount > 0){
+                QFile l_write("config/characters.txt");
+                l_write.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate);
+                QVector<QPair<QString, int>> duplicatedList;
+                for (const auto I : l_charlist){ /* getting original list */
+                    if (l_currentlist.count(I) == 1 && l_charlist.count(I) > 1 && !duplicatedList.contains(qMakePair(I, l_charlist.count(I) -1))) /* comparing between og and current */
+                        duplicatedList.append(qMakePair(I, l_charlist.count(I) -1));
+                }
+                qWarning().nospace() << "[CharLoader]: Found an " << duplicatedCount << " duplicated as follows:";
+                for (auto L : duplicatedList) /* better than shown "QVector<QPair<QString, int>>" */
+                    qWarning().nospace() << L.first << ": " << L.second;
+                qInfo() << "[CharLoader]: Writing characters.txt..";
+                l_write.write(l_currentlist.join('\n').toUtf8());
+                qInfo() << "[CharLoader]: Done, Total now: " << l_currentlist.size();
+                l_charlist = l_currentlist;
+                l_write.close();
             }
-            qWarning().nospace() << "[CharLoader]: Found an " << duplicatedCount << " duplicated as follows:";
-            for (auto L : duplicatedList)
-                qWarning().nospace() << L.first << ": " << L.second;
-            qInfo() << "[CharLoader]: Writing characters.txt..";
-            l_file.write(l_currentlist.join('\n').toUtf8());
-            qInfo() << "[CharLoader]: Done, Total now: " << l_currentlist.size();
-            l_charlist = l_currentlist;
+            else
+                qInfo() << "[CharLoader]: Nothing to be found, all good to go.";
         }
-        else
-            qInfo() << "[CharLoader]: Nothing to be found, all good to go.";
     }
-    l_file.close();
 
     return l_charlist;
 }

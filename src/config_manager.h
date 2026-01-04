@@ -60,7 +60,7 @@ class ConfigManager
     /**
      * @brief Returns the character list of the server..
      */
-    static QStringList charlist();
+    static QStringList charlist(const bool write = false);
 
     /**
      * @brief Returns the a QStringList of the available backgrounds..
