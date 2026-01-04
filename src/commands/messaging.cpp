@@ -112,8 +112,10 @@ void AOClient::cmdPair(int argc, QStringList argv)
         auto current_area = server->getAreaById(areaId());
         if (!current_area->joinedIDs().contains(l_target_client->clientId()))
             sendServerMessage("That target weren't on this area, make sure you check if that target were on this area.");
-        else if (current_area->addPairSync(clientId(), l_target_client->clientId())) /* oh this?.. well.. user choices the target that'll adds/change */
+        else if (current_area->addPairSync(clientId(), l_target_client->clientId())){ /* oh this?.. well.. user choices the target that'll adds/change */
             sendServerMessage("You are now paired with " + QString(l_target_client->characterName().isEmpty() ? "client id " + QString::number(l_target_client->clientId()) : l_target_client->characterName()) + " and synced with that target, Make sure that targets also selected you.");
+            m_pair_order = 0;
+        }
         else
             sendServerMessage("You are already synced pairing with that target.");
     }
@@ -125,8 +127,10 @@ void AOClient::cmdUnPair(int argc, QStringList argv)
     Q_UNUSED(argv);
 
     auto current_area = server->getAreaById(areaId());
-    if (current_area->removePairSync(clientId()))
+    if (current_area->removePairSync(clientId())){
         sendServerMessage("You are not longer paired.");
+        m_pair_order = -1;
+    }
     else
         sendServerMessage("You are not pairing with anyone, do /pair id if you want pairing someone.");
 }
