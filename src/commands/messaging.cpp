@@ -152,7 +152,56 @@ void AOClient::cmdPairOrder(int argc, QStringList argv)
     }
     else {
         sendServerMessage("Invalid input. Please insert argument: front (or 0) or behind (or 1).");
+        return;
     }
+
+}
+
+void AOClient::cmdOffset(int argc, QStringList argv)
+{
+    int xoffset = 0;
+    int yoffset = 0;
+    bool xok;
+    bool yok;
+
+    if (!m_offset_override.isEmpty()){ //we check if the override is empty or resetted
+        xoffset = m_offset_override.split("&")[0].toInt();
+        yoffset = m_offset_override.split("&")[1].toInt();
+    }
+
+    if (argc < 1){ //when there is no input, we show the current offset
+        sendServerMessage(QString("x offset: %1 and y offset: %2").arg(xoffset).arg(yoffset));
+        return;
+    }
+
+    if (argc == 1 && argv[0].compare("rst", Qt::CaseInsensitive) == 0){ //when the input is "rst" we reset the override to empty string.
+        m_offset_override = "";
+        sendServerMessage("Your offset is reset.");
+        return;
+    }
+
+    if (argc >= 1){ //if there is one input, change the x offset, throw an error if invalid
+        xoffset = argv[0].toInt(&xok);
+        if (!xok){
+            sendServerMessageArea("Invalid x offset, type a number between -100 and 100 or rst to reset.");
+            return;
+        }
+    }
+    if (argc >= 2){ //if there is also a second input, change the y offset too, throw an error if invalid
+        yoffset = argv[1].toInt(&yok);
+        if (!yok){
+            sendServerMessageArea("Invalid y offset, type a number between -100 and 100.");
+            return;
+        }
+    }
+
+    if (xoffset > 100 || xoffset < -100) //if the x offset or y offset are above 100 or below -100 (someone is being silly), then put them as 100 (the character won't be seen either cases)
+        xoffset = 100;
+    if (yoffset > 100 || yoffset < -100)
+        yoffset = 100;
+
+    m_offset_override = QString("%1&%2").arg(xoffset).arg(yoffset);
+    sendServerMessage(QString("x offset: %1 and y offset: %2").arg(xoffset).arg(yoffset));
 
 }
 

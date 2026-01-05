@@ -168,12 +168,12 @@ QStringList ConfigManager::charlist(const bool write)
                 QFile l_write("config/characters.txt");
                 l_write.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate);
                 QVector<QPair<QString, int>> duplicatedList;
-                for (const auto I : l_charlist){ /* getting original list */
-                    if (l_currentlist.count(I) == 1 && l_charlist.count(I) > 1 && !duplicatedList.contains(qMakePair(I, l_charlist.count(I) -1))) /* comparing between og and current */
+                for (const auto& I : std::as_const(l_charlist)){ /* getting original list */
+                    if (l_currentlist.count(I) == 1 && l_charlist.count(I) > 1 && !duplicatedList.contains(qMakePair(I, int(l_charlist.count(I) -1)))) /* comparing between og and current */
                         duplicatedList.append(qMakePair(I, l_charlist.count(I) -1));
                 }
                 qWarning().nospace() << "[CharLoader]: Found an " << duplicatedCount << " duplicated as follows:";
-                for (auto L : duplicatedList) /* better than shown "QVector<QPair<QString, int>>" */
+                for (auto& L : duplicatedList) /* better than shown "QVector<QPair<QString, int>>" */
                     qWarning().nospace() << L.first << ": " << L.second;
                 qInfo() << "[CharLoader]: Writing characters.txt..";
                 l_write.write(l_currentlist.join('\n').toUtf8());

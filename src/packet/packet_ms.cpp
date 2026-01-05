@@ -391,7 +391,10 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         l_args.append(l_other_data.second[1]);
 
         // self offset
-        client.m_offset = l_incoming_args[17].toString();
+        if (!client.m_offset_override.isEmpty()) //if the override isn't empty, offset will be equal to it
+            client.m_offset = client.m_offset_override;
+        else
+            client.m_offset = l_incoming_args[17].toString(); //if the override is empty, offset will equal to client offset
         // versions 2.6-2.8 cannot validate y-offset so we send them just the x-offset
         if (client.m_version.release == 2){
             switch (client.m_version.major){

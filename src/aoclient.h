@@ -638,6 +638,13 @@ class AOClient : public QObject
     QString m_offset = "";
 
     /**
+     * @brief The amount the client will be offset by if used the offset command.
+     *
+     * @details This variable is in the format of "[xoffset]&[yoffset]".
+     */
+    QString m_offset_override = "";
+
+    /**
      * @brief The last flipped state of the client.
      */
     QString m_flipping = "";
@@ -1614,6 +1621,16 @@ class AOClient : public QObject
      * @iscommand
      */
     void cmdPairOrder(int argc, QStringList argv);
+
+    /**
+     * @brief Change your offset (x offset and y offset).
+     *
+     * @details It takes to arguments, first for x offset and second for y offset. Writing only 1 argument changes only the x offset,
+     * and writing the argument as "rst" resets your offset to client setting.
+     *
+     * @iscommand
+     */
+    void cmdOffset(int argc, QStringList argv);
 
     /**
      * @brief Changes the client's position.
