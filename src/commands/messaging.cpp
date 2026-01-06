@@ -173,7 +173,7 @@ void AOClient::cmdOffset(int argc, QStringList argv)
     if (argv.isEmpty()){ /* when there is no input, we show the current offset */
         QPair<int, int> current_offset;
         if (m_offset_override.isEmpty()) /* we check if the override is empty or resetted */
-            current_offset = qMakePair(m_offset.split("&").size() >= 1 ? m_offset.split("&")[0].toInt() : 0, m_offset.split("&").size() == 2 ? m_offset.split("&")[0].toInt() : 0);
+            current_offset = qMakePair(m_offset.split("&").size() >= 1 ? m_offset.split("&")[0].toInt() : 0, m_offset.split("&").size() == 2 ? m_offset.split("&")[1].toInt() : 0);
         else
             current_offset = qMakePair(m_offset_override.split("&")[0].toInt(), m_offset_override.split("&")[1].toInt());
         sendServerMessage(QString("x offset: %1 and y offset: %2").arg(current_offset.first).arg(current_offset.second));
