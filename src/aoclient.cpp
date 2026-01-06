@@ -267,12 +267,15 @@ void AOClient::handlePacket(AOPacket *packet)
         if (UserAFK()){
             auto current_area = server->getAreaById(areaId());
             for (const int client_id : current_area->joinedIDs()){
-                auto l_client = server->getClientByID(client_id);
+                auto l_client = QPointer<AOClient>(server->getClientByID(client_id));
+                if (l_client.isNull())
+                    continue;
+
                 if (l_client == this) /* "this" ... current client (aka user) lol */
                     l_client->sendServerMessage("You are no longer AFK.");
                 else if (!l_client->isSpectator()){ /* lgnored spectator for moment.. */
                     QString l_msg = QString("[%1] %2 are no longer AFK.").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character());
-                    server->broadcast(PacketFactory::createPacket("CT", {ConfigManager::serverTag(), l_msg}), l_client->areaId(), Server::TARGET_TYPE::AFKSTATUS);
+                    server->broadcast(PacketFactory::createPacket("CT", {ConfigManager::serverTag(), l_msg}), current_area->index(), Server::TARGET_TYPE::AFKSTATUS);
                 }
             }
             ToggleAFK(false);
