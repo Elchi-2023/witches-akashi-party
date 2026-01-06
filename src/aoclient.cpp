@@ -268,7 +268,7 @@ void AOClient::handlePacket(AOPacket *packet)
             auto current_area = server->getAreaById(areaId());
             for (const int client_id : current_area->joinedIDs()){
                 auto l_client = server->getClientByID(client_id);
-                if (l_client == this && l_client->m_afkstatus_enabled) /* "this" ... current client (aka user) lol */
+                if (l_client == this) /* "this" ... current client (aka user) lol */
                     l_client->sendServerMessage("You are no longer AFK.");
                 else if (!l_client->isSpectator()){ /* lgnored spectator for moment.. */
                     QString l_msg = QString("[%1] %2 are no longer AFK.").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character());
