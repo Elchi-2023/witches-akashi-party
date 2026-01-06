@@ -47,7 +47,7 @@ const QMap<QString, AOClient::CommandInfo> AOClient::COMMANDS{
     {"unholiday", {{ACLRole::NONE}, 0, &AOClient::cmdUnHoliday}},
     {"pair", {{ACLRole::NONE}, 1, &AOClient::cmdPair}},
     {"unpair", {{ACLRole::NONE}, 0, &AOClient::cmdUnPair}},
-    {"pairorder", {{ACLRole::NONE}, 1, &AOClient::cmdPairOrder}},
+    {"pair_order", {{ACLRole::NONE}, 1, &AOClient::cmdPairOrder}},
     {"offset", {{ACLRole::NONE}, 0, &AOClient::cmdOffset}},
     {"g", {{ACLRole::NONE}, 1, &AOClient::cmdG}},
     {"need", {{ACLRole::NONE}, 1, &AOClient::cmdNeed}},
