@@ -148,9 +148,13 @@ void AOClient::cmdPairOrder(int argc, QStringList argv)
         if (okint){
             if (intvalue >= 0 && 1 <= intvalue){
                 m_pair_order = intvalue;
-                sendServerMessage("Order changed to: " + QString(m_pair_order > 0 ? "Behind." : "Front."));
+                sendServerMessage("Pair order changed to: " + QString(m_pair_order > 0 ? "Behind." : "Front."));
                 if (!m_version.is_webao && m_version.major > 8)
                     sendServerMessage("This commands useful for legecy client (aka 2.8.x and below).\n(unless you are lazy to selecting it on your client instead)");
+            }
+            else if (intvalue == -1 && m_pair_order > -1){
+                m_pair_order = -1;
+                sendServerMessage("Reseted pair order to client-side.");
             }
             else
                 sendServerMessage("Invalid input. Please insert argument: front (or 0) or behind (or 1).");
@@ -158,7 +162,11 @@ void AOClient::cmdPairOrder(int argc, QStringList argv)
         else{
             if (argv[0].compare("behind", Qt::CaseInsensitive) == 0 || argv[0].compare("front", Qt::CaseInsensitive) == 0){
                 m_pair_order = int(argv[0].compare("behind", Qt::CaseInsensitive) == 0);
-                sendServerMessage("Order changed to: " + QString(m_pair_order > 0 ? "Behind." : "Front."));
+                sendServerMessage("Pair order changed to: " + QString(m_pair_order > 0 ? "Behind." : "Front."));
+            }
+            else if (argv[0].compare("rst", Qt::CaseInsensitive) == 0){
+                m_pair_order = -1;
+                sendServerMessage("Reseted pair order to client-side.");
             }
             else
                 sendServerMessage("Invalid input. Please insert argument: front (or 0) or behind (or 1).");
