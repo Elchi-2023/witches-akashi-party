@@ -336,6 +336,25 @@ void Server::broadcast(AOPacket *packet, TARGET_TYPE target)
     }
 }
 
+void Server::broadcast(AOPacket *packet, int area_index, TARGET_TYPE target)
+{
+    QVector<int> l_client_ids = m_areas.value(area_index)->joinedIDs();
+    for (const int& l_client_id : std::as_const(l_client_ids)){
+        auto l_client = QPointer<AOClient>(getClientByID(l_client_id));
+        if (l_client.isNull())
+            continue;
+
+        switch (target) {
+        case TARGET_TYPE::AFKSTATUS:
+            if (l_client->m_afkstatus_enabled)
+                l_client->sendPacket(packet);
+            break;
+        default:
+            break;
+        }
+    }
+}
+
 void Server::broadcast(AOPacket *packet, AOPacket *other_packet, TARGET_TYPE target)
 {
     switch (target) {

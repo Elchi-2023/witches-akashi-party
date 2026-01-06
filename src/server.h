@@ -84,7 +84,8 @@ class Server : public QObject
     {
         AUTHENTICATED,
         MODCHAT,
-        ADVERT
+        ADVERT,
+        AFKSTATUS
     };
     Q_ENUM(TARGET_TYPE)
 
@@ -197,6 +198,17 @@ class Server : public QObject
      * @param ENUM to determine the targets of the altered packet.
      */
     void broadcast(AOPacket *packet, TARGET_TYPE target);
+
+    /**
+     * @brief Sends a packet to a specific usergroup in a given area.
+     *
+     * @param The packet to send to the clients.
+     *
+     * @param area_index the area to send the packet to.
+     *
+     * @param ENUM to determine the targets of the altered packet.
+     */
+    void broadcast(AOPacket *packet, int area_index, TARGET_TYPE target);
 
     /**
      * @brief Sends a packet to clients, sends an altered packet to a specific usergroup.

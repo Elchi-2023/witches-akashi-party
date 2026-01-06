@@ -209,6 +209,13 @@ class AOClient : public QObject
     bool m_global_enabled = true;
 
     /**
+     * @brief If true, the client is willing to receive afk announcement from other players.
+     *
+     * @see AOClient::cmdToggleAfk
+     */
+    bool m_afkstatus_enabled = true;
+
+    /**
      * @brief If true, the client's messages will be sent in first-person mode.
      *
      * @see AOClient::cmdFirstPerson
@@ -1877,6 +1884,15 @@ class AOClient : public QObject
      * @iscommand
      */
     void cmdToggleAdverts(int argc, QStringList argv);
+
+    /**
+     * @brief Toggles whether a client will recieve ooc messsages about people sent afk by timeout.
+     *
+     * @details No arguments.
+     *
+     * @iscommand
+     */
+    void cmdToggleAfkMute(int argc, QStringList argv);
 
     /**
      * @brief Toggles whether this client is considered AFK.

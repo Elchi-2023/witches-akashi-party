@@ -669,6 +669,16 @@ void AOClient::cmdToggleAdverts(int argc, QStringList argv)
     sendServerMessage("Advertisements turned " + l_str_en);
 }
 
+void AOClient::cmdToggleAfkMute(int argc, QStringList argv)
+{
+    Q_UNUSED(argc);
+    Q_UNUSED(argv);
+
+    m_afkstatus_enabled = !m_afkstatus_enabled;
+    QString l_str_en = m_afkstatus_enabled ? "on" : "off";
+    sendServerMessage("Afk announcements turned " + l_str_en);
+}
+
 void AOClient::cmdAfk(int argc, QStringList argv)
 {
     Q_UNUSED(argc);
