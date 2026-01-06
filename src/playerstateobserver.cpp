@@ -71,12 +71,17 @@ void PlayerStateObserver::UploadStateToClients(const AOClient *client, const AOP
         if (clients->isAuthenticated()){
             const QStringList args = const_cast<AOPacket &>(packet).getContent();
             if (args[1].toInt() == PacketPU::NAME)
-                clients->sendPacket(QSharedPointer<PacketPU>::create(args[0].toInt(), PacketPU::NAME, QStringList({args[2], "(" + client->m_ipid + ")"}).join(' ')).get());
+                clients->sendPacket(QSharedPointer<PacketPU>::create(args[0].toInt(), PacketPU::NAME, QStringList({args[2], "(" + client->m_ipid + ")"}).join(client->m_version.is_webao ? '\n' : ' ')).get()); /* see the reason at line 81.. */
             else{
                 clients->sendPacket(&const_cast<AOPacket &>(packet));
                 QStringList l_name("(" + client->m_ipid + ")");
                 if (client->m_is_afk) l_name.prepend("[💤]");
-                if (!client->name().isEmpty()) l_name.insert(1, client->name());
+                if (!client->name().isEmpty()){
+                    if (client->m_version.is_webao)
+                        l_name.insert(1, client->name() + "\n"); /* you might asking to me about why "\n" for webao?.. cause webao having lacky of playerlist layout.. */
+                    else
+                        l_name[l_name.size() -1].prepend(client->name() + " ");
+                }
                 clients->sendPacket(QSharedPointer<PacketPU>::create(args[0].toInt(), PacketPU::NAME, l_name.join(' ')).get());
             }
         }
@@ -114,7 +119,7 @@ void PlayerStateObserver::ModeratorRequestsData(){
         if (client->m_is_afk) l_name.prepend("[💤]");
         if (!client->name().isEmpty()) l_name << client->name();
         if (client_sender->m_authenticated)
-            client_sender->sendPacket(QSharedPointer<PacketPU>::create(client->clientId(), PacketPU::NAME, QStringList({l_name.join(' '), "(" + client->m_ipid + ")"}).join(' ')).get());
+            client_sender->sendPacket(QSharedPointer<PacketPU>::create(client->clientId(), PacketPU::NAME, QStringList({l_name.join(' '), "(" + client->m_ipid + ")"}).join(client->m_version.is_webao ? '\n' : ' ')).get());
         else
             client_sender->sendPacket(QSharedPointer<PacketPU>::create(client->clientId(), PacketPU::NAME, l_name.join(' ')).get());
     }
