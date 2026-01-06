@@ -137,72 +137,78 @@ void AOClient::cmdUnPair(int argc, QStringList argv)
 
 void AOClient::cmdPairOrder(int argc, QStringList argv)
 {
-    if(argc < 1){
+    Q_UNUSED(argc)
+
+    if (argv.isEmpty())
         sendServerMessage("Please insert argument: front (or 0) or behind (or 1).");
-        return;
-    }
+    else{
+        bool okint;
+        const int intvalue = argv[0].toInt(&okint);
 
-    if(argv[0].compare("behind", Qt::CaseInsensitive) == 0 || argv[0] == "1"){
-        m_pair_order = 1;
-        sendServerMessage("Order changed to: Behind.");
+        if (okint){
+            if (intvalue >= 0 && 1 <= intvalue){
+                m_pair_order = intvalue;
+                sendServerMessage("Order changed to: " + QString(m_pair_order > 0 ? "Behind." : "Front."));
+                if (!m_version.is_webao && m_version.major > 8)
+                    sendServerMessage("This commands useful for legecy client (aka 2.8.x and below).\n(unless you are lazy to selecting it on your client instead)");
+            }
+            else
+                sendServerMessage("Invalid input. Please insert argument: front (or 0) or behind (or 1).");
+        }
+        else{
+            if (argv[0].compare("behind", Qt::CaseInsensitive) == 0 || argv[0].compare("front", Qt::CaseInsensitive) == 0){
+                m_pair_order = int(argv[0].compare("behind", Qt::CaseInsensitive) == 0);
+                sendServerMessage("Order changed to: " + QString(m_pair_order > 0 ? "Behind." : "Front."));
+            }
+            else
+                sendServerMessage("Invalid input. Please insert argument: front (or 0) or behind (or 1).");
+        }
     }
-    else if (argv[0].compare("front", Qt::CaseInsensitive) == 0 || argv[0] == "0"){
-        m_pair_order = 0;
-        sendServerMessage("Order changed to: Front.");
-    }
-    else {
-        sendServerMessage("Invalid input. Please insert argument: front (or 0) or behind (or 1).");
-        return;
-    }
-
 }
 
 void AOClient::cmdOffset(int argc, QStringList argv)
 {
-    int xoffset = 0;
-    int yoffset = 0;
-    bool xok;
-    bool yok;
+    Q_UNUSED(argc)
 
-    if (!m_offset_override.isEmpty()){ //we check if the override is empty or resetted
-        xoffset = m_offset_override.split("&")[0].toInt();
-        yoffset = m_offset_override.split("&")[1].toInt();
+    if (argv.isEmpty()){ /* when there is no input, we show the current offset */
+        QPair<int, int> current_offset;
+        if (m_offset_override.isEmpty()) /* we check if the override is empty or resetted */
+            current_offset = qMakePair(m_offset.split("&").size() >= 1 ? m_offset.split("&")[0].toInt() : 0, m_offset.split("&").size() == 2 ? m_offset.split("&")[0].toInt() : 0);
+        else
+            current_offset = qMakePair(m_offset_override.split("&")[0].toInt(), m_offset_override.split("&")[1].toInt());
+        sendServerMessage(QString("x offset: %1 and y offset: %2").arg(current_offset.first).arg(current_offset.second));
     }
-
-    if (argc < 1){ //when there is no input, we show the current offset
-        sendServerMessage(QString("x offset: %1 and y offset: %2").arg(xoffset).arg(yoffset));
-        return;
+    else if (argv[0].compare("rst", Qt::CaseInsensitive) == 0){
+        if (m_offset_override.isEmpty())
+            sendServerMessage("Your offset already reset to default client-side.");
+        else
+            sendServerMessage("Your offset is reset to default client-side.");
+        m_offset_override.clear();
     }
+    else{
+        bool X_Pass, Y_Pass = false;
+        int Target_X = qBound(-100, argv[0].toInt(&X_Pass) , 100), Target_Y = qBound(-100, argv.size() >= 2 ? argv[1].toInt(&Y_Pass) : 0, 100); /* why qBound?.. cause smiliar like "x > 100 ? 100 : x" but qt.. */
 
-    if (argc == 1 && argv[0].compare("rst", Qt::CaseInsensitive) == 0){ //when the input is "rst" we reset the override to empty string.
-        m_offset_override = "";
-        sendServerMessage("Your offset is reset.");
-        return;
-    }
-
-    if (argc >= 1){ //if there is one input, change the x offset, throw an error if invalid
-        xoffset = argv[0].toInt(&xok);
-        if (!xok){
-            sendServerMessageArea("Invalid x offset, type a number between -100 and 100 or rst to reset.");
+        if (!X_Pass){ /* if there is one input, change the x offset, throw an error if invalid */
+            sendServerMessageArea("Invalid x offset, type a number between -100 and 100.");
             return;
         }
-    }
-    if (argc >= 2){ //if there is also a second input, change the y offset too, throw an error if invalid
-        yoffset = argv[1].toInt(&yok);
-        if (!yok){
+        else if (argv.size() >= 2 && !Y_Pass){ /* if there is also a second input, change the y offset too, throw an error if invalid */
             sendServerMessageArea("Invalid y offset, type a number between -100 and 100.");
             return;
         }
+
+        if (m_offset_override.isEmpty()){
+            sendServerMessage(QString("Set x offset: %1 and y offset: %2 (server-side).").arg(Target_X).arg(Target_Y));
+            if (!m_version.is_webao && m_version.major > 8)
+                sendServerMessage("This commands useful for legecy client (aka 2.8.x and below).\n(unless you are lazy to manually setting your offset on your client instead)");
+            m_offset_override = QStringList({QString::number(Target_X), QString::number(Target_Y)}).join("%");
+        }
+        else if (m_offset_override != QStringList({QString::number(Target_X), QString::number(Target_Y)}).join("%")){
+            sendServerMessage(QString("Changes x offset: %1 and y offset: %2 (server-side).").arg(Target_X).arg(Target_Y));
+            m_offset_override = QStringList({QString::number(Target_X), QString::number(Target_Y)}).join("%");
+        }
     }
-
-    if (xoffset > 100 || xoffset < -100) //if the x offset or y offset are above 100 or below -100 (someone is being silly), then put them as 100 (the character won't be seen either cases)
-        xoffset = 100;
-    if (yoffset > 100 || yoffset < -100)
-        yoffset = 100;
-
-    m_offset_override = QString("%1&%2").arg(xoffset).arg(yoffset);
-    sendServerMessage(QString("x offset: %1 and y offset: %2").arg(xoffset).arg(yoffset));
-
 }
 
 void AOClient::cmdPos(int argc, QStringList argv)
