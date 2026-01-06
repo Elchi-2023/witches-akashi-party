@@ -345,6 +345,14 @@ void Server::broadcast(AOPacket *packet, int area_index, TARGET_TYPE target)
             continue;
 
         switch (target) {
+        case TARGET_TYPE::MODCHAT:
+            if (l_client->checkPermission(ACLRole::MODCHAT))
+                l_client->sendPacket(packet);
+            break;
+        case TARGET_TYPE::ADVERT:
+            if (l_client->m_advert_enabled)
+                l_client->sendPacket(packet);
+            break;
         case TARGET_TYPE::AFKSTATUS:
             if (l_client->m_afkstatus_enabled)
                 l_client->sendPacket(packet);
