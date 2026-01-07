@@ -354,7 +354,7 @@ void Server::broadcast(AOPacket *packet, int area_index, TARGET_TYPE target)
                 l_client->sendPacket(packet);
             break;
         case TARGET_TYPE::AFKSTATUS:
-            if (l_client->m_afkstatus_enabled)
+            if (l_client->m_afkstatus_enabled && l_client != this)
                 l_client->sendPacket(packet);
             break;
         default:
