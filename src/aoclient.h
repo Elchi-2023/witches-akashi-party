@@ -211,9 +211,16 @@ class AOClient : public QObject
     /**
      * @brief If true, the client is willing to receive afk announcement from other players.
      *
-     * @see AOClient::cmdToggleAfk
+     * @see AOClient::cmdToggleAfkmute
      */
-    bool m_afkstatus_enabled = true;
+    bool m_afk_received = true;
+
+    /**
+     * @brief If true, the client is willing to sending afk announcement to public.
+     *
+     * @see AOClient::cmdToggleAfkannounce
+     */
+    bool m_afk_announcement = true;
 
     /**
      * @brief If true, the client's messages will be sent in first-person mode.
@@ -1893,6 +1900,15 @@ class AOClient : public QObject
      * @iscommand
      */
     void cmdToggleAfkMute(int argc, QStringList argv);
+
+    /**
+     * @brief Toggles whether a client will/n't sending about client is AFK or not.
+     *
+     * @details No arguments.
+     *
+     * @iscommand
+     */
+    void cmdToggleAfkannounce(int argc, QStringList argv);
 
     /**
      * @brief Toggles whether this client is considered AFK.

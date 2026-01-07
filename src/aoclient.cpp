@@ -126,6 +126,7 @@ const QMap<QString, AOClient::CommandInfo> AOClient::COMMANDS{
     {"mutepm", {{ACLRole::NONE}, 0, &AOClient::cmdMutePM}},
     {"toggleadverts", {{ACLRole::NONE}, 0, &AOClient::cmdToggleAdverts}},
     {"toggleafkmute", {{ACLRole::NONE}, 0, &AOClient::cmdToggleAfkMute}},
+    {"toggleafk_announce", {{ACLRole::NONE}, 0, &AOClient::cmdToggleAfkannounce}},
     {"ooc_mute", {{ACLRole::MUTE}, 1, &AOClient::cmdOocMute}},
     {"ooc_unmute", {{ACLRole::MUTE}, 1, &AOClient::cmdOocUnMute}},
     {"block_wtce", {{ACLRole::MUTE}, 1, &AOClient::cmdBlockWtce}},
@@ -265,17 +266,21 @@ void AOClient::handlePacket(AOPacket *packet)
 
     if (packet->getPacketInfo().header != "CH" && m_joined) {
         if (UserAFK()){
-            auto current_area = server->getAreaById(areaId());
-            for (const int client_id : current_area->joinedIDs()){
-                auto l_client = QPointer<AOClient>(server->getClientByID(client_id));
-                if (l_client.isNull())
-                    continue;
+            if (m_afk_announcement){
+                auto current_area = server->getAreaById(areaId());
+                for (const int client_id : current_area->joinedIDs()){
+                    auto l_client = QPointer<AOClient>(server->getClientByID(client_id));
+                    if (l_client.isNull())
+                        continue;
 
-                if (l_client == this) /* "this" ... current client (aka user) lol */
-                    l_client->sendServerMessage("You are no longer AFK.");
-                else if (!l_client->isSpectator() && l_client->m_afkstatus_enabled) /* lgnored spectator for moment.. */
-                    l_client->sendServerMessage(QString("[%1] %2 are no longer AFK.").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character()));
+                    if (l_client == this) /* "this" ... current client (aka user) lol */
+                        l_client->sendServerMessage("You are no longer AFK.");
+                    else if (!l_client->isSpectator() && l_client->m_afk_received) /* lgnored spectator for moment.. */
+                        l_client->sendServerMessage(QString("[%1] %2 are no longer AFK.").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character()));
+                }
             }
+            else
+                sendServerMessage("You are no longer AFK. (unannouncement)");
             ToggleAFK(false);
         }
         m_afk_timer->start(ConfigManager::afkTimeout() * 1000);
@@ -672,17 +677,21 @@ bool AOClient::isSpectator() const
 void AOClient::onAfkTimeout()
 {
     if (!UserAFK()) {
-        auto current_area = server->getAreaById(areaId());
-        for (const int client_id : current_area->joinedIDs()){
-            auto l_client = QPointer<AOClient>(server->getClientByID(client_id));
-            if (l_client.isNull())
-                continue;
+        if (m_afk_announcement){
+            auto current_area = server->getAreaById(areaId());
+            for (const int client_id : current_area->joinedIDs()){
+                auto l_client = QPointer<AOClient>(server->getClientByID(client_id));
+                if (l_client.isNull())
+                    continue;
 
-            if (l_client == this) /* "this" ... current client (aka user) lol */
-                sendServerMessage("You are now AFK (due to inactivity).");
-            else if (!l_client->isSpectator() && l_client->m_afkstatus_enabled) /* lgnored spectator for moment.. */
-                l_client->sendServerMessage(QString("[%1] %2 are now AFK (due to inactivity).").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character()));
+                if (l_client == this) /* "this" ... current client (aka user) lol */
+                    sendServerMessage("You are now AFK (due to inactivity).");
+                else if (!l_client->isSpectator() && l_client->m_afk_received) /* lgnored spectator for moment.. */
+                    l_client->sendServerMessage(QString("[%1] %2 are now AFK (due to inactivity).").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character()));
+            }
         }
+        else
+            sendServerMessage("You are now AFK (due to inactivity). (announcement)");
         ToggleAFK();
     }
 }

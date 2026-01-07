@@ -688,9 +688,18 @@ void AOClient::cmdToggleAfkMute(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    m_afkstatus_enabled = !m_afkstatus_enabled;
-    QString l_str_en = m_afkstatus_enabled ? "on" : "off";
-    sendServerMessage("Afk announcements turned " + l_str_en);
+    m_afk_received = !m_afk_received;
+    QString l_str_en = m_afk_received ? "received" : "not received";
+    sendServerMessage("You are " + l_str_en + " AFK Messages.");
+}
+
+void AOClient::cmdToggleAfkannounce(int argc, QStringList argv){
+    Q_UNUSED(argc);
+    Q_UNUSED(argv);
+
+    m_afk_announcement = !m_afk_announcement;
+    const QStringList String({"You AFK Announcements will not sending to public when (due to inactivity) or /afk.", "You AFK Announcements will sending to public when (due to inactivity) or /afk."})
+    sendServerMessage(String[m_afk_announcement]);
 }
 
 void AOClient::cmdAfk(int argc, QStringList argv)
@@ -698,8 +707,22 @@ void AOClient::cmdAfk(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
+    if (m_afk_announcement){
+        auto current_area = server->getAreaById(areaId());
+        for (const int client_id : current_area->joinedIDs()){
+            auto l_client = QPointer<AOClient>(server->getClientByID(client_id));
+            if (l_client.isNull())
+                continue;
+
+            if (l_client == this) /* "this" ... current client (aka user) lol */
+                l_client->sendServerMessage("You are AFK.");
+            else if (!l_client->isSpectator() && l_client->m_afk_received) /* lgnored spectator for moment.. */
+                l_client->sendServerMessage(QString("[%1] %2 are no longer AFK.").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character()));
+        }
+    }
+    else
+        sendServerMessage("You are AFK. (unannouncement)");
     ToggleAFK();
-    sendServerMessage("You are now AFK.");
 }
 
 void AOClient::cmdCharCurse(int argc, QStringList argv)
