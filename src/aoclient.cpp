@@ -265,15 +265,19 @@ void AOClient::handlePacket(AOPacket *packet)
 
     if (packet->getPacketInfo().header != "CH" && m_joined) {
         if (UserAFK()){
-            auto current_area = this->areaId();
+            auto current_area = server->getAreaById(areaId());
+            for (const int client_id : current_area->joinedIDs()){
+                auto l_client = QPointer<AOClient>(server->getClientByID(client_id));
+                if (l_client.isNull())
+                    continue;
 
-            if (this->m_afkstatus_enabled) //we check if the current client has the afk status, to know if we show the message.
-            this->sendServerMessage("You are no longer AFK.");
-
-            //then we send the package to people who have the afkstatus on.
-            QString l_msg = QString("[%1] %2 are no longer AFK.").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character());
-            server->broadcast(PacketFactory::createPacket("CT", {ConfigManager::serverTag(), l_msg}), current_area, Server::TARGET_TYPE::AFKSTATUS);
-
+                if (l_client == this) /* "this" ... current client (aka user) lol */
+                    l_client->sendServerMessage("You are no longer AFK.");
+                else if (!l_client->isSpectator() && l_client != this){ /* lgnored spectator for moment.. */
+                    QString l_msg = QString("[%1] %2 are no longer AFK.").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character());
+                    server->broadcast(PacketFactory::createPacket("CT", {ConfigManager::serverTag(), l_msg}), Server::TARGET_TYPE::AFKSTATUS);
+                }
+            }
             ToggleAFK(false);
         }
         m_afk_timer->start(ConfigManager::afkTimeout() * 1000);
@@ -670,18 +674,20 @@ bool AOClient::isSpectator() const
 void AOClient::onAfkTimeout()
 {
     if (!UserAFK()) {
-        auto current_area = this->areaId();
+        auto current_area = server->getAreaById(areaId());
+        for (const int client_id : current_area->joinedIDs()){
+            auto l_client = QPointer<AOClient>(server->getClientByID(client_id));
+            if (l_client.isNull())
+                continue;
 
-        if (this->m_afkstatus_enabled) //we check if the current client has the afk status, to know if we show the message.
-        this->sendServerMessage("You are now AFK (due to inactivity).");
-
-        //then we send the package to people who have the afkstatus on.
-        QString l_msg = QString("[%1] %2 are now AFK (due to inactivity).").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character());
-        server->broadcast(PacketFactory::createPacket("CT", {ConfigManager::serverTag(), l_msg}), current_area, Server::TARGET_TYPE::AFKSTATUS);
-
+            if (l_client == this) /* "this" ... current client (aka user) lol */
+                sendServerMessage("You are now AFK (due to inactivity).");
+            else if (!l_client->isSpectator() && l_client->m_afkstatus_enabled) /* lgnored spectator for moment.. */
+                l_client->sendServerMessageArea(QString("[%1] %2 are now AFK (due to inactivity).").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character()));
         }
         ToggleAFK();
     }
+}
 
 AOClient::AOClient(Server *p_server, NetworkSocket *socket, QObject *parent, int user_id, MusicManager *p_manager) :
     QObject(parent),
