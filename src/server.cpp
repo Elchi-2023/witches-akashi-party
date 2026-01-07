@@ -360,6 +360,8 @@ void Server::broadcast(AOPacket *packet, int area_index, TARGET_TYPE target)
         default:
             break;
         }
+
+        continue;
     }
 }
 
