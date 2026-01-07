@@ -275,7 +275,7 @@ void AOClient::handlePacket(AOPacket *packet)
                     l_client->sendServerMessage("You are no longer AFK.");
                 else if (!l_client->isSpectator() && l_client != this){ /* lgnored spectator for moment.. */
                     QString l_msg = QString("[%1] %2 are no longer AFK.").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character());
-                    server->broadcast(PacketFactory::createPacket("CT", {ConfigManager::serverTag(), l_msg}), current_area->index(), Server::TARGET_TYPE::AFKSTATUS);
+                    server->broadcast(PacketFactory::createPacket("CT", {ConfigManager::serverTag(), l_msg}), Server::TARGET_TYPE::AFKSTATUS);
                 }
             }
             ToggleAFK(false);
@@ -684,7 +684,7 @@ void AOClient::onAfkTimeout()
                 sendServerMessage("You are now AFK (due to inactivity).");
             else if (!l_client->isSpectator() && l_client != this){ /* lgnored spectator for moment.. */
                 QString l_msg = QString("[%1] %2 are now AFK (due to inactivity).").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character());
-                server->broadcast(PacketFactory::createPacket("CT", {ConfigManager::serverTag(), l_msg}), current_area->index(), Server::TARGET_TYPE::AFKSTATUS);
+                server->broadcast(PacketFactory::createPacket("CT", {ConfigManager::serverTag(), l_msg}), Server::TARGET_TYPE::AFKSTATUS);
             }
         }
         ToggleAFK();
