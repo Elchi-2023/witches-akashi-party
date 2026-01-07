@@ -698,7 +698,7 @@ void AOClient::cmdToggleAfkannounce(int argc, QStringList argv){
     Q_UNUSED(argv);
 
     m_afk_announcement = !m_afk_announcement;
-    const QStringList String({"You AFK Announcements will not sending to public when (due to inactivity) or /afk.", "You AFK Announcements will sending to public when (due to inactivity) or /afk."})
+    const QStringList String({"You AFK Announcements will not sending to public when (due to inactivity) or /afk.", "You AFK Announcements will sending to public when (due to inactivity) or /afk."});
     sendServerMessage(String[m_afk_announcement]);
 }
 
