@@ -210,9 +210,9 @@ void AOClient::cmdOffset(int argc, QStringList argv)
             sendServerMessage(QString("Set x offset: %1 and y offset: %2 (server-side).").arg(Target_X).arg(Target_Y));
             if (!m_version.is_webao && m_version.major > 8)
                 sendServerMessage("This commands useful for legecy client (aka 2.8.x and below).\n(unless you are lazy to manually setting your offset on your client instead)");
-            m_offset_override = QStringList({QString::number(Target_X), QString::number(Target_Y)}).join("%");
+            m_offset_override = QStringList({QString::number(Target_X), QString::number(Target_Y)}).join("&");
         }
-        else if (m_offset_override != QStringList({QString::number(Target_X), QString::number(Target_Y)}).join("%")){
+        else if (m_offset_override != QStringList({QString::number(Target_X), QString::number(Target_Y)}).join("&")){
             sendServerMessage(QString("Changes x offset: %1 and y offset: %2 (server-side).").arg(Target_X).arg(Target_Y));
             m_offset_override = QStringList({QString::number(Target_X), QString::number(Target_Y)}).join("%");
         }
