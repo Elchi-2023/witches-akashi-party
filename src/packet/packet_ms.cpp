@@ -185,6 +185,8 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         return l_invalid;
     }
 
+    client.m_last_message = l_incoming_msg;
+
     if (!ConfigManager::filterList().isEmpty()) {
         foreach (const QString &regex, ConfigManager::filterList()) {
             QRegularExpression re(regex, QRegularExpression::CaseInsensitiveOption);
@@ -218,7 +220,6 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
             l_incoming_msg = HolidayState.second.msg_replacement; /* if the number is 1, the message will be overwritten by replacement word in the JSON */
     }
 
-    client.m_last_message = l_incoming_msg;
     l_args.append(l_incoming_msg);
 
     // side
