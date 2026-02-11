@@ -166,6 +166,36 @@ void AOClient::cmdRollP(int argc, QStringList argv)
     diceThrower(l_sides, l_dice, true);
 }
 
+void AOClient::cmdWheel(int argc, QStringList argv)
+{
+    if (argc < 1){
+        sendServerMessage("Usage: /wheel <argument 1> <argument 2>... up to 20");
+    }
+    else if(argc > 20){
+        sendServerMessage("You entered more than 20 arguments...");
+    }
+    else {
+        int l_rand = genRand(0, argv.length() - 1);
+        QString l_result = QString("%1 spinned a wheel and got %2").arg(m_ooc_name.isEmpty() ? m_ooc_name : m_current_char, argv[l_rand]);
+        sendServerMessageArea(l_result);
+    }
+}
+
+void AOClient::cmdWheelP(int argc, QStringList argv)
+{
+    if (argc < 1){
+        sendServerMessage("Usage: /wheelp <argument 1> <argument 2>... up to 20");
+    }
+    else if(argc > 20){
+        sendServerMessage("You entered more than 20 arguments...");
+    }
+    else {
+        int l_rand = genRand(0, argv.length() - 1);
+        QString l_result = QString("You spinned a wheel and got %1").arg(argv[l_rand]);
+        sendServerMessage(l_result);
+    }
+}
+
 void AOClient::cmdRps(int argc, QStringList argv)
 {
     if (argc != 1) {

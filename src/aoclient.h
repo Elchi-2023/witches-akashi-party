@@ -780,6 +780,12 @@ class AOClient : public QObject
     void changePosition(QString new_pos);
 
     /**
+     * @brief Every specific time the client sends a message to the client.
+     *
+     */
+    void globalReminder();
+
+    /**
      * @name Packet helper functions
      */
     ///@{
@@ -1506,7 +1512,25 @@ class AOClient : public QObject
      */
     void cmdRollP(int argc, QStringList argv);
 
-        /**
+    /**
+     * @brief Choose one option out of multiple things sent.
+     *
+     * @details accepts maximum of 20 arguments
+     *
+     * @iscommand
+     */
+    void cmdWheel(int argc, QStringList argv);
+
+    /**
+     * @brief Choose one option out of multiple things sent, and send result privately
+     *
+     * @details accepts maximum of 20 arguments
+     *
+     * @iscommand
+     */
+    void cmdWheelP(int argc, QStringList argv);
+
+    /**
      * @brief Rock Paper Scissors game
      *
      * @details accepts an argument of either rock, paper, or scissors
@@ -2403,6 +2427,12 @@ class AOClient : public QObject
      * @see AOClient::cmdCorn
      */
     QTimer *Corndelay;
+
+    /**
+     * @brief The timer for the global reminder delay, just a silly reminder to rest and drink.
+     *
+     */
+    QTimer *m_global_reminder_timer;
 
   signals:
 

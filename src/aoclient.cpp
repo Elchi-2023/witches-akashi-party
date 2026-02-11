@@ -56,6 +56,8 @@ const QMap<QString, AOClient::CommandInfo> AOClient::COMMANDS{
     {"roll", {{ACLRole::NONE}, 0, &AOClient::cmdRoll}},
     {"rolla", {{ACLRole::NONE}, 0, &AOClient::cmdRollA}},
     {"rollp", {{ACLRole::NONE}, 0, &AOClient::cmdRollP}},
+    {"wheel", {{ACLRole::NONE}, 0, &AOClient::cmdWheel}},
+    {"wheelp", {{ACLRole::NONE}, 0, &AOClient::cmdWheelP}},
     {"rps", {{ACLRole::NONE}, 1, &AOClient::cmdRps}},
     {"doc", {{ACLRole::NONE}, 0, &AOClient::cmdDoc}},
     {"cleardoc", {{ACLRole::NONE}, 0, &AOClient::cmdClearDoc}},
@@ -696,6 +698,11 @@ void AOClient::onAfkTimeout()
     }
 }
 
+void AOClient::globalReminder()
+{
+    sendServerMessage("Don't forget to take breaks and hydrate <3");
+}
+
 AOClient::AOClient(Server *p_server, NetworkSocket *socket, QObject *parent, int user_id, MusicManager *p_manager) :
     QObject(parent),
     m_remote_ip(socket->peerAddress()),
@@ -714,6 +721,9 @@ AOClient::AOClient(Server *p_server, NetworkSocket *socket, QObject *parent, int
     m_afk_timer = new QTimer;
     m_afk_timer->setSingleShot(true);
     connect(m_afk_timer, &QTimer::timeout, this, &AOClient::onAfkTimeout);
+    m_global_reminder_timer = new QTimer;
+    connect(m_global_reminder_timer, &QTimer::timeout, this, &AOClient::globalReminder);
+    m_global_reminder_timer->start(7200000);
     Corndelay = new QTimer;
     Corndelay->setSingleShot(true);
     connect(Corndelay, &QTimer::timeout, this, [this]{
