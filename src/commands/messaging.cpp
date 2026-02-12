@@ -224,7 +224,7 @@ void AOClient::cmdOffset(int argc, QStringList argv){
                 const int Target_X = qBound(-100, argv[0].toInt(&X_Pass) , 100); /* [https:://doc.qt.io/qt-5/qtcore/qtglobal.html#qBound] (if you are qt6 user just.. change "qt-5" to "qt-6") should explained about qbound is. . */
 
                 if (X_Pass){
-                    if (m_offset_override.isEmpty()){ /* > setup <*/
+                    if (m_offset_override.isEmpty()){ /* > setup < */
                         if (m_version.is_webao) /* another webao terms style(s) */
                             sendServerMessage(QString("Setup Horizontal-offset (server-side) to [%1] with Vertical-offset default 0.\nin this state, you cannot using your webao/client-side of the pair sliders offset (not matter what, even changing the pair sliders).\nTo revert this: do [/offset rst] if you wish to using using your webao/client-side offset.").arg(QString::number(Target_X)));
                         else
@@ -286,8 +286,8 @@ void AOClient::cmdOffset(int argc, QStringList argv){
                         else
                             sendServerMessage(QString("both-offset (server-side) is already been sets at [X: %1, Y: %2].").arg(QString::number(current_override_offset.first), QString::number(current_override_offset.second)));
 
-                    } /* > otherwise, X-offset will be focused, even the "*" or invaild < */
-                    else{
+                    }
+                    else{ /* > otherwise, X-offset will be focused, even the "*" or invaild < */
                         if (m_offset_override.isEmpty()){
                             if (m_version.is_webao)
                                 sendServerMessage(QString("Setup Horizontal-offset (server-side) to [%1] with Vertical-offset default 0.\nin this state, you cannot using your webao/client-side of the pair sliders offset (not matter what, even changing the pair sliders).\nTo revert this: do [/offset rst] if you wish to using your webao/client-side offset.").arg(QString::number(Target.first)));
@@ -300,7 +300,7 @@ void AOClient::cmdOffset(int argc, QStringList argv){
                             m_offset_override = QStringList({QString::number(current_override_offset.first), QString::number(Target.second)}).join("&");
                         }
                         else
-                            sendServerMessage(QString("Your Vertical/Y-offset (server-side) is already been set at %1.").arg(current_override_offset.second));
+                            sendServerMessage(QString("Your Horizontal/X-offset (server-side) is already been set at %1.").arg(current_override_offset.first));
                     }
                 }
                 else
