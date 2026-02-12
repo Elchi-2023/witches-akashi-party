@@ -174,52 +174,140 @@ void AOClient::cmdPairOrder(int argc, QStringList argv)
     }
 }
 
-void AOClient::cmdOffset(int argc, QStringList argv)
-{
-    int xoffset = 0;
-    int yoffset = 0;
-    bool xok;
-    bool yok;
+void AOClient::cmdOffset(int argc, QStringList argv){
+    Q_UNUSED(argc)
 
-    if (!m_offset_override.isEmpty()){ //we check if the override is empty or resetted
-        xoffset = m_offset_override.split("&")[0].toInt();
-        yoffset = m_offset_override.split("&")[1].toInt();
-    }
-
-    if (argc < 1){ //when there is no input, we show the current offset
-        sendServerMessage(QString("x offset: %1 and y offset: %2").arg(xoffset).arg(yoffset));
-        return;
-    }
-
-    if (argc == 1 && argv[0].compare("rst", Qt::CaseInsensitive) == 0){ //when the input is "rst" we reset the override to empty string.
-        m_offset_override = "";
-        sendServerMessage("Your offset is reset.");
-        return;
-    }
-
-    if (argc >= 1){ //if there is one input, change the x offset, throw an error if invalid
-        xoffset = argv[0].toInt(&xok);
-        if (!xok){
-            sendServerMessageArea("Invalid x offset, type a number between -100 and 100 or rst to reset.");
-            return;
+    if (argv.isEmpty()){ /* when there is no input, we show the current offset */
+        if (m_offset_override.isEmpty()){ /* we check if the override is empty or resetted */
+            const QPair<int, int> current_offset(qMakePair(m_offset.split("&").size() >= 1 ? m_offset.split("&")[0].toInt() : 0, m_offset.split("&").size() >= 2 ? m_offset.split("&")[1].toInt() : 0));
+            if (m_version.is_webao) /* since webao doesn't tell user about what's the pair silder value.. why not? */
+                sendServerMessage(QString("Your slider offset values is: horizontal: %1 and vertical: %2.").arg(current_offset.first).arg(current_offset.second));
+            else if (m_version.major > 8)
+                sendServerMessage(QString("Your client-side offset is: [X: %1, Y: %2].").arg(current_offset.first).arg(current_offset.second));
+            else
+                sendServerMessage(QString("Your client-side X-offset is: %1.").arg(current_offset.first));
+        }
+        else{
+            const QPair<int, int> current_override_offset(qMakePair(m_offset_override.split("&").size() >= 1 ? m_offset_override.split("&")[0].toInt() : 0, m_offset_override.split("&").size() >= 2 ? m_offset_override.split("&")[1].toInt() : 0));
+            if (!m_version.is_webao){
+                if (m_version.major > 8) /* just tell the user of the diff for non-legecy client user */
+                    sendServerMessage(QString("Your offset (server-side) is: X: %1 and Y: %2.\nDo [/offset rst] for using your client-side offset.").arg(current_override_offset.first).arg(current_override_offset.second));
+                else /* due of line 214.. this just in case */
+                    sendServerMessage(QString("Your offset is: X: %1 and Y (server-side, not supported by your client): %2.\n(note: You cannot using /offset [value] cause you using legecy client.").arg(current_override_offset.first).arg(current_override_offset.second));
+            }
+            else /* webao terms style(s) */
+                sendServerMessage(QString("Your offset (server-side) values: horizontal: %1 and vertical: %2\nDo [/offset rst] for using your webao/client-side offset.").arg(current_override_offset.first).arg(current_override_offset.second));
         }
     }
-    if (argc >= 2){ //if there is also a second input, change the y offset too, throw an error if invalid
-        yoffset = argv[1].toInt(&yok);
-        if (!yok){
-            sendServerMessageArea("Invalid y offset, type a number between -100 and 100.");
-            return;
+    else if (argv[0].compare("rst", Qt::CaseInsensitive) == 0){
+        if (!m_version.is_webao && m_version.major <= 8)
+            sendServerMessage("This command param become nothing since you using legecy client.");
+        else if (m_offset_override.isEmpty())
+            sendServerMessage("Your offset (server-side) is reseted and be using client-side offset instead.");
+        else{
+            sendServerMessage("Your offset (server-side) now reseted, you can use client-side offset now.");
+            m_offset_override.clear();
         }
     }
+    else{
+        if (!m_version.is_webao && m_version.major <= 8){ /* yeah.. i'm not sure if og legecy client could show the y-offset (unless if user is using custom legecy client..) */
+            sendServerMessage("You cannot using this command (aka /offset [value]) cause you using legecy client.");
+            return;
+        }
 
-    if (xoffset > 100 || xoffset < -100) //if the x offset or y offset are above 100 or below -100 (someone is being silly), then put them as 100 (the character won't be seen either cases)
-        xoffset = 100;
-    if (yoffset > 100 || yoffset < -100)
-        yoffset = 100;
+        const QPair<int, int> current_override_offset(qMakePair(m_offset_override.split("&").size() >= 1 ? m_offset_override.split("&")[0].toInt() : 0, m_offset_override.split("&").size() >= 2 ? m_offset_override.split("&")[1].toInt() : 0));
 
-    m_offset_override = QString("%1&%2").arg(xoffset).arg(yoffset);
-    sendServerMessage(QString("x offset: %1 and y offset: %2").arg(xoffset).arg(yoffset));
+        switch (argc){ /* why not "case 0" if you may ask?.. cause QStringList::isEmpty() helped for checker of "size() == 0 or argc == 0" anyways */
+        case 1: /* if user change/set X-offset */
+            {
+                bool X_Pass = false; /* qt6/msvc compiler warning moment if w/o default value, just in case. . */
+                const int Target_X = qBound(-100, argv[0].toInt(&X_Pass) , 100); /* [https:://doc.qt.io/qt-5/qtcore/qtglobal.html#qBound] (if you are qt6 user just.. change "qt-5" to "qt-6") should explained about qbound is. . */
 
+                if (X_Pass){
+                    if (m_offset_override.isEmpty()){ /* > setup <*/
+                        if (m_version.is_webao) /* another webao terms style(s) */
+                            sendServerMessage(QString("Setup Horizontal-offset (server-side) to [%1] with Vertical-offset default 0.\nin this state, you cannot using your webao/client-side of the pair sliders offset (not matter what, even changing the pair sliders).\nTo revert this: do [/offset rst] if you wish to using using your webao/client-side offset.").arg(QString::number(Target_X)));
+                        else
+                            sendServerMessage(QString("Setup X-offset (server-side) to [%1] with Y-offset default 0.\nin this state, you cannot using your client-side offset (not matter what, even changing the pair value).\nTo revert this: do [/offset rst] for using your client-side offset.").arg(QString::number(Target_X)));
+                        m_offset_override = QStringList({QString::number(Target_X), "0"}).join("&");
+                    }
+                    else if (current_override_offset.first != Target_X){ /* > comparing between current X=offset value and target X=offset value < */
+                        sendServerMessage(QString("Changes Horizontal/X-offset (server-side) from [%1] to [%2].").arg(QString::number(current_override_offset.first), QString::number(Target_X)));
+                        m_offset_override = QStringList({QString::number(Target_X), QString::number(current_override_offset.second)}).join("&");
+                    }
+                    else /* otherwise, tell to user if the value are same.. */
+                        sendServerMessage(QString("Your Horizontal/X-offset (server-side) is already been sets at %1").arg(current_override_offset.first));
+                }
+                else
+                    sendServerMessage(m_offset_override.isEmpty() ? "Invalid setup, type a number between -100 and 100." : "Invalid X-offset, type a number between -100 and 100.");
+            }
+        case 2: default: /* if user change/set Both offset */
+            {
+                QPair<bool, bool> V_pass = {false, false}; /* this time.. using qpair instead */
+                const QPair<int, int> Target = qMakePair(qBound(-100, argv[0].toInt(&V_pass.first) , 100), qBound(-100, argv[1].toInt(&V_pass.second) , 100));
+
+                if (argv[0].compare("*", Qt::CaseInsensitive) == 0){ /* keep X-offset as is, focus on Y-offset */
+                    if (V_pass.second){
+                        if (m_offset_override.isEmpty()){
+                            if (m_version.is_webao)
+                                sendServerMessage(QString("Setup Vertical-offset (server-side) to [%1] with Horizontal-offset default 0.\nin this state, you cannot using your webao/client-side of the pair sliders offset (not matter what, even changing the pair sliders).\nTo revert this: do [/offset rst] if you wish to using your webao/client-side offset.").arg(QString::number(Target.second)));
+                            else
+                                sendServerMessage(QString("Setup Y-offset (server-side) to [%1] with X-offset default 0.\nin this state, you cannot using your client-side offset (not matter what, even changing the pair value).\nTo revert this: do [/offset rst] for using your client-side offset.").arg(QString::number(Target.second)));
+                            m_offset_override = QStringList({"0", QString::number(Target.second)}).join("&");
+                        }
+                        else if (current_override_offset.second != Target.second){ /* > comparing between current Y-offset value and target Y-offset value < */
+                            sendServerMessage(QString("Changes Vertical/Y-offset (server-side) from [%1] to [%2].").arg(QString::number(current_override_offset.second), QString::number(Target.second)));
+                            m_offset_override = QStringList({QString::number(current_override_offset.first), QString::number(Target.second)}).join("&");
+                        }
+                        else
+                            sendServerMessage(QString("Your Vertical/Y-offset (server-side) is already been sets at %1.").arg(current_override_offset.second));
+                    }
+                    else
+                        sendServerMessage(m_offset_override.isEmpty() ? "Invalid setup, type a number between -100 and 100." : "Invalid Y-offset, type a number between -100 and 100.");
+                }
+                else if (V_pass.first){ /* > both offset(s) */
+                    if (V_pass.second){ /* > vaild Y-offset should be included < */
+                        if (m_offset_override.isEmpty()){
+                            if (m_version.is_webao)
+                                sendServerMessage(QString("Setup both-offset (server-side) to [Horizontal: %1, Vertical: %2].\nin this state, you cannot using your webao/client-side of the pair sliders offset (not matter what, even changing the pair sliders).\nTo revert this: do [/offset rst] if you wish to using your webao/client-side offset.").arg(QString::number(Target.second)));
+                            else
+                                sendServerMessage(QString("Setup both-offset (server-side) to [X: %1, Y:%2] with X-offset default 0.\nin this state, you cannot using your client-side offset (not matter what, even changing the pair value).\nTo revert this: do [/offset rst] for using your client-side offset.").arg(QString::number(Target.second)));
+                            m_offset_override = QStringList({"0", QString::number(Target.second)}).join("&");
+                        }
+                        else if (current_override_offset != Target){ /* > comparing between current offsets value and target offsets value < */
+                            if (current_override_offset.first != Target.first)
+                                sendServerMessage(QString("Changes Horizontal/X-offset (server-side) from [%1] to [%2].").arg(QString::number(current_override_offset.first), QString::number(Target.first)));
+                            else if (current_override_offset.second != Target.second)
+                                sendServerMessage(QString("Changes Vertical/Y-offset (server-side) from [%1] to [%2].").arg(QString::number(current_override_offset.second), QString::number(Target.second)));
+                            else
+                                sendServerMessage(QString("Changes both-offset (server-side) from [X: %1, Y: %2] to [X: %3, Y: %4].").arg(QString::number(current_override_offset.first), QString::number(current_override_offset.second), QString::number(Target.first), QString::number(Target.second)));
+                            m_offset_override = QStringList({QString::number(Target.first), QString::number(Target.second)}).join("&");
+                        }
+                        else
+                            sendServerMessage(QString("both-offset (server-side) is already been sets at [X: %1, Y: %2].").arg(QString::number(current_override_offset.first), QString::number(current_override_offset.second)));
+
+                    } /* > otherwise, X-offset will be focused, even the "*" or invaild < */
+                    else{
+                        if (m_offset_override.isEmpty()){
+                            if (m_version.is_webao)
+                                sendServerMessage(QString("Setup Horizontal-offset (server-side) to [%1] with Vertical-offset default 0.\nin this state, you cannot using your webao/client-side of the pair sliders offset (not matter what, even changing the pair sliders).\nTo revert this: do [/offset rst] if you wish to using your webao/client-side offset.").arg(QString::number(Target.first)));
+                            else
+                                sendServerMessage(QString("Setup X-offset (server-side) to [%1] with Y-offset default 0.\nin this state, you cannot using your client-side offset (not matter what, even changing the pair value).\nTo revert this: do [/offset rst] for using your client-side offset.").arg(QString::number(Target.first)));
+                            m_offset_override = QStringList({QString::number(Target.first), "0"}).join("&");
+                        }
+                        else if (current_override_offset.first != Target.first){
+                            sendServerMessage(QString("Changes Horizontal/X-offset (server-side) from [%1] to [%2].").arg(QString::number(current_override_offset.second), QString::number(Target.second)));
+                            m_offset_override = QStringList({QString::number(current_override_offset.first), QString::number(Target.second)}).join("&");
+                        }
+                        else
+                            sendServerMessage(QString("Your Vertical/Y-offset (server-side) is already been set at %1.").arg(current_override_offset.second));
+                    }
+                }
+                else
+                    sendServerMessage(m_offset_override.isEmpty() ? "Invalid setups, type a number between -100 and 100." : "Invalid offsets, type a number between -100 and 100.");
+            }
+        }
+    }
 }
 
 void AOClient::cmdPos(int argc, QStringList argv)
