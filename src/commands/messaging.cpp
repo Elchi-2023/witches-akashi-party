@@ -175,8 +175,6 @@ void AOClient::cmdPairOrder(int argc, QStringList argv)
 }
 
 void AOClient::cmdOffset(int argc, QStringList argv){
-    Q_UNUSED(argc)
-
     if (argv.isEmpty()){ /* when there is no input, we show the current offset */
         if (m_offset_override.isEmpty()){ /* we check if the override is empty or resetted */
             const QPair<int, int> current_offset(qMakePair(m_offset.split("&").size() >= 1 ? m_offset.split("&")[0].toInt() : 0, m_offset.split("&").size() >= 2 ? m_offset.split("&")[1].toInt() : 0));
