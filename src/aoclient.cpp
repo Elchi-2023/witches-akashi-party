@@ -51,7 +51,6 @@ const QMap<QString, AOClient::CommandInfo> AOClient::COMMANDS{
     {"offset", {{ACLRole::NONE}, 0, &AOClient::cmdOffset}},
     {"g", {{ACLRole::NONE}, 1, &AOClient::cmdG}},
     {"need", {{ACLRole::NONE}, 1, &AOClient::cmdNeed}},
-    {"corn", {{ACLRole::NONE}, 0, &AOClient::cmdCorn}},
     {"coinflip", {{ACLRole::NONE}, 0, &AOClient::cmdFlip}},
     {"roll", {{ACLRole::NONE}, 0, &AOClient::cmdRoll}},
     {"rolla", {{ACLRole::NONE}, 0, &AOClient::cmdRollA}},
@@ -724,12 +723,6 @@ AOClient::AOClient(Server *p_server, NetworkSocket *socket, QObject *parent, int
     m_global_reminder_timer = new QTimer;
     connect(m_global_reminder_timer, &QTimer::timeout, this, &AOClient::globalReminder);
     m_global_reminder_timer->start(7200000);
-    Corndelay = new QTimer;
-    Corndelay->setSingleShot(true);
-    connect(Corndelay, &QTimer::timeout, this, [this]{
-        if (m_corn_count >= 8)
-            m_corn_count = 0;
-    });
 }
 
 AOClient::~AOClient()

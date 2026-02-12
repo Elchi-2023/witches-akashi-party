@@ -391,32 +391,6 @@ void AOClient::cmdNeed(int argc, QStringList argv)
     server->broadcast(PacketFactory::createPacket("CT", {ConfigManager::serverTag(), "=== Advert ===\n[" + l_sender_area + "] needs " + l_sender_message + "."}), Server::TARGET_TYPE::ADVERT);
 }
 
-void AOClient::cmdCorn(int argc, QStringList argv)
-{
-    Q_UNUSED(argc);
-    Q_UNUSED(argv);
-
-    m_corn_count++;
-    if (Corndelay->isActive()){ /* ooc of 🌽 message bloat preventer */
-        if (m_corn_count >= 12)
-            m_socket->close(); /* "yeah.. bye-byeee, no more corn for you" -- 🌽 */
-        return;
-    }
-
-    switch (m_corn_count){
-    case 0: case 1: case 2: case 3: /* 4 steps */
-        sendServerMessageArea("🌽 " + QString(characterName().trimmed().isEmpty() ? name() : characterName().trimmed()) + " Corned 🌽");
-        break;
-    case 4: case 5: case 6: case 7: /* 3 steps */
-        sendServerMessage("You already corned.");
-        break;
-    case 8: /* last steps */
-        sendServerMessage("You already corned.");
-        Corndelay->start(60000);
-        break;
-    }
-}
-
 void AOClient::cmdSwitch(int argc, QStringList argv)
 {
     Q_UNUSED(argc);

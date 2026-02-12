@@ -676,12 +676,6 @@ class AOClient : public QObject
     QString m_other_offset = "";
     QString m_other_flip = "";
 
-    /**
-     * @brief Counting how many times /corn was casted.
-     */
-    int m_corn_count = 0;
-    
-
     ///@}
 
     /**
@@ -2420,13 +2414,6 @@ class AOClient : public QObject
      * @brief check if an RPS game is already in progress.
      */
     bool rps_waiting = false;
-
-    /**
-     * @brief The corn delay timer 🌽
-     *
-     * @see AOClient::cmdCorn
-     */
-    QTimer *Corndelay;
 
     /**
      * @brief The timer for the global reminder delay, just a silly reminder to rest and drink.
