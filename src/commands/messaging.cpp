@@ -197,6 +197,9 @@ void AOClient::cmdOffset(int argc, QStringList argv){
                 sendServerMessage(QString("Your offset (server-side) values: horizontal: %1 and vertical: %2\nDo [/offset rst] for using your webao/client-side offset.").arg(current_override_offset.first).arg(current_override_offset.second));
         }
     }
+
+
+
     else if (argv[0].compare("rst", Qt::CaseInsensitive) == 0){
         if (!m_version.is_webao && m_version.major <= 8)
             sendServerMessage("This command param become nothing since you using legecy client.");
@@ -239,6 +242,7 @@ void AOClient::cmdOffset(int argc, QStringList argv){
                 else
                     sendServerMessage(m_offset_override.isEmpty() ? "Invalid setup, type a number between -100 and 100." : "Invalid X-offset, type a number between -100 and 100.");
             }
+            break;
         case 2: default: /* if user change/set Both offset */
             {
                 QPair<bool, bool> V_pass = {false, false}; /* this time.. using qpair instead */
