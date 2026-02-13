@@ -268,9 +268,9 @@ void AOClient::cmdOffset(int argc, QStringList argv){
                     if (V_pass.second){ /* > vaild Y-offset should be included < */
                         if (m_offset_override.isEmpty()){
                             if (m_version.is_webao)
-                                sendServerMessage(QString("Setup both-offset (server-side) to [Horizontal: %1, Vertical: %2].\nin this state, you cannot using your webao/client-side of the pair sliders offset (not matter what, even changing the pair sliders).\nTo revert this: do [/offset rst] if you wish to using your webao/client-side offset.").arg(QString::number(Target.second)));
+                                sendServerMessage(QString("Setup both-offset (server-side) to [Horizontal: %1, Vertical: %2].\nin this state, you cannot using your webao/client-side of the pair sliders offset (not matter what, even changing the pair sliders).\nTo revert this: do [/offset rst] if you wish to using your webao/client-side offset.").arg(QString::number(Target.first), QString::number(Target.second)));
                             else
-                                sendServerMessage(QString("Setup both-offset (server-side) to [X: %1, Y:%2] with X-offset default 0.\nin this state, you cannot using your client-side offset (not matter what, even changing the pair value).\nTo revert this: do [/offset rst] for using your client-side offset.").arg(QString::number(Target.second)));
+                                sendServerMessage(QString("Setup both-offset (server-side) to [X: %1, Y:%2] with X-offset default 0.\nin this state, you cannot using your client-side offset (not matter what, even changing the pair value).\nTo revert this: do [/offset rst] for using your client-side offset.").arg(QString::number(Target.first), QString::number(Target.second)));
                             m_offset_override = QStringList({"0", QString::number(Target.second)}).join("&");
                         }
                         else if (current_override_offset != Target){ /* > comparing between current offsets value and target offsets value < */
