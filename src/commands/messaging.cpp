@@ -197,9 +197,6 @@ void AOClient::cmdOffset(int argc, QStringList argv){
                 sendServerMessage(QString("Your offset (server-side) values: horizontal: %1 and vertical: %2\nDo [/offset rst] for using your webao/client-side offset.").arg(current_override_offset.first).arg(current_override_offset.second));
         }
     }
-
-
-
     else if (argv[0].compare("rst", Qt::CaseInsensitive) == 0){
         if (!m_version.is_webao && m_version.major <= 8)
             sendServerMessage("This command param become nothing since you using legecy client.");
