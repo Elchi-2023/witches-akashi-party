@@ -305,6 +305,7 @@ void AOClient::cmdOffset(int argc, QStringList argv){
                 else
                     sendServerMessage(m_offset_override.isEmpty() ? "Invalid setups, type a number between -100 and 100." : "Invalid offsets, type a number between -100 and 100.");
             }
+            break;
         }
     }
 }
