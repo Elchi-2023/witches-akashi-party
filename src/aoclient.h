@@ -468,6 +468,14 @@ class AOClient : public QObject
     void sendServerBroadcast(QString message);
 
     /**
+     * @brief Same like server::broadcast, to every client in the client's area.
+     *
+     * @param An packet to send.
+     *
+     */
+    void sendServerPacketArea(AOPacket *packet);
+
+    /**
      * @brief Calls AOClient::updateEvidenceList() for every client in the current client's area.
      *
      * @param area The current client's area.

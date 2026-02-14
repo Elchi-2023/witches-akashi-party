@@ -549,6 +549,9 @@ void AOClient::sendServerBroadcast(QString message)
 {
     server->broadcast(PacketFactory::createPacket("CT", {ConfigManager::serverTag(), message, "1"}));
 }
+void AOClient::sendServerPacketArea(AOPacket *packet){
+    server->broadcast(packet, areaId());
+}
 
 bool AOClient::checkPermission(ACLRole::Permission f_permission) const
 {

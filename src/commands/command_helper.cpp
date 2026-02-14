@@ -104,9 +104,9 @@ void AOClient::diceThrower(int sides, int dice, bool p_roll, int roll_modifier)
         return;
     }
     if (roll_modifier)
-        sendServerMessageArea(name() + " rolled a " + QString::number(dice) + "d" + QString::number(sides) + "+" + QString::number(roll_modifier) + ". Results: " + total_results);
+        sendServerMessageArea("[" + QString::number(clientId()) + "] " + QString(character().isEmpty() ? name() : character()) + " rolled a " + QString::number(dice) + "d" + QString::number(sides) + "+" + QString::number(roll_modifier) + ". Results: " + total_results);
     else
-        sendServerMessageArea(name() + " rolled a " + QString::number(dice) + "d" + QString::number(sides) + ". Results: " + total_results);
+        sendServerMessageArea("[" + QString::number(clientId()) + "] " + QString(character().isEmpty() ? name() : character()) + " rolled a " + QString::number(dice) + "d" + QString::number(sides) + ". Results: " + total_results);
 }
 
 QString AOClient::getAreaTimer(int area_idx, int timer_idx)

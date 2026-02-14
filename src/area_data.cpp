@@ -543,7 +543,7 @@ QStringList AreaData::getNotecards()
 
     while (l_noteIter.hasNext()) {
         l_noteIter.next();
-        l_notecards << l_noteIter.key() << ": " << l_noteIter.value() << "\n";
+        l_notecards << l_noteIter.key() << ": " << l_noteIter.value();
     }
 
     m_notecards.clear();
