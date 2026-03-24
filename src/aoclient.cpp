@@ -275,7 +275,7 @@ void AOClient::handlePacket(AOPacket *packet)
                         continue;
 
                     if (l_client == this) /* "this" ... current client (aka user) lol */
-                        l_client->sendServerMessage("You are no longer AFK.");
+                        l_client->sendServerMessage("You are no longer AFK, Welcome back.");
                     else if (!l_client->isSpectator() && l_client->m_afk_received) /* lgnored spectator for moment.. */
                         l_client->sendServerMessage(QString("[%1] %2 are no longer AFK.").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character()));
                 }

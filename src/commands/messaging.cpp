@@ -376,12 +376,17 @@ void AOClient::cmdG(int argc, QStringList argv)
     }
     if (m_is_disemvoweled)
         l_sender_message = QString(l_sender_message).remove(QRegularExpression("[AEIOUaeiou]"));
-        
-    // Better readability thanks to AwesomeAim.
-    AOPacket *l_mod_packet = PacketFactory::createPacket("CT", {QString("[G][%1][%2]%3").arg(m_ipid, l_sender_area, l_sender_name), l_sender_message});
-    AOPacket *l_user_packet = PacketFactory::createPacket("CT", {"[G][" + l_sender_area + "]" + l_sender_name, l_sender_message});
-    server->broadcast(l_user_packet, l_mod_packet, Server::TARGET_TYPE::AUTHENTICATED);
-    return;
+
+    for (AOClient *I : server->getClients()){
+        if (QPointer<AOClient>(I).isNull() || !I->m_global_enabled)
+            continue;
+
+        /* formatting would be like "[user area][user name]" instead of "[username]" */
+        QStringList Name({"[" + l_sender_area + "]", "[" + l_sender_name + "]"});
+        if (I->isAuthenticated())
+            Name.prepend("[" + m_ipid + "]");
+        I->sendPacket("CT", {Name.join(""), l_sender_message});
+    }
 }
 
 void AOClient::cmdNeed(int argc, QStringList argv)
@@ -780,9 +785,9 @@ void AOClient::cmdAfk(int argc, QStringList argv)
                 continue;
 
             if (l_client == this) /* "this" ... current client (aka user) lol */
-                l_client->sendServerMessage("You are AFK.");
+                l_client->sendServerMessage("You are AFK, Have an nice day.");
             else if (!l_client->isSpectator() && l_client->m_afk_received) /* lgnored spectator for moment.. */
-                l_client->sendServerMessage(QString("[%1] %2 are no longer AFK.").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character()));
+                l_client->sendServerMessage(QString("[%1] %2 are AFK.").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character()));
         }
     }
     else
