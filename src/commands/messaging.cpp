@@ -378,14 +378,14 @@ void AOClient::cmdG(int argc, QStringList argv)
         l_sender_message = QString(l_sender_message).remove(QRegularExpression("[AEIOUaeiou]"));
 
     for (AOClient *I : server->getClients()){
-        if (QPointer<AOClient>(I).isNull() || !I->m_global_enabled)
+        if (QPointer<AOClient>(I).isNull() || !I->m_joined || !I->m_global_enabled)
             continue;
 
         /* formatting would be like "[user area][user name]" instead of "[username]" */
         QStringList Name({"[" + l_sender_area + "]", "[" + l_sender_name + "]"});
         if (I->isAuthenticated())
             Name.prepend("[" + m_ipid + "]");
-        I->sendPacket("CT", {Name.join(""), l_sender_message});
+        I->sendPacket("CT", {"[G]" + Name.join(""), l_sender_message});
     }
 }
 
