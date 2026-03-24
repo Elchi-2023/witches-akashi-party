@@ -56,7 +56,7 @@ void PacketMS::handlePacket(AreaData *area, AOClient &client) const
 
     if (evidence_presented){ /* Send individual packets to each client with correct evidence indices */
         for (int Index : area->joinedIDs()){
-            auto l_client = QPointer<AOClient>(client.getServer()->getClientByID(Index));
+            auto l_client = client.getServer()->getClientByID(Index);
             if (l_client.isNull())
                 continue;
 
@@ -341,7 +341,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         QPair<int, QStringList> l_other_data = qMakePair(0, QStringList{"", "", ""});
 
         if (area->checkPairSync(client.clientId())){ /* [Pair Sync] server-side */
-            auto target_synced = QPointer<AOClient>(client.getServer()->getClientByID(area->getPairSyncList()[client.clientId()]));
+            auto target_synced = client.getServer()->getClientByID(area->getPairSyncList()[client.clientId()]);
             if (!target_synced.isNull() && area->joinedIDs().contains(target_synced->clientId())){ /* capture target from current area */
                 if (area->checkPairSync(target_synced->clientId())){ /* target were in pair_sync list */
                     if (area->get_pair_sync_clientID(target_synced->clientId()) == client.clientId()){ /* when user been targeted by that targets */
@@ -371,7 +371,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
 
         /* heavy scans clients on current area */
         for (int _clientid : area->joinedIDs()){
-            const auto Target_client = QPointer<AOClient>(client.getServer()->getClientByID(_clientid));
+            const auto Target_client = client.getServer()->getClientByID(_clientid);
             if (Target_client.isNull()) /* another smart pointer guards */
                 continue; /* Prevented */
 

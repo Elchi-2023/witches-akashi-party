@@ -48,7 +48,7 @@ QStringList AOClient::buildAreaList(int area_idx)
     entries.append("=== " + title.join(" ") + " ===");
 
     for (int Index : area->joinedIDs()){
-        const auto client = QPointer<AOClient>(server->getClientByID(Index));
+        const auto client = server->getClientByID(Index);
         if (!client.isNull()){
             QStringList Entry("[" + QString::number(client->clientId()) + "] ");
             Entry.append(client->isSpectator() ? "Spectator" : client->character());

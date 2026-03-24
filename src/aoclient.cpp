@@ -270,7 +270,7 @@ void AOClient::handlePacket(AOPacket *packet)
             if (m_afk_announcement){
                 auto current_area = server->getAreaById(areaId());
                 for (const int client_id : current_area->joinedIDs()){
-                    auto l_client = QPointer<AOClient>(server->getClientByID(client_id));
+                    auto l_client = server->getClientByID(client_id);
                     if (l_client.isNull())
                         continue;
 
@@ -346,8 +346,8 @@ void AOClient::changeArea(int new_area)
     sendServerMessage("You moved to area " + server->getAreaName(areaId()));
     if (previous_area->checkPairSync(clientId())){
         sendServerMessage("Reseted sync pairing.");
-        AOClient *target = server->getClientByID(previous_area->get_pair_sync_clientID(clientId()));
-        if (target != nullptr){
+        auto target = server->getClientByID(previous_area->get_pair_sync_clientID(clientId()));
+        if (!target.isNull()){
             if (previous_area->joinedIDs().contains(target->clientId()) && previous_area->get_pair_sync_clientID(clientId()) == target->clientId() && previous_area->removePairSync(target->clientId()))
                 target->sendServerMessage(QString("You aren't longer synced pairing with [%1] %2, target moved area.").arg(QString::number(target->clientId()), target->character().isEmpty() ? "Spectator" : target->character()));
         }
@@ -463,15 +463,15 @@ void AOClient::arup(ARUPType type, bool broadcast)
         }
         case ARUPType::CM:
         {
-            if (l_area->owners().isEmpty()) {
+            if (l_area->owners().isEmpty())
                 l_arup_data.append("FREE");
-            }
-            else {
+            else{
                 QStringList l_area_owners;
                 const QList<int> l_owner_ids = l_area->owners();
-                for (int l_owner_id : l_owner_ids) {
-                    AOClient *l_owner = server->getClientByID(l_owner_id);
-                    l_area_owners.append("[" + QString::number(l_owner->clientId()) + "] " + l_owner->character());
+                for (int l_owner_id : l_owner_ids){
+                    auto l_owner = server->getClientByID(l_owner_id);
+                    if (!l_owner.isNull())
+                        l_area_owners.append("[" + QString::number(l_owner->clientId()) + "] " + l_owner->character());
                 }
                 l_arup_data.append(l_area_owners.join(", "));
             }
@@ -684,7 +684,7 @@ void AOClient::onAfkTimeout()
         if (m_afk_announcement){
             auto current_area = server->getAreaById(areaId());
             for (const int client_id : current_area->joinedIDs()){
-                auto l_client = QPointer<AOClient>(server->getClientByID(client_id));
+                auto l_client = server->getClientByID(client_id);
                 if (l_client.isNull())
                     continue;
 

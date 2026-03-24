@@ -55,14 +55,14 @@ void AOClient::cmdCM(int argc, QStringList argv){
         break;
     case 1: default: /* doesn't hurts when argc >= 1, right?.. */
         bool vaild;
-        const AOClient *owner_candidate = server->getClientByID(argv[0].toInt(&vaild)); /* why const?.. because not been modified if just get info */
+        const auto owner_candidate = server->getClientByID(argv[0].toInt(&vaild)); /* why const?.. because not been modified if just get info */
         
         if (m_authenticated){
             if (!vaild)
                 sendServerMessage("That doesn't look like a valid ID.");
             else if (!checkPermission(ACLRole::CM)) /* preventing user for use this if their not an moderator/authenticated or in area owner */
                 sendServerMessage("You must become a CM to use this command. (or you don't have \"CM\" permission");
-            else if (owner_candidate == nullptr)
+            else if (owner_candidate.isNull())
                 sendServerMessage("Unable to find client with ID " + argv[0] + ".");
             else if (current_area->owners().contains(owner_candidate->clientId()))
                 sendServerMessage(QString("%1 already a CM in this area.").arg(owner_candidate->clientId() == clientId() ? "You are" : "User is"));
@@ -117,7 +117,7 @@ void AOClient::cmdUnCM(int argc, QStringList argv){
                 sendServerMessage("Invalid user ID.");
             else if (!current_area->owners().contains(uid))
                 sendServerMessage("That user weren't CMed.");
-            else if (server->getClientByID(uid) == nullptr)
+            else if (server->getClientByID(uid).isNull())
                 sendServerMessage("No client with that ID found.");
             else if (uid == clientId()){ /* imagine if someone want been uncm themself */
                 if (current_area->removeOwner(clientId()))
@@ -126,7 +126,7 @@ void AOClient::cmdUnCM(int argc, QStringList argv){
                 arup(ARUPType::CM, true);
             }
             else{
-                AOClient *target = server->getClientByID(uid);
+                auto target = server->getClientByID(uid);
                 sendServerMessage(QString("[%1] %2 was successfully unCMed.").arg(QString::number(target->clientId()), target->name().isEmpty() ? target->m_current_char.isEmpty() ? "Spectator" : target->m_current_char : target->name()));
                 target->sendServerMessage(QString("You have been unCMed by %1.").arg(m_authenticated ? "a moderator" : "a others CMs")); /* let target know who uncmed them between moderator and others cms */
                 if (current_area->removeOwner(target->clientId()))
@@ -144,7 +144,7 @@ void AOClient::cmdInvite(int argc, QStringList argv){
     int l_invited_id = argv[0].toInt(&VaildID);
     AreaData *l_area = server->getAreaById(areaId());
     if (VaildID){
-        auto target_client = QPointer<AOClient>(server->getClientByID(l_invited_id));
+        auto target_client = server->getClientByID(l_invited_id);
         if (target_client.isNull())
             sendServerMessage("No client with that ID found.");
         else if (l_area->invite(l_invited_id)){
@@ -166,7 +166,7 @@ void AOClient::cmdUnInvite(int argc, QStringList argv)
     int l_uninvited_id = argv[0].toInt(&VaildID);
     AreaData *l_area = server->getAreaById(areaId());
     if (VaildID){
-        auto target_client = QPointer<AOClient>(server->getClientByID(l_uninvited_id));
+        auto target_client = server->getClientByID(l_uninvited_id);
         if (target_client.isNull())
             sendServerMessage("No client with that ID found.");
         else if (l_area->owners().contains(target_client->clientId()))
@@ -193,7 +193,7 @@ void AOClient::cmdLock(int argc, QStringList argv){
         sendServerMessageArea("This area is now locked.");
         area->lock();
         for (const int I : area->joinedIDs()){
-            const auto Joined_Client = QPointer<AOClient>(server->getClientByID(I));
+            const auto Joined_Client = server->getClientByID(I);
             if (Joined_Client.isNull() || !Joined_Client->hasJoined())
                 continue;
             area->invite(Joined_Client->clientId());
@@ -213,7 +213,7 @@ void AOClient::cmdSpectatable(int argc, QStringList argv){
         sendServerMessageArea("This area is now spectatable.");
         l_area->spectatable();
         for (const int I : l_area->joinedIDs()){
-            const auto Joined_Client = QPointer<AOClient>(server->getClientByID(I));
+            const auto Joined_Client = server->getClientByID(I);
             if (Joined_Client.isNull() || !Joined_Client->hasJoined())
                 continue;
             l_area->invite(Joined_Client->clientId());
@@ -276,7 +276,7 @@ void AOClient::cmdAreaKick(int argc, QStringList argv){
     bool VaildID;
     int l_idx = argv[0].toInt(&VaildID);
     if (VaildID){
-        auto Target_kick = QPointer<AOClient>(server->getClientByID(l_idx));
+        auto Target_kick = server->getClientByID(l_idx);
 
         if (Target_kick.isNull())
             sendServerMessage("No client with that ID found.");
@@ -448,7 +448,7 @@ void AOClient::cmdWebfiles(int argc, QStringList argv){
     QStringList l_weblinks;
     const auto clients = server->getAreaById(areaId())->joinedIDs();
     for (int Index : clients){
-        if (server->getClientByID(Index) && !server->getClientByID(Index)->character().isEmpty()){ /* it just me.. or AOClient::isSpectator() buggy?.. unsure yet.. */
+        if (!server->getClientByID(Index).isNull() && !server->getClientByID(Index)->character().isEmpty()){ /* it just me.. or AOClient::isSpectator() buggy?.. unsure yet.. */
             const auto l_client = server->getClientByID(Index);
             if (l_client->m_current_iniswap.isEmpty())
                 l_weblinks.append(QString("%1 [%2] %3 using: %4").arg(l_client == this ? " ➤ " : " · ", QString::number(l_client->clientId()), l_client->characterName().isEmpty() ? l_client->name().isEmpty() ? "[Unknown]" : l_client->name() : l_client->characterName(), l_client->character()));

@@ -50,8 +50,8 @@ void PacketMA::handlePacket(AreaData *area, AOClient &client) const
         }
     }
 
-    AOClient *target = client.getServer()->getClientByID(client_id);
-    if (target == nullptr) {
+    auto target = client.getServer()->getClientByID(client_id);
+    if (target.isNull()) {
         client.sendServerMessage("User not found.");
         return;
     }
@@ -62,7 +62,7 @@ void PacketMA::handlePacket(AreaData *area, AOClient &client) const
     else
         moderator_name = "Moderator";
 
-    QList<AOClient *> clients = client.getServer()->getClientsByIpid(target->m_ipid);
+    QList<QPointer<AOClient>> clients = client.getServer()->getClientsByIpid(target->m_ipid);
     if (is_kick) {
         for (int index = 0; index < clients.size(); ++index){
             clients[index]->m_is_multiclient = index != 0;

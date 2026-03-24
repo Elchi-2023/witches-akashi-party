@@ -29,7 +29,7 @@
 void AOClient::sendEvidenceList(AreaData *area) const
 {
     for (int index : area->joinedIDs()){
-        auto l_client = QPointer<AOClient>(server->getClientByID(index));
+        auto l_client = server->getClientByID(index);
         if (l_client.isNull())
             continue;
         l_client->updateEvidenceList(area);

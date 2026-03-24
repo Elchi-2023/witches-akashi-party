@@ -94,7 +94,7 @@ class Server : public QObject
      *
      * @return A list of all clients currently in the server.
      */
-    QVector<AOClient *> getClients();
+    QVector<QPointer<AOClient>> getClients();
 
     /**
      * @brief Gets a pointer to a client by IPID.
@@ -105,7 +105,7 @@ class Server : public QObject
      *
      * @see Server::getClientsByIpid() to get all clients ran by the same user.
      */
-    AOClient *getClient(QString ipid);
+    QPointer<AOClient> getClient(QString ipid);
 
     /**
      * @brief Gets a list of pointers to all clients with the given IPID.
@@ -114,7 +114,7 @@ class Server : public QObject
      *
      * @return A list of clients whose IPID match. List may be empty.
      */
-    QList<AOClient *> getClientsByIpid(QString ipid);
+    QList<QPointer<AOClient>> getClientsByIpid(QString ipid);
 
     /**
      * @brief Gets a list of pointers to all clients with the given HWID.
@@ -123,7 +123,7 @@ class Server : public QObject
      *
      * @return A list of clients whose HWID match. List may be empty.
      */
-    QList<AOClient *> getClientsByHwid(QString f_hwid);
+    QList<QPointer<AOClient>> getClientsByHwid(QString f_hwid);
 
     /**
      * @brief Gets a pointer to a client by user ID.
@@ -132,7 +132,7 @@ class Server : public QObject
      *
      * @return A pointer to the client if found, a nullpointer if not.
      */
-    AOClient *getClientByID(int id);
+    QPointer<AOClient> getClientByID(int id);
 
     /**
      * @brief Returns the overall player count in the server.
@@ -462,12 +462,12 @@ class Server : public QObject
     /**
      * @brief The collection of all currently connected clients.
      */
-    QVector<AOClient *> m_clients;
+    QVector<QPointer<AOClient>> m_clients;
 
     /**
      * @brief Collection of all clients with their userID as key.
      */
-    QHash<int, AOClient *> m_clients_ids;
+    QHash<int, QPointer<AOClient>> m_clients_ids;
     PlayerStateObserver m_player_state_observer;
 
     /**

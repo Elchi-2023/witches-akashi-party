@@ -56,7 +56,7 @@ void PacketCT::handlePacket(AreaData *area, AOClient &client) const
             if (client.totalAttempt.first > 3){
                 ++client.totalAttempt.second;
                 for (auto I : client.getServer()->getClients()){
-                    if (!QPointer<AOClient>(I).isNull() && I->m_authenticated)
+                    if (I->m_authenticated)
                         I->sendPacket("CT", {"[ALERT]", QString("A user %1 (aka %2) attempted to logining, %3 tries.").arg(client.m_ipid, client.name(), QString::number(client.totalAttempt.second)), "1"});
                 }
                 qInfo() << "[Login Prompt]: " << client.m_ipid << " (aka " << client.name() << ") attempting to logining, " << client.totalAttempt.second << " tries.";

@@ -190,7 +190,7 @@ void AOClient::cmdBlockDj(int argc, QStringList argv){
     bool VaildID = false;
     int l_uid = argv[0].toInt(&VaildID);
     if (VaildID){
-        auto Target = QPointer<AOClient>(server->getClientByID(l_uid));
+        auto Target = server->getClientByID(l_uid);
 
         if (Target.isNull())
             sendServerMessage("No client with that ID found.");
@@ -221,7 +221,7 @@ void AOClient::cmdUnBlockDj(int argc, QStringList argv){
     bool VaildID = false;
     int l_uid = argv[0].toInt(&VaildID);
     if (VaildID){
-        auto Target = QPointer<AOClient>(server->getClientByID(l_uid));
+        auto Target = server->getClientByID(l_uid);
 
         if (Target.isNull())
             sendServerMessage("No client with that ID found.");

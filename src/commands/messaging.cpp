@@ -98,7 +98,7 @@ void AOClient::cmdPair(int argc, QStringList argv)
         return;
     }
     else{
-        auto l_target_client = QPointer<AOClient>(server->getClientByID(l_target_id));
+        auto l_target_client = server->getClientByID(l_target_id);
         if (l_target_client.isNull()) {
             sendServerMessage("Target ID not found!");
             return;
@@ -326,7 +326,7 @@ void AOClient::cmdForcePos(int argc, QStringList argv)
     QList<AOClient *> l_targets;
     int l_target_id = argv[1].toInt(&ok);
     if (ok){
-        auto l_target_client = QPointer<AOClient>(server->getClientByID(l_target_id));
+        auto l_target_client = server->getClientByID(l_target_id);
         if (l_target_client.isNull())
             sendServerMessage("Target ID not found!");
         else if (!server->getAreaById(areaId())->joinedIDs().contains(l_target_client->clientId()))
@@ -341,7 +341,7 @@ void AOClient::cmdForcePos(int argc, QStringList argv)
         const auto current_area = server->getAreaById(areaId());
         int vaildClient = 0;
         for (int Index : current_area->joinedIDs()){
-            auto target = QPointer<AOClient>(server->getClientByID(Index));
+            auto target = server->getClientByID(Index);
             if (target.isNull())
                 continue;
             target->sendServerMessage("Position forcibly changed by CM.");
@@ -377,8 +377,8 @@ void AOClient::cmdG(int argc, QStringList argv)
     if (m_is_disemvoweled)
         l_sender_message = QString(l_sender_message).remove(QRegularExpression("[AEIOUaeiou]"));
 
-    for (AOClient *I : server->getClients()){
-        if (QPointer<AOClient>(I).isNull() || !I->m_joined || !I->m_global_enabled)
+    for (auto I : server->getClients()){
+        if (!I->m_joined || !I->m_global_enabled)
             continue;
 
         /* formatting would be like "[user area][user name]" instead of "[username]" */
@@ -453,7 +453,7 @@ void AOClient::cmdPM(int argc, QStringList argv)
         return;
     }
     else{
-        auto l_target_client = QPointer<AOClient>(server->getClientByID(l_target_id));
+        auto l_target_client = server->getClientByID(l_target_id);
         if (l_target_client.isNull())
             sendServerMessage("No client with that ID found.");
         else if (l_target_client->m_pm_mute)
@@ -528,9 +528,9 @@ void AOClient::cmdGimp(int argc, QStringList argv)
         return;
     }
 
-    AOClient *l_target = server->getClientByID(l_uid);
+    auto l_target = server->getClientByID(l_uid);
 
-    if (l_target == nullptr) {
+    if (l_target.isNull()) {
         sendServerMessage("No client with that ID found.");
         return;
     }
@@ -555,9 +555,9 @@ void AOClient::cmdUnGimp(int argc, QStringList argv)
         return;
     }
 
-    AOClient *l_target = server->getClientByID(l_uid);
+    auto l_target = server->getClientByID(l_uid);
 
-    if (l_target == nullptr) {
+    if (l_target.isNull()) {
         sendServerMessage("No client with that ID found.");
         return;
     }
@@ -582,9 +582,9 @@ void AOClient::cmdDisemvowel(int argc, QStringList argv)
         return;
     }
 
-    AOClient *l_target = server->getClientByID(l_uid);
+    auto l_target = server->getClientByID(l_uid);
 
-    if (l_target == nullptr) {
+    if (l_target.isNull()) {
         sendServerMessage("No client with that ID found.");
         return;
     }
@@ -609,9 +609,9 @@ void AOClient::cmdUnDisemvowel(int argc, QStringList argv)
         return;
     }
 
-    AOClient *l_target = server->getClientByID(l_uid);
+    auto l_target = server->getClientByID(l_uid);
 
-    if (l_target == nullptr) {
+    if (l_target.isNull()) {
         sendServerMessage("No client with that ID found.");
         return;
     }
@@ -636,9 +636,9 @@ void AOClient::cmdShake(int argc, QStringList argv)
         return;
     }
 
-    AOClient *l_target = server->getClientByID(l_uid);
+    auto l_target = server->getClientByID(l_uid);
 
-    if (l_target == nullptr) {
+    if (l_target.isNull()) {
         sendServerMessage("No client with that ID found.");
         return;
     }
@@ -663,9 +663,9 @@ void AOClient::cmdUnShake(int argc, QStringList argv)
         return;
     }
 
-    AOClient *l_target = server->getClientByID(l_uid);
+    auto l_target = server->getClientByID(l_uid);
 
-    if (l_target == nullptr) {
+    if (l_target.isNull()) {
         sendServerMessage("No client with that ID found.");
         return;
     }
@@ -690,9 +690,9 @@ void AOClient::cmdMedieval(int argc, QStringList argv)
         return;
     }
 
-    AOClient *l_target = server->getClientByID(l_uid);
+    auto l_target = server->getClientByID(l_uid);
 
-    if (l_target == nullptr) {
+    if (l_target.isNull()) {
         sendServerMessage("No client with that ID found.");
         return;
     }
@@ -717,9 +717,9 @@ void AOClient::cmdUnMedieval(int argc, QStringList argv)
         return;
     }
 
-    AOClient *l_target = server->getClientByID(l_uid);
+    auto l_target = server->getClientByID(l_uid);
 
-    if (l_target == nullptr) {
+    if (l_target.isNull()) {
         sendServerMessage("No client with that ID found.");
         return;
     }
@@ -780,7 +780,7 @@ void AOClient::cmdAfk(int argc, QStringList argv)
     if (m_afk_announcement){
         auto current_area = server->getAreaById(areaId());
         for (const int client_id : current_area->joinedIDs()){
-            auto l_client = QPointer<AOClient>(server->getClientByID(client_id));
+            auto l_client = server->getClientByID(client_id);
             if (l_client.isNull())
                 continue;
 

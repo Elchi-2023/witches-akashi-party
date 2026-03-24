@@ -130,7 +130,7 @@ void Server::start()
     }
 }
 
-QVector<AOClient *> Server::getClients()
+QVector<QPointer<AOClient>> Server::getClients()
 {
     return m_clients;
 }
@@ -151,7 +151,7 @@ void Server::clientConnected()
     }
 
     int user_id = m_available_ids.pop();
-    AOClient *client = new AOClient(this, l_socket, l_socket, user_id, music_manager);
+    QPointer<AOClient> client(new AOClient(this, l_socket, l_socket, user_id, music_manager));
     m_clients_ids.insert(user_id, client);
     m_player_state_observer.registerClient(client);
 
@@ -161,8 +161,8 @@ void Server::clientConnected()
         client->calculateIpid();
     auto ban = db_manager->isIPBanned(client->getIpid());
     const bool is_banned = ban.first;
-    for (AOClient *joined_client : qAsConst(m_clients)){
-        if (QPointer<AOClient>(joined_client).isNull())
+    for (auto joined_client : qAsConst(m_clients)){
+        if (joined_client.isNull())
             continue;
 
         if (client->m_remote_ip.isEqual(joined_client->m_remote_ip))
@@ -235,7 +235,7 @@ void Server::updateCharsTaken(AreaData *area)
     AOPacket *response_cc = PacketFactory::createPacket("CharsCheck", chars_taken);
 
     for (auto l_client : qAsConst(m_clients)){
-        if (QPointer<AOClient>(l_client).isNull() || l_client->areaId() != area->index())
+        if (l_client.isNull() || l_client->areaId() != area->index())
             continue;
 
         if (l_client->m_is_charcursed){
@@ -297,7 +297,7 @@ void Server::broadcast(AOPacket *packet, int area_index)
 {
     QVector<int> l_client_ids = m_areas.value(area_index)->joinedIDs();
     for (const int l_client_id : qAsConst(l_client_ids)){
-        auto client = QPointer<AOClient>(getClientByID(l_client_id));
+        auto client = getClientByID(l_client_id);
         if (client.isNull())
             continue;
 
@@ -307,8 +307,8 @@ void Server::broadcast(AOPacket *packet, int area_index)
 
 void Server::broadcast(AOPacket *packet)
 {
-    for (AOClient *l_client : qAsConst(m_clients)){
-        if (QPointer<AOClient>(l_client).isNull())
+    for (auto l_client : qAsConst(m_clients)){
+        if (l_client.isNull())
             continue;
 
         l_client->sendPacket(packet);
@@ -317,8 +317,8 @@ void Server::broadcast(AOPacket *packet)
 
 void Server::broadcast(AOPacket *packet, TARGET_TYPE target)
 {
-    for (AOClient *l_client : qAsConst(m_clients)){
-        if (QPointer<AOClient>(l_client).isNull())
+    for (auto l_client : qAsConst(m_clients)){
+        if (l_client.isNull())
             continue;
 
         switch (target) {
@@ -344,7 +344,7 @@ void Server::broadcast(AOPacket *packet, int area_index, TARGET_TYPE target)
 {
     QVector<int> l_client_ids = m_areas.value(area_index)->joinedIDs();
     for (const int l_client_id : std::as_const(l_client_ids)){
-        auto l_client = QPointer<AOClient>(getClientByID(l_client_id));
+        auto l_client = getClientByID(l_client_id);
         if (l_client.isNull())
             continue;
 
@@ -387,17 +387,24 @@ void Server::broadcast(AOPacket *packet, AOPacket *other_packet, TARGET_TYPE tar
     }
 }
 void Server::unicast(AOPacket *f_packet, int f_client_id){
-    auto l_client = QPointer<AOClient>(getClientByID(f_client_id));
+    auto l_client = getClientByID(f_client_id);
     if (l_client.isNull()) /* This should never happen, but safety first. */
         return;
     l_client->sendPacket(f_packet);
 }
 
-QList<AOClient *> Server::getClientsByIpid(QString ipid)
+QPointer<AOClient> Server::getClient(QString ipid){
+    const QList<QPointer<AOClient>> list = getClientsByIpid(ipid);
+    if (list.isEmpty())
+        return QPointer<AOClient>();
+    return list[0];
+}
+
+QList<QPointer<AOClient>> Server::getClientsByIpid(QString ipid)
 {
-    QList<AOClient *> return_clients;
-    for (AOClient *l_client : qAsConst(m_clients)){
-        if (QPointer<AOClient>(l_client).isNull())
+    QList<QPointer<AOClient>> return_clients;
+    for (auto l_client : qAsConst(m_clients)){
+        if (l_client.isNull())
             continue;
 
         if (l_client->getIpid() == ipid)
@@ -406,11 +413,11 @@ QList<AOClient *> Server::getClientsByIpid(QString ipid)
     return return_clients;
 }
 
-QList<AOClient *> Server::getClientsByHwid(QString f_hwid)
+QList<QPointer<AOClient>> Server::getClientsByHwid(QString f_hwid)
 {
-    QList<AOClient *> return_clients;
-    for (AOClient *l_client : qAsConst(m_clients)){
-        if (QPointer<AOClient>(l_client).isNull())
+    QList<QPointer<AOClient>> return_clients;
+    for (auto l_client : qAsConst(m_clients)){
+        if (l_client.isNull())
             continue;
 
         if (l_client->getHwid() == f_hwid)
@@ -419,7 +426,7 @@ QList<AOClient *> Server::getClientsByHwid(QString f_hwid)
     return return_clients;
 }
 
-AOClient *Server::getClientByID(int id)
+QPointer<AOClient> Server::getClientByID(int id)
 {
     return m_clients_ids.value(id);
 }
@@ -599,8 +606,8 @@ bool Server::isIPBanned(QHostAddress f_remote_IP)
 
 Server::~Server()
 {
-    for (AOClient *l_client : qAsConst(m_clients)){
-        if (QPointer<AOClient>(l_client).isNull())
+    for (auto l_client : qAsConst(m_clients)){
+        if (l_client.isNull())
             continue;
 
         l_client->deleteLater();

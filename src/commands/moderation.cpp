@@ -73,7 +73,7 @@ void AOClient::cmdBan(int argc, QStringList argv)
         break;
     }
 
-    const QList<AOClient *> l_targets = server->getClientsByIpid(l_ban.ipid);
+    const QList<QPointer<AOClient>> l_targets = server->getClientsByIpid(l_ban.ipid);
     if (l_targets.isEmpty()){ /* We're banning someone not connected. */
         server->getDatabaseManager()->addBan(l_ban);
         sendPacket("CT", {"[Moderation]", "You are banned ipid of " + l_ban.ipid + " with reason: " + l_ban.reason, "1"});
@@ -126,7 +126,7 @@ void AOClient::cmdBan(int argc, QStringList argv)
         const int l_ban_id = server->getDatabaseManager()->getBanID(l_ban.ip);
         int l_kick_counter = 0;
 
-        for (auto *target : l_targets){
+        for (auto target : l_targets){
             const QString l_ban_duration = l_ban.duration >= 0 ? ban_until.addSecs(l_ban.duration).toString("MM/dd/yyyy, hh:mm") : "Permanently.";
             target->m_is_multiclient = l_kick_counter >= 1;
             target->m_disconnect_reason = Disconnected::BAN;
@@ -160,7 +160,7 @@ void AOClient::cmdKick(int argc, QStringList argv)
     if (isclientID && server->getClientByID(clientID) != nullptr)
         l_target_ipid = server->getClientByID(clientID)->m_ipid;
 
-    const QList<AOClient *> l_targets = server->getClientsByIpid(l_target_ipid);
+    const QList<QPointer<AOClient>> l_targets = server->getClientsByIpid(l_target_ipid);
     for (int index = 0; index < l_targets.size(); ++index){
         l_targets[index]->m_is_multiclient = index != 0;
         l_targets[index]->m_disconnect_reason = Disconnected::KICK;
@@ -198,10 +198,7 @@ void AOClient::cmdMods(int argc, QStringList argv)
     Q_UNUSED(argv);
 
     QMap<int, QStringList> EntriesMap; /* why use qmap?.. because we needs area_id for get areas name */
-    for (AOClient *client : server->getClients()){
-        if (QPointer<AOClient>(client).isNull())
-            continue;
-
+    for (auto client : server->getClients()){
         if (client->m_authenticated){
             QStringList user_entry(QString("[%1] %2").arg(QString::number(client->clientId()), client->character().isEmpty() ? "[Spectator]" : client->character()));
             if (client->m_moderator_name == "root") /* marked the "👑" for "root"/owner */
@@ -407,7 +404,7 @@ void AOClient::cmdUserInfo(int argc, QStringList argv){
         const auto client_version = client->m_version;
         Data.append(QString("Clients: %1 | [%2]").arg(QString::number(qMax(1, clients.size())), client_version.is_webao ? "WEB" : client_version.get_string_version()));
         if (clients.size() >= 2){
-            for (const auto other_client : clients){
+            for (const auto &other_client : clients){
                 QStringList other_data(QString("[%1] %2").arg(QString::number(other_client->clientId()), other_client->isSpectator() ? "[Spectator]" : other_client->character()));
                 const auto area = server->getAreaById(qMax(0, other_client->areaId()));
                 if (other_client->m_vip_authenticated || other_client->m_authenticated)
@@ -947,9 +944,6 @@ void AOClient::cmdKickUid(int argc, QStringList argv)
     if (m_vip_authenticated){
         const QString userdata(QString("[%1] %2").arg(QString::number(clientId()), name().isEmpty() ? character().isEmpty() ? "Spectator" : character() : name()));
         for (auto C : server->getClients()){
-            if (QPointer<AOClient>(C).isNull())
-                continue;
-
             if (m_authenticated)
                 C->sendServerMessage(QString("[VIP]%1 was kicking %2: %3").arg(userdata, targetData, l_reason));
         }
@@ -1029,8 +1023,8 @@ void AOClient::cmdKickOther(int argc, QStringList argv)
 
     int l_kick_counter = 0;
 
-    QList<AOClient *> l_target_clients;
-    const QList<AOClient *> l_targets_hwid = server->getClientsByHwid(m_hwid);
+    QList<QPointer<AOClient>> l_target_clients;
+    const QList<QPointer<AOClient>> l_targets_hwid = server->getClientsByHwid(m_hwid);
     l_target_clients = server->getClientsByIpid(m_ipid);
 
     // Merge both lookups into one single list.)

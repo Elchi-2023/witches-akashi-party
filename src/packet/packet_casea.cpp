@@ -46,11 +46,8 @@ void PacketCasea::handlePacket(AreaData *area, AOClient &client) const
     QList<AOClient *> l_clients_to_alert;
     QSet<bool> l_needs_set(l_needs_list.begin(), l_needs_list.end());
 
-    const QVector<AOClient *> l_clients = client.getServer()->getClients();
-    for (AOClient *l_client : l_clients){
-        if (QPointer<AOClient>(l_client).isNull())
-            continue;
-
+    const QVector< QPointer<AOClient>> l_clients = client.getServer()->getClients();
+    for (auto l_client : l_clients){
         QSet<bool> l_matches(l_client->m_casing_preferences.begin(), l_client->m_casing_preferences.end());
         l_matches.intersect(l_needs_set);
 

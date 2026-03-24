@@ -30,7 +30,7 @@ void PacketZZ::handlePacket(AreaData *area, AOClient &client) const
     QStringList l_notification{"Area: " + l_areaName, "Caller: " + l_name.at(0)};
 
     const int target_id = m_content.at(1).toInt();
-    if (target_id >= 0 && client.getServer()->getClientByID(target_id)){
+    if (target_id >= 0 && !client.getServer()->getClientByID(target_id).isNull()){
         const AOClient *target = client.getServer()->getClientByID(target_id);
         if (target->character().isEmpty())
             l_name.append(QString("[%1] %2 (%3)").arg(QString::number(target->clientId()), target->character().isEmpty() ? "Spectator" : target->character(), target->getIpid()));
@@ -40,11 +40,8 @@ void PacketZZ::handlePacket(AreaData *area, AOClient &client) const
     }
     l_notification.append("Reason: " + m_content[0]);
 
-    const QVector<AOClient *> l_clients = client.getServer()->getClients();
-    for (AOClient *l_client : l_clients){
-        if (QPointer<AOClient>(l_client).isNull())
-            continue;
-
+    const QVector<QPointer<AOClient>> l_clients = client.getServer()->getClients();
+    for (auto l_client : l_clients){
         if (l_client->m_authenticated)
             l_client->sendPacket(PacketFactory::createPacket("ZZ", {"!!!MODCALL!!!\n" + l_notification.join('\n')}));
     }
