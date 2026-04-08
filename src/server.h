@@ -250,7 +250,7 @@ class Server : public QObject
      *
      * @return A list of areas.
      */
-    QVector<AreaData *> getAreas();
+    QVector<QPointer<AreaData>> getAreas();
 
     /**
      * @brief Returns the number of areas in the server.
@@ -264,7 +264,7 @@ class Server : public QObject
      *
      * @return A pointer to the area or null.
      */
-    AreaData *getAreaById(int f_area_id);
+    QPointer<AreaData> getAreaById(int f_area_id);
 
     /**
      * @brief Getter for an area specific buffer from the logger.
@@ -489,7 +489,7 @@ class Server : public QObject
     /**
      * @brief The areas on the server.
      */
-    QVector<AreaData *> m_areas;
+    QVector<QPointer<AreaData>> m_areas;
 
     /**
      * @brief The names of the areas on the server.

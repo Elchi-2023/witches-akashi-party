@@ -26,7 +26,9 @@
 // Be sure to register the command in the header before adding it here!
 
 void AOClient::cmdDoc(int argc, QStringList argv){
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
     if (argc == 0 || argv.join(" ").trimmed().isEmpty()) // this.. between argc are 0 or the "space" qstring join are empty
         sendServerMessage(l_area->document().isEmpty() ? "No document." : "Document: " + l_area->document());
     else{
@@ -39,7 +41,9 @@ void AOClient::cmdClearDoc(int argc, QStringList argv){
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
     if (l_area->document().isEmpty())
         sendServerMessage("No document to be clear.");
     else{
@@ -51,7 +55,9 @@ void AOClient::cmdClearDoc(int argc, QStringList argv){
 void AOClient::cmdEvidenceMod(int argc, QStringList argv){
     Q_UNUSED(argc);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
     const QMap<QString, AreaData::EvidenceMod> targetEvMod = {{"cm", AreaData::EvidenceMod::CM}, {"mod", AreaData::EvidenceMod::MOD}, {"hiddencm", AreaData::EvidenceMod::HIDDEN_CM}, {"hidden_cm", AreaData::EvidenceMod::HIDDEN_CM}, {"ffa", AreaData::EvidenceMod::FFA}};
     if (targetEvMod.contains(argv[0].toLower())){
         l_area->setEviMod(targetEvMod[argv[0].toLower()]);
@@ -67,7 +73,9 @@ void AOClient::cmdEvidenceMod(int argc, QStringList argv){
 void AOClient::cmdEvidence_Swap(int argc, QStringList argv){
     Q_UNUSED(argc);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
     const auto l_ev = l_area->evidence();
 
     if (l_ev.isEmpty())
@@ -101,7 +109,9 @@ void AOClient::cmdTestify(int argc, QStringList argv){
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
     if (l_area->testimonyRecording() == AreaData::TestimonyRecording::RECORDING) {
         sendServerMessage("Testimony recording is already in progress. Please stop it with /pause before starting a new one.");
     }
@@ -116,7 +126,9 @@ void AOClient::cmdExamine(int argc, QStringList argv){
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
 
     switch (l_area->testimony().size()){
     default: /* cause.. the qvector:first() is title so skipped */
@@ -134,7 +146,9 @@ void AOClient::cmdTestimony(int argc, QStringList argv){
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
     switch (l_area->testimony().size()){
     case 0: case 1:
         sendServerMessage("Unable to display empty testimony.");
@@ -160,7 +174,9 @@ void AOClient::cmdDeleteStatement(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
     int l_c_statement = l_area->statement();
     if (l_area->testimony().size() - 1 == 0)
         sendServerMessage("Unable to delete statement. No statements saved in this area.");
@@ -184,7 +200,9 @@ void AOClient::cmdPauseTestimony(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
     l_area->setTestimonyRecording(AreaData::TestimonyRecording::STOPPED);
     sendServerPacketArea(PacketFactory::createPacket("RT", {"testimony1", "1"}));
     sendServerMessage("Testimony has been stopped. Use /examine to begin cross-examination.");
@@ -207,7 +225,9 @@ void AOClient::cmdSaveTestimony(int argc, QStringList argv){
     Q_UNUSED(argc);
 
     if (checkPermission(ACLRole::SAVETEST) || m_testimony_saving){
-        AreaData *l_area = server->getAreaById(areaId());
+        auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
         if (l_area->testimony().size() - 1 <= 0)
             sendServerMessage("Can't save an empty testimony.");
         else{
@@ -240,7 +260,9 @@ void AOClient::cmdLoadTestimony(int argc, QStringList argv)
 {
     Q_UNUSED(argc);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
     QDir l_dir_testimony("storage/testimony");
     if (l_dir_testimony.exists()){
         QString l_testimony_name = argv[0].trimmed().toLower().replace("..", ""); // :)

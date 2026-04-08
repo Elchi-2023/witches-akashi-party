@@ -102,8 +102,8 @@ QString AOClient::decodeMessage(QString incoming_message)
     return decoded_message;
 }
 
-bool AOClient::loginAttempt(QString message)
-{
+bool AOClient::loginAttempt(QString message){
+    const auto CurrentArea = server->getAreaById(areaId());
     switch (ConfigManager::authType()) {
     case DataTypes::AuthType::SIMPLE:
         if (message == ConfigManager::modpass()) {
@@ -114,14 +114,14 @@ bool AOClient::loginAttempt(QString message)
             m_acl_role_id = ACLRolesHandler::SUPER_ID;
             Q_EMIT ModeratorObserver();
             emit logLogin((character() + " " + characterName()), name(), "Moderator",
-                          m_ipid, server->getAreaById(areaId())->name(), m_authenticated);
+                          m_ipid, CurrentArea.isNull() ? "[NULL]" : CurrentArea->name(), m_authenticated);
             return true;
         }
         else {
             sendPacket("AUTH", {"0"}); // Client: "Login unsuccessful."
             sendServerMessage("Incorrect password.");
             emit logLogin((character() + " " + characterName()), name(), "Moderator",
-                          m_ipid, server->getAreaById(areaId())->name(), m_authenticated);
+                          m_ipid, CurrentArea.isNull() ? "[NULL]" : CurrentArea->name(), m_authenticated);
             return false;
         }
         break;
@@ -144,14 +144,14 @@ bool AOClient::loginAttempt(QString message)
             sendServerMessage("Welcome, " + username);
             Q_EMIT ModeratorObserver();
             emit logLogin((character() + " " + characterName()), name(), username, m_ipid,
-                          server->getAreaById(areaId())->name(), m_authenticated);
+                          CurrentArea.isNull() ? "[NULL]" : CurrentArea->name(), m_authenticated);
             return true;
         }
         else {
             sendPacket("AUTH", {"0"});
             sendServerMessage("Incorrect password.");
             emit logLogin((character() + " " + characterName()), name(), username, m_ipid,
-                          server->getAreaById(areaId())->name(), m_authenticated);
+                          CurrentArea.isNull() ? "[NULL]" : CurrentArea->name(), m_authenticated);
             return false;
         }
     }

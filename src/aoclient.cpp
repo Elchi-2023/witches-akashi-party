@@ -211,8 +211,11 @@ void AOClient::clientDisconnected()
 
     bool l_updateLocks = false;
 
-    const QVector<AreaData *> l_areas = server->getAreas();
-    for (AreaData *l_area : l_areas) {
+    const QVector<QPointer<AreaData>> l_areas = server->getAreas();
+    for (QPointer<AreaData> l_area : l_areas) {
+        if (l_area.isNull())
+            continue;
+
         if (l_area->invited().contains(m_id))
             l_area->uninvite(m_id);
         if (l_area->removeOwner(clientId()) && !l_updateLocks)
@@ -269,16 +272,21 @@ void AOClient::handlePacket(AOPacket *packet)
         if (UserAFK()){
             if (m_afk_announcement){
                 auto current_area = server->getAreaById(areaId());
-                for (const int client_id : current_area->joinedIDs()){
-                    auto l_client = server->getClientByID(client_id);
-                    if (l_client.isNull())
-                        continue;
+                if (current_area.isNull())
+                    sendServerMessage("You are no longer AFK, Welcome back.");
+                else{
+                    for (const int client_id : current_area->joinedIDs()){
+                        auto l_client = server->getClientByID(client_id);
+                        if (l_client.isNull())
+                            continue;
 
-                    if (l_client == this) /* "this" ... current client (aka user) lol */
-                        l_client->sendServerMessage("You are no longer AFK, Welcome back.");
-                    else if (!l_client->isSpectator() && l_client->m_afk_received) /* lgnored spectator for moment.. */
-                        l_client->sendServerMessage(QString("[%1] %2 are no longer AFK.").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character()));
+                        if (l_client == this) /* "this" ... current client (aka user) lol */
+                            l_client->sendServerMessage("You are no longer AFK, Welcome back.");
+                        else if (!l_client->isSpectator() && l_client->m_afk_received) /* lgnored spectator for moment.. */
+                            l_client->sendServerMessage(QString("[%1] %2 are no longer AFK.").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character()));
+                    }
                 }
+
             }
             else
                 sendServerMessage("You are no longer AFK. (unannouncement)");
@@ -447,23 +455,23 @@ void AOClient::arup(ARUPType type, bool broadcast)
 {
     QStringList l_arup_data;
     l_arup_data.append(QString::number(type));
-    const QVector<AreaData *> l_areas = server->getAreas();
-    for (AreaData *l_area : l_areas) {
+    const QVector<QPointer<AreaData>> l_areas = server->getAreas();
+    for (QPointer<AreaData> l_area : l_areas) {
         switch (type) {
         case ARUPType::PLAYER_COUNT:
         {
-            l_arup_data.append(QString::number(l_area->playerCount()));
+            l_arup_data.append(QString::number(l_area.isNull() ? 0 : l_area->playerCount()));
             break;
         }
         case ARUPType::STATUS:
         {
-            QString l_area_status = QVariant::fromValue(l_area->status()).toString().replace("_", "-"); // LOOKING_FOR_PLAYERS to LOOKING-FOR-PLAYERS
+            QString l_area_status = l_area.isNull() ? "IDLE" : QVariant::fromValue(l_area->status()).toString().replace("_", "-"); // LOOKING_FOR_PLAYERS to LOOKING-FOR-PLAYERS
             l_arup_data.append(l_area_status);
             break;
         }
         case ARUPType::CM:
         {
-            if (l_area->owners().isEmpty())
+            if (l_area.isNull() || l_area->owners().isEmpty())
                 l_arup_data.append("FREE");
             else{
                 QStringList l_area_owners;
@@ -479,7 +487,7 @@ void AOClient::arup(ARUPType type, bool broadcast)
         }
         case ARUPType::LOCKED:
         {
-            QString l_lock_status = QVariant::fromValue(l_area->lockStatus()).toString();
+            QString l_lock_status = l_area.isNull() ? "" : QVariant::fromValue(l_area->lockStatus()).toString();
             l_arup_data.append(l_lock_status);
             break;
         }
@@ -489,12 +497,8 @@ void AOClient::arup(ARUPType type, bool broadcast)
         }
         }
     }
-    if (broadcast) {
-        server->broadcast(PacketFactory::createPacket("ARUP", l_arup_data));
-    }
-    else {
-        sendPacket("ARUP", l_arup_data);
-    }
+
+    broadcast ? server->broadcast(PacketFactory::createPacket("ARUP", l_arup_data)) : sendPacket("ARUP", l_arup_data);
 }
 
 void AOClient::fullArup()

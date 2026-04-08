@@ -32,7 +32,7 @@ void PacketMS::handlePacket(AreaData *area, AOClient &client) const
     }
 
     AOPacket *validated_packet = validateIcPacket(client);
-    if (validated_packet->getPacketInfo().header == "INVALID")
+    if (validated_packet->getPacketInfo().header == "INVALID" || QPointer<AreaData>(area).isNull())
         return;
 
     if (client.m_pos != "")
@@ -75,7 +75,7 @@ void PacketMS::handlePacket(AreaData *area, AOClient &client) const
     else /* Normal broadcast for non-evidence messages or non-HIDDEN_CM areas */
         client.getServer()->broadcast(validated_packet, client.areaId());
 
-    emit client.logIC((client.character() + " " + client.characterName()), client.name(), client.m_ipid, client.getServer()->getAreaById(client.areaId())->name(), client.m_last_message);
+    emit client.logIC((client.character() + " " + client.characterName()), client.name(), client.m_ipid, client.getServer()->getAreaById(client.areaId()).isNull() ? "[NULL]" : client.getServer()->getAreaById(client.areaId())->name(), client.m_last_message);
     area->updateLastICMessage(validated_packet->getContent());
 
     area->startMessageFloodguard(ConfigManager::messageFloodguard());
@@ -99,8 +99,8 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     if (client.isSpectator() || client.character().isEmpty() || !client.m_joined)
         // Spectators cannot use IC
         return l_invalid;
-    AreaData *area = client.getServer()->getAreaById(client.areaId());
-    if (area->lockStatus() == AreaData::LockStatus::SPECTATABLE && !area->invited().contains(client.clientId()) && !client.checkPermission(ACLRole::BYPASS_LOCKS))
+    QPointer<AreaData> area = client.getServer()->getAreaById(client.areaId());
+    if (area.isNull() || (area->lockStatus() == AreaData::LockStatus::SPECTATABLE && !area->invited().contains(client.clientId()) && !client.checkPermission(ACLRole::BYPASS_LOCKS)))
         // Non-invited players cannot speak in spectatable areas
         return l_invalid;
 
@@ -291,23 +291,26 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     l_args.append(QString::number(evi_idx));
 
     // flipping
-    int l_flip = l_incoming_args[12].toInt();
-    if (l_flip < 0 && l_flip > 1)
+    bool l_filp_pass = false;
+    int l_flip = l_incoming_args[12].toInt(&l_filp_pass);
+    if (!l_filp_pass || l_flip < 0 || l_flip > 1)
         return l_invalid;
     client.m_flipping = QString::number(l_flip);
     l_args.append(client.m_flipping);
 
     // realization
-    int realization = l_incoming_args[13].toInt();
-    if (realization < 0 && realization > 1)
+    bool l_realization_pass = false;
+    int l_realization = l_incoming_args[13].toInt(&l_realization_pass);
+    if (!l_realization || l_realization < 0 || l_realization > 1)
         return l_invalid;
-    l_args.append(QString::number(realization));
+    l_args.append(QString::number(l_realization));
 
     // text color
-    int text_color = l_incoming_args[14].toInt();
-    if (text_color < 0 || text_color > 11)
+    bool l_text_color_pass = false;
+    int l_text_color = l_incoming_args[14].toInt(&l_text_color_pass);
+    if (!l_text_color_pass || l_text_color < 0 || l_text_color > 11)
         return l_invalid;
-    l_args.append(QString::number(text_color));
+    l_args.append(QString::number(l_text_color));
 
     // 2.6 packet extensions
     if (l_incoming_args.length() >= 19) {
@@ -396,8 +399,11 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
             client.m_offset = client.m_offset_override;
         else
             client.m_offset = l_incoming_args[17].toString(); //if the override is empty, offset will equal to client offset
+
         // versions 2.6-2.8 cannot validate y-offset so we send them just the x-offset
-        if (client.m_version.release == 2){
+        if (client.m_version.is_webao) /* > gonnna bypassed checker for webao < */
+            l_args.append({client.m_offset, l_other_data.second[2]});
+        else if (client.m_version.release == 2){
             switch (client.m_version.major){
             case 6: case 7: case 8:
                 l_args.append({client.m_offset.split("&")[0], l_other_data.second[2].split("&")[0]});
@@ -412,8 +418,9 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         l_args.append(QString::number(l_other_data.first));
 
         // immediate text processing
-        int l_immediate = l_incoming_args[18].toInt();
-        if (area->forceImmediate()) {
+        bool l_immediate_pass = false;
+        int l_immediate = l_incoming_args[18].toInt(&l_immediate_pass);
+        if (!l_immediate_pass || area->forceImmediate()) {
             if (l_args[7] == "1" || l_args[7] == "2") {
                 l_args[7] = "0";
                 l_immediate = 1;
@@ -431,14 +438,16 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     // 2.8 packet extensions
     if (l_incoming_args.length() >= 26) {
         // sfx looping
-        int l_sfx_loop = l_incoming_args[19].toInt();
-        if (l_sfx_loop < 0 && l_sfx_loop > 1)
+        bool l_sfx_loop_pass = false;
+        int l_sfx_loop = l_incoming_args[19].toInt(&l_sfx_loop_pass);
+        if (!l_sfx_loop_pass || l_sfx_loop < 0 || l_sfx_loop > 1)
             return l_invalid;
         l_args.append(QString::number(l_sfx_loop));
 
         // screenshake
-        int l_screenshake = l_incoming_args[20].toInt();
-        if (l_screenshake < 0 && l_screenshake > 1)
+        bool l_screenshake_pass = false;
+        int l_screenshake = l_incoming_args[20].toInt(&l_screenshake_pass);
+        if (!l_screenshake_pass || l_screenshake < 0 || l_screenshake > 1)
             return l_invalid;
         l_args.append(QString::number(l_screenshake));
 
@@ -452,7 +461,11 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         l_args.append(l_incoming_args[23].toString());
 
         // additive
-        int l_additive = l_incoming_args[24].toInt();
+        bool l_additive_pass = false;
+        int l_additive = l_incoming_args[24].toInt(&l_additive_pass);
+        if (!l_additive_pass)
+            return l_invalid;
+
         switch (l_additive){ /* use switch instead. . */
         case 0:
             break;
@@ -483,23 +496,33 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
 
     // Testimony playback
     QString client_name = client.name();
-    if (client_name == "") {
+    if (client_name.isEmpty())
         client_name = client.character(); // fallback in case of empty ooc name
-    }
-    if ((area->testimonyRecording() == AreaData::TestimonyRecording::RECORDING || area->testimonyRecording() == AreaData::TestimonyRecording::ADD) && !l_args[4].isEmpty()) {
-        // -1 indicates title
-        if (area->statement() == -1) {
-            l_args[4] = "~~-- " + l_args[4] + " --";
-            l_args[14] = "3";
-            client.getServer()->broadcast(PacketFactory::createPacket("RT", {"testimony1", "0"}), client.areaId());
+
+    switch (area->testimonyRecording()){
+    case AreaData::TestimonyRecording::RECORDING: case AreaData::TestimonyRecording::ADD:
+        if (area.isNull())
+            return l_invalid;
+
+        if (!l_args[4].isEmpty()){
+            if (area->statement() == -1) { // -1 indicates title
+                l_args[4] = "~~-- " + l_args[4] + " --";
+                l_args[14] = "3";
+                client.getServer()->broadcast(PacketFactory::createPacket("RT", {"testimony1", "0"}), client.areaId());
+            }
+            client.addStatement(l_args);
         }
-        client.addStatement(l_args);
-    }
-    else if (area->testimonyRecording() == AreaData::TestimonyRecording::UPDATE) {
+        break;
+    case AreaData::TestimonyRecording::UPDATE:
         l_args = client.updateStatement(l_args);
-    }
-    else if (area->testimonyRecording() == AreaData::TestimonyRecording::PLAYBACK) {
+        break;
+    case AreaData::TestimonyRecording::PLAYBACK:
+    {
+        if (area.isNull())
+            return l_invalid;
+
         AreaData::TestimonyProgress l_progress;
+        QRegularExpressionMatch match = isTestimonyJumpCommand(client.decodeMessage(l_args[4])); // Get rid of that pesky encoding, then do the fun part
 
         if (l_args[4] == ">") {
             auto l_statement = area->jumpToStatement(area->statement() + 1);
@@ -509,11 +532,10 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
 
             client.sendServerMessageArea(client_name + " moved to the next statement.");
 
-            if (l_progress == AreaData::TestimonyProgress::LOOPED) {
+            if (l_progress == AreaData::TestimonyProgress::LOOPED)
                 client.sendServerMessageArea("Last statement reached. Looping to first statement.");
-            }
         }
-        if (l_args[4] == "<") {
+        else if (l_args[4] == "<") {
             auto l_statement = area->jumpToStatement(area->statement() - 1);
             l_args = l_statement.first;
             l_progress = l_statement.second;
@@ -521,11 +543,10 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
 
             client.sendServerMessageArea(client_name + " moved to the previous statement.");
 
-            if (l_progress == AreaData::TestimonyProgress::STAYED_AT_FIRST) {
+            if (l_progress == AreaData::TestimonyProgress::STAYED_AT_FIRST)
                 client.sendServerMessage("First statement reached.");
-            }
         }
-        if (l_args[4] == "=") {
+        else if (l_args[4] == "=") {
             auto l_statement = area->jumpToStatement(area->statement());
             l_args = l_statement.first;
             l_progress = l_statement.second;
@@ -533,9 +554,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
 
             client.sendServerMessageArea(client_name + " repeated the current statement.");
         }
-
-        QRegularExpressionMatch match = isTestimonyJumpCommand(client.decodeMessage(l_args[4])); // Get rid of that pesky encoding, then do the fun part
-        if (match.hasMatch()) {
+        else if (match.hasMatch()) {
             int jump_idx = match.captured("int").toInt();
             auto l_statement = area->jumpToStatement(jump_idx);
             l_args = l_statement.first;
@@ -561,6 +580,9 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
                 break;
             }
         }
+    }
+    default:
+        return l_invalid;
     }
 
     return PacketFactory::createPacket("MS", l_args);

@@ -295,7 +295,11 @@ void Server::reloadSettings()
 
 void Server::broadcast(AOPacket *packet, int area_index)
 {
-    QVector<int> l_client_ids = m_areas.value(area_index)->joinedIDs();
+    auto GetArea = m_areas.value(area_index);
+    if (GetArea.isNull())
+        return;
+
+    QVector<int> l_client_ids = GetArea->joinedIDs();
     for (const int l_client_id : qAsConst(l_client_ids)){
         auto client = getClientByID(l_client_id);
         if (client.isNull())
@@ -342,7 +346,12 @@ void Server::broadcast(AOPacket *packet, TARGET_TYPE target)
 
 void Server::broadcast(AOPacket *packet, int area_index, TARGET_TYPE target)
 {
-    QVector<int> l_client_ids = m_areas.value(area_index)->joinedIDs();
+    auto GetArea = m_areas.value(area_index);
+    if (GetArea.isNull())
+        return;
+
+    QVector<int> l_client_ids = GetArea->joinedIDs();
+
     for (const int l_client_id : std::as_const(l_client_ids)){
         auto l_client = getClientByID(l_client_id);
         if (l_client.isNull())
@@ -467,7 +476,7 @@ int Server::getCharID(QString char_name)
     return -1; // character does not exist
 }
 
-QVector<AreaData *> Server::getAreas()
+QVector<QPointer<AreaData>> Server::getAreas()
 {
     return m_areas;
 }
@@ -477,8 +486,7 @@ int Server::getAreaCount()
     return m_areas.length();
 }
 
-AreaData *Server::getAreaById(int f_area_id)
-{
+QPointer<AreaData> Server::getAreaById(int f_area_id){
     AreaData *l_area = nullptr;
 
     if (f_area_id >= 0 && f_area_id < m_areas.length()) {

@@ -38,7 +38,10 @@ void AOClient::cmdPlay(int argc, QStringList argv)
         m_socket->close();
         return;
     }
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
     const ACLRole l_role = server->getACLRolesHandler()->getRoleById(m_acl_role_id);
     if (m_vip_authenticated || m_authenticated){ /* bypassed for vip and mods, no matter if area not free play or has cms on it*/
         l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), l_song, true);
@@ -77,14 +80,17 @@ void AOClient::cmdPlayOnce(int argc, QStringList argv){
     else if (Song == "sin.mp3")
         m_socket->close();
     else{
-        AreaData *current_area = server->getAreaById(areaId());
+        auto l_area = server->getAreaById(areaId());
+        if (l_area.isNull())
+            return;
+
         const ACLRole current_role = server->getACLRolesHandler()->getRoleById(m_acl_role_id);
         if (m_vip_authenticated || m_authenticated){ /* bypassed for vip and mods, no matter if area not free play or has cms on it*/
-            current_area->changeMusic(characterName().isEmpty() ? character() : characterName(), Song, false);
+            l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), Song, false);
             AOPacket *music_change = PacketFactory::createPacket("MC", {Song, QString::number(server->getCharID(character())), characterName(), "0", "0"});
             server->broadcast(music_change, areaId());
         }
-        else if (!current_area->owners().contains(clientId()) && !current_area->isPlayEnabled() && !current_role.checkPermission(ACLRole::CM)) // Make sure we have permission to play music
+        else if (!l_area->owners().contains(clientId()) && !l_area->isPlayEnabled() && !current_role.checkPermission(ACLRole::CM)) // Make sure we have permission to play music
             sendServerMessage("Free music play is disabled in this area.");
         else{
             switch (m_music_manager->ValidataSong(QUrl::fromUserInput(Song, "", QUrl::UserInputResolutionOption::AssumeLocalFile), ConfigManager::cdnList())){
@@ -95,7 +101,7 @@ void AOClient::cmdPlayOnce(int argc, QStringList argv){
                 sendServerMessage("That link/URL wasn't Allowed.");
                 break;
             default:
-                current_area->changeMusic(characterName().isEmpty() ? character() : characterName(), Song, false);
+                l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), Song, false);
                 server->broadcast(PacketFactory::createPacket("MC", {Song, QString::number(server->getCharID(character())), characterName(), "0", "0"}), areaId());
                 break;
             }
@@ -122,18 +128,20 @@ void AOClient::cmdRadio(int argc, QStringList argv)
         if (Vaild_radioID && l_radio.contains(Radioid)){ /* > Vaild ID (or index) < */
             const auto [Radio_name, Selected_Radio] = l_radio.value(Vaild_radioID);
 
-            AreaData *current_area = server->getAreaById(areaId());
+            auto l_area = server->getAreaById(areaId());
+            if (l_area.isNull())
+                return;
             const ACLRole current_role = server->getACLRolesHandler()->getRoleById(m_acl_role_id);
             if (m_vip_authenticated || m_authenticated){
                 sendServerMessage("Streaming radio: " + Radio_name + ".");
-                current_area->changeMusic(characterName().isEmpty() ? character() : characterName(), Selected_Radio, false);
+                l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), Selected_Radio, false);
                 server->broadcast(PacketFactory::createPacket("MC", {Selected_Radio, QString::number(server->getCharID(character())), characterName(), "0", "0"}), areaId());
             }
-            else if (!current_area->owners().contains(clientId()) && !current_area->isPlayEnabled() && !current_role.checkPermission(ACLRole::CM)) // Make sure we have permission to play music
+            else if (!l_area->owners().contains(clientId()) && !l_area->isPlayEnabled() && !current_role.checkPermission(ACLRole::CM)) // Make sure we have permission to play music
                 sendServerMessage("Can't Streaming radio cause this area aren't [Free music play] enabled.");
             else{
                 sendServerMessage("Streaming radio: " + Radio_name + ".");
-                current_area->changeMusic(characterName().isEmpty() ? character() : characterName(), Selected_Radio, false);
+                l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), Selected_Radio, false);
                 server->broadcast(PacketFactory::createPacket("MC", {Selected_Radio, QString::number(server->getCharID(character())), characterName(), "0", "0"}), areaId());
             }
         }
@@ -148,7 +156,10 @@ void AOClient::cmdPlayAmbience(int argc, QStringList argv){
     if (m_is_dj_blocked)
         sendServerMessage("You are blocked from changing the ambience.");
     else{
-        AreaData *l_area = server->getAreaById(areaId());
+        auto l_area = server->getAreaById(areaId());
+        if (l_area.isNull())
+            return;
+
         if (!l_area->owners().contains(clientId()) && !l_area->isPlayEnabled()) // Make sure we have permission to play music
             sendServerMessage("Free ambience play is disabled in this area.");
         else{
@@ -164,7 +175,10 @@ void AOClient::cmdCurrentMusic(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
     if (!l_area->currentMusic().isEmpty() && !l_area->currentMusic().contains("~stop.mp3")) // dummy track for stopping music
         sendServerMessage("The current song is " + l_area->currentMusic() + " played by " + l_area->musicPlayerBy());
     else
@@ -175,8 +189,11 @@ void AOClient::cmdGetMusic(int argc, QStringList argv){
     Q_UNUSED(argc)
     Q_UNUSED(argv)
 
-    const AreaData *l_area = server->getAreaById(areaId());
-    if (!l_area->currentMusic().isEmpty() && !l_area->currentMusic().contains("~stop.mp3")){ // dummy track for stopping music
+    const auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
+    if (!l_area->currentMusic().isEmpty() || !l_area->currentMusic().contains("~stop.mp3")){ // dummy track for stopping music
         sendServerMessage("Playing the current song is " + l_area->currentMusic() + " played by " + l_area->musicPlayerBy());
         sendPacket("MC", {l_area->currentMusic(), "-1", characterName(), QString::number(l_area->currentMusicLoop()), "0"});
     }
@@ -252,7 +269,10 @@ void AOClient::cmdToggleMusic(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
     l_area->toggleMusic();
     sendServerMessage("Music in this area is now " + QString(l_area->isMusicAllowed() ? "allowed." : "disallowed."));
 }
@@ -262,7 +282,10 @@ void AOClient::cmdToggleJukebox(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
     l_area->toggleJukebox();
     sendServerMessageArea("The jukebox in this area has been " + QString(l_area->isjukeboxEnabled() ? "enabled." : "disabled."));
 }
@@ -333,7 +356,9 @@ void AOClient::cmdJukeboxSkip(int argc, QStringList argv)
     Q_UNUSED(argv);
 
     const QString l_name = "[" + QString::number(clientId()) + "] " + QString(characterName().isEmpty() ? character().isEmpty() ? "Spectator" : character() : characterName());
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
 
     if (l_area->isjukeboxEnabled()){
         switch (l_area->getJukeboxQueueSize()){

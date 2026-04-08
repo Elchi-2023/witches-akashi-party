@@ -109,10 +109,13 @@ void AOClient::cmdPair(int argc, QStringList argv)
             return;
         }
 
-        auto current_area = server->getAreaById(areaId());
-        if (!current_area->joinedIDs().contains(l_target_client->clientId()))
+        auto l_area = server->getAreaById(areaId());
+        if (l_area.isNull())
+            return;
+
+        if (!l_area->joinedIDs().contains(l_target_client->clientId()))
             sendServerMessage("That target weren't on this area, make sure you check if that target were on this area.");
-        else if (current_area->addPairSync(clientId(), l_target_client->clientId())){ /* oh this?.. well.. user choices the target that'll adds/change */
+        else if (l_area->addPairSync(clientId(), l_target_client->clientId())){ /* oh this?.. well.. user choices the target that'll adds/change */
             sendServerMessage("You are now paired with " + QString(l_target_client->characterName().isEmpty() ? "client id " + QString::number(l_target_client->clientId()) : l_target_client->characterName()) + " and synced with that target, Make sure that targets also selected you.");
             m_pair_order = 0;
         }
@@ -126,13 +129,16 @@ void AOClient::cmdUnPair(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    auto current_area = server->getAreaById(areaId());
-    if (current_area->removePairSync(clientId())){
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
+    if (l_area->removePairSync(clientId())){
         sendServerMessage("You are not longer paired.");
         m_pair_order = -1;
     }
     else
-        sendServerMessage("You are not pairing with anyone, do /pair id if you want pairing someone.");
+        sendServerMessage("You are not pairing with anyone, do /pair <client id> if you want pairing someone.");
 }
 
 void AOClient::cmdPairOrder(int argc, QStringList argv)
@@ -315,7 +321,11 @@ void AOClient::cmdPos(int argc, QStringList argv)
     Q_UNUSED(argc);
 
     changePosition(argv[0]);
-    updateEvidenceList(server->getAreaById(areaId()));
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
+    updateEvidenceList(l_area);
 }
 
 void AOClient::cmdForcePos(int argc, QStringList argv)
@@ -329,7 +339,7 @@ void AOClient::cmdForcePos(int argc, QStringList argv)
         auto l_target_client = server->getClientByID(l_target_id);
         if (l_target_client.isNull())
             sendServerMessage("Target ID not found!");
-        else if (!server->getAreaById(areaId())->joinedIDs().contains(l_target_client->clientId()))
+        else if (server->getAreaById(areaId()).isNull() || !server->getAreaById(areaId())->joinedIDs().contains(l_target_client->clientId()))
             sendServerMessage("Target not in this area.");
         else{
             l_target_client->sendServerMessage("Position forcibly changed by CM.");
@@ -363,7 +373,7 @@ void AOClient::cmdG(int argc, QStringList argv)
     QString l_sender_message = argv.join(" ");
     if (m_is_gimped)
         l_sender_message = ConfigManager::gimpList().at((genRand(1, ConfigManager::gimpList().size() - 1)));
-    if (m_is_medieval || server->getAreaById(areaId())->isMedievalMode())
+    if (m_is_medieval || (!server->getAreaById(areaId()).isNull() && server->getAreaById(areaId())->isMedievalMode()))
         l_sender_message = server->getMedievalParser()->degrootify(l_sender_message);
     if (m_is_shaken) {
         QStringList l_parts = l_sender_message.split(QRegularExpression(R"([^A-Za-z0-9]+)"));
@@ -420,7 +430,10 @@ void AOClient::cmdRandomChar(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
     int l_selected_char_id;
     bool l_taken = true;
     while (l_taken) {
@@ -462,7 +475,7 @@ void AOClient::cmdPM(int argc, QStringList argv)
             QString l_message = argv.mid(1).join(" "); //...which means it will not end up as part of the
             if (m_is_gimped)
                 l_message = ConfigManager::gimpList().at((genRand(1, ConfigManager::gimpList().size() - 1)));
-            if (m_is_medieval || server->getAreaById(areaId())->isMedievalMode())
+            if (m_is_medieval || (!server->getAreaById(areaId()).isNull() && server->getAreaById(areaId())->isMedievalMode()))
                 l_message = server->getMedievalParser()->degrootify(l_message);
             if (m_is_shaken) {
                 QStringList l_parts = l_message.split(QRegularExpression(R"([^A-Za-z0-9]+)"));
@@ -778,8 +791,10 @@ void AOClient::cmdAfk(int argc, QStringList argv)
     Q_UNUSED(argv);
 
     if (m_afk_announcement){
-        auto current_area = server->getAreaById(areaId());
-        for (const int client_id : current_area->joinedIDs()){
+        auto l_area = server->getAreaById(areaId());
+            if (l_area.isNull())
+                return;
+        for (const int client_id : l_area->joinedIDs()){
             auto l_client = server->getClientByID(client_id);
             if (l_client.isNull())
                 continue;
@@ -801,7 +816,7 @@ void AOClient::cmdCharCurse(int argc, QStringList argv)
     int l_uid = argv[0].toInt(&conv_ok);
     if (!conv_ok)
         sendServerMessage("Invalid user ID.");
-    else{
+    else if (!server->getAreaById(areaId()).isNull()){
         auto l_target = QPointer<AOClient>(server->getClientByID(l_uid));
         if (l_target.isNull())
             sendServerMessage("No client with that ID found.");
@@ -864,7 +879,7 @@ void AOClient::cmdUnCharCurse(int argc, QStringList argv)
             sendServerMessage("No client with that ID found.");
         else if (!l_target->m_is_charcursed)
             sendServerMessage("That player is not charcursed!");
-        else{
+        else if (!server->getAreaById(areaId()).isNull()){
             l_target->m_is_charcursed = false;
             l_target->m_charcurse_list.clear();
             server->updateCharsTaken(server->getAreaById(areaId()));
@@ -915,6 +930,9 @@ void AOClient::cmdA(int argc, QStringList argv)
     int l_area_id = argv[0].toInt(&ok);
     if (ok){
         const auto l_area = server->getAreaById(l_area_id);
+        if (l_area.isNull())
+            return;
+
         if (!l_area->owners().contains(clientId())) {
             sendServerMessage("You are not CM in that area.");
             return;
@@ -964,7 +982,7 @@ void AOClient::cmdS(int argc, QStringList argv)
         l_sender.second = QString(l_sender.second).remove(QRegularExpression("[AEIOUaeiou]"));
 
     for (auto Area : server->getAreas()){
-        if (Area->owners().contains(clientId()))
+        if (!Area.isNull() && Area->owners().contains(clientId()))
             server->broadcast(PacketFactory::createPacket("CT", {"[CM]" + l_sender.first, l_sender.second}), Area->index());
     }
 }

@@ -89,7 +89,7 @@ void PacketMC::handlePacket(AreaData *area, AOClient &client) const
     }
 
     for (auto Area : client.getServer()->getAreas()){
-        if (Area->name() == l_argument){
+        if (!Area.isNull() && Area->name() == l_argument){
             client.changeArea(Area->index());
             break;
         }

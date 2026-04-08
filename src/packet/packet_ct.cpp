@@ -90,7 +90,7 @@ void PacketCT::handlePacket(AreaData *area, AOClient &client) const
         int l_cmd_argc = l_cmd_argv.length();
 
         client.handleCommand(l_command, l_cmd_argc, l_cmd_argv);
-        emit client.logCMD((client.character() + " " + client.characterName()), client.m_ipid, client.name(), l_command, l_cmd_argv, client.getServer()->getAreaById(client.areaId())->name());
+        emit client.logCMD((client.character() + " " + client.characterName()), client.m_ipid, client.name(), l_command, l_cmd_argv, client.getServer()->getAreaById(client.areaId()).isNull() ? "[NULL]" : client.getServer()->getAreaById(client.areaId())->name());
         return;
     }
     else if (!client.m_is_ooc_muted){

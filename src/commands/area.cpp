@@ -26,7 +26,9 @@
 // Be sure to register the command in the header before adding it here!
 
 void AOClient::cmdCM(int argc, QStringList argv){
-    AreaData *current_area = server->getAreaById(areaId());
+    auto current_area = server->getAreaById(areaId());
+    if (current_area.isNull())
+        return;
     
     switch (argc){ /* switch were better */
     case 0:
@@ -92,7 +94,9 @@ void AOClient::cmdCM(int argc, QStringList argv){
 }
 
 void AOClient::cmdUnCM(int argc, QStringList argv){
-    AreaData *current_area = server->getAreaById(areaId());
+    auto current_area = server->getAreaById(areaId());
+    if (current_area.isNull())
+        return;
 
     if (current_area->owners().isEmpty())
         sendServerMessage("There are no CMs in this area.");
@@ -142,7 +146,9 @@ void AOClient::cmdInvite(int argc, QStringList argv){
 
     bool VaildID;
     int l_invited_id = argv[0].toInt(&VaildID);
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
     if (VaildID){
         auto target_client = server->getClientByID(l_invited_id);
         if (target_client.isNull())
@@ -164,7 +170,9 @@ void AOClient::cmdUnInvite(int argc, QStringList argv)
 
     bool VaildID;
     int l_uninvited_id = argv[0].toInt(&VaildID);
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
     if (VaildID){
         auto target_client = server->getClientByID(l_uninvited_id);
         if (target_client.isNull())
@@ -206,7 +214,9 @@ void AOClient::cmdSpectatable(int argc, QStringList argv){
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
     if (l_area->lockStatus() == AreaData::LockStatus::SPECTATABLE)
         sendServerMessage("This area is already in spectate mode.");
     else{
@@ -227,7 +237,9 @@ void AOClient::cmdUnLock(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
     if (l_area->lockStatus() == AreaData::LockStatus::FREE)
         sendServerMessage("This area is not locked.");
     else{
@@ -243,8 +255,8 @@ void AOClient::cmdGetAreas(int argc, QStringList argv){
 
     QStringList l_entries;
     l_entries.append("\n== Currently Online: " + QString::number(server->getPlayerCount()) + " ==");
-    for (const AreaData *Area : server->getAreas()){
-        if (Area->playerCount() >= 1)
+    for (const auto &Area : server->getAreas()){
+        if (!Area.isNull() && Area->playerCount() >= 1)
             l_entries.append(buildAreaList(Area->index()));
     }
     sendServerMessage(l_entries.join("\n"));
@@ -271,7 +283,9 @@ void AOClient::cmdArea(int argc, QStringList argv){
 void AOClient::cmdAreaKick(int argc, QStringList argv){
     Q_UNUSED(argc);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
 
     bool VaildID;
     int l_idx = argv[0].toInt(&VaildID);
@@ -337,7 +351,9 @@ void AOClient::cmdBgLock(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
 
     if (!l_area->bgLocked())
         l_area->toggleBgLock();
@@ -349,7 +365,9 @@ void AOClient::cmdBgUnlock(int argc, QStringList argv){
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
 
     if (l_area->bgLocked())
         l_area->toggleBgLock();
@@ -360,7 +378,9 @@ void AOClient::cmdBgUnlock(int argc, QStringList argv){
 void AOClient::cmdStatus(int argc, QStringList argv){
     Q_UNUSED(argc);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
     const QString l_arg = argv[0].toLower();
 
     if (l_area->changeStatus(l_arg)) {
@@ -375,7 +395,9 @@ void AOClient::cmdJudgeLog(int argc, QStringList argv){
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
     if (l_area->judgelog().isEmpty())
         sendServerMessage("There have been no judge actions in this area.");
     else
@@ -386,7 +408,9 @@ void AOClient::cmdIgnoreBgList(int argc, QStringList argv){
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
     l_area->toggleIgnoreBgList();
     sendServerMessage("BG list in this area is now " + QString(l_area->ignoreBgList() ? "ignored." : "enforced."));
 }
@@ -394,7 +418,9 @@ void AOClient::cmdIgnoreBgList(int argc, QStringList argv){
 void AOClient::cmdAreaMessage(int argc, QStringList argv){
     Q_UNUSED(argc)
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
     if (argv.isEmpty())
         sendServerMessage(l_area->areaMessage());
     else{
@@ -407,7 +433,9 @@ void AOClient::cmdToggleAreaMessageOnJoin(int argc, QStringList argv){
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
     l_area->toggleAreaMessageJoin();
     sendServerMessage("Sending message on area join is now " + QString(l_area->sendAreaMessageOnJoin() ? "enabled." : "disabled."));
 }
@@ -416,7 +444,9 @@ void AOClient::cmdToggleWtce(int argc, QStringList argv){
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
     l_area->toggleWtceAllowed();
     sendServerMessage("Using testimony animations is now " + QString(l_area->isWtceAllowed() ? "enabled." : "disabled."));
 }
@@ -425,7 +455,9 @@ void AOClient::cmdToggleShouts(int argc, QStringList argv){
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
     l_area->toggleShoutAllowed();
     sendServerMessage("Using shouts is now " + QString(l_area->isShoutAllowed() ? "enabled." : "disabled."));
 }
@@ -435,7 +467,9 @@ void AOClient::cmdClearAreaMessage(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
     l_area->clearAreaMessage();
     if (l_area->sendAreaMessageOnJoin())              // Turn off the automatic sending.
         cmdToggleAreaMessageOnJoin(0, QStringList{}); // Dummy values.
@@ -471,7 +505,9 @@ void AOClient::cmdMedievalMode(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
     l_area->toggleMedievalMode();
     sendServerMessageArea("Hear ye, hear ye! Medieval Mode is now " + QString(l_area->isMedievalMode() ? "enabled." : "disabled."));
 }

@@ -197,7 +197,7 @@ void AOClient::cmdMods(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    QMap<int, QStringList> EntriesMap; /* why use qmap?.. because we needs area_id for get areas name */
+    QHash<int, QStringList> EntriesMap; /* why use qhash/qmap?.. because we needs area_id for get areas name */
     for (auto client : server->getClients()){
         if (client->m_authenticated){
             QStringList user_entry(QString("[%1] %2").arg(QString::number(client->clientId()), client->character().isEmpty() ? "[Spectator]" : client->character()));
@@ -223,6 +223,9 @@ void AOClient::cmdMods(int argc, QStringList argv)
     int entry_count = 0;
 
     for (auto EMap = EntriesMap.begin(); EMap != EntriesMap.end(); ++EMap){
+        if (server->getAreaById(EMap.key()).isNull())
+            continue;
+
         entry.append(QString("=== [%1] %2 ===\n%3").arg(QString::number(server->getAreaById(EMap.key())->index()), server->getAreaById(EMap.key())->name(), EMap.value().join('\n')));
         entry_count += EMap.value().size();
     }
@@ -399,7 +402,8 @@ void AOClient::cmdUserInfo(int argc, QStringList argv){
         Data.append("HDID:" + client->m_hwid);
         Data.append(QString("Character: %1").arg(client->isSpectator() ? "[Spectator]" : client->character()));
         const auto current_area = server->getAreaById(qMax(0, client->areaId()));
-        Data.append(QString("AREA: [%1] %2").arg(QString::number(current_area->index()), current_area->name()));
+        if (!current_area.isNull())
+            Data.append(QString("AREA: [%1] %2").arg(QString::number(current_area->index()), current_area->name()));
         auto clients = server->getClientsByIpid(client->m_ipid);
         const auto client_version = client->m_version;
         Data.append(QString("Clients: %1 | [%2]").arg(QString::number(qMax(1, clients.size())), client_version.is_webao ? "WEB" : client_version.get_string_version()));
@@ -426,11 +430,13 @@ void AOClient::cmdUserInfo(int argc, QStringList argv){
                 if (!Info.isEmpty())
                     other_data.append(" : " + Info.join(' '));
 
-                if (other_client == client)
-                    other_data.prepend("[THIS] ");
-                else
-                    other_data.prepend(QString("[%1] ").arg(area->index() == current_area->index() ? "*THIS AREA*" : area->name()));
+                if (!current_area.isNull()){
+                    if (other_client == client)
+                        other_data.prepend("[THIS] ");
+                    else
+                        other_data.prepend(QString("[%1] ").arg(area->index() == current_area->index() ? "*THIS AREA*" : area->name()));
                 Data.append(" · " + other_data.join(""));
+                }
             }
         }
         if (client == this)
@@ -819,7 +825,10 @@ void AOClient::cmdAllowBlankposting(int argc, QStringList argv)
     Q_UNUSED(argv);
 
     QString l_sender_name = name();
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
     l_area->toggleBlankposting();
     if (l_area->blankpostingAllowed() == false) {
         sendServerMessageArea(l_sender_name + " has set blankposting in the area to forbidden.");
@@ -885,7 +894,10 @@ void AOClient::cmdForceImmediate(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
     l_area->toggleImmediate();
     QString l_state = l_area->forceImmediate() ? "on." : "off.";
     sendServerMessage("Forced immediate text processing in this area is now " + l_state);
@@ -896,7 +908,10 @@ void AOClient::cmdAllowIniswap(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
     l_area->toggleIniswap();
     QString state = l_area->iniswapAllowed() ? "allowed." : "disallowed.";
     sendServerMessage("Iniswapping in this area is now " + state);
@@ -1008,7 +1023,10 @@ void AOClient::cmdClearCM(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
     foreach (int l_client_id, l_area->owners()) {
         l_area->removeOwner(l_client_id);
     }

@@ -247,7 +247,9 @@ void AOClient::cmdRps(int argc, QStringList argv){
 
 void AOClient::cmdTimer(int argc, QStringList argv)
 {
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
 
     // Called without arguments
     // Shows a brief of all timers
@@ -337,7 +339,10 @@ void AOClient::cmdTimer(int argc, QStringList argv)
 void AOClient::cmdNoteCard(int argc, QStringList argv){
     Q_UNUSED(argc);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
     QString l_notecard = argv.join(" ");
     l_area->addNotecard(QString(character().isEmpty() ? "Spectator" : character()), l_notecard);
     sendServerMessageArea("[" + QString::number(clientId()) + "] " + QString(character().isEmpty() ? "Spectator" : character()) + " wrote a note card.");
@@ -348,7 +353,10 @@ void AOClient::cmdNoteCardClear(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
     if (!l_area->addNotecard(QString(character().isEmpty() ? "Spectator" : character()), QString()))
         sendServerMessageArea("[" + QString::number(clientId()) + "] " + QString(character().isEmpty() ? "Spectator" : character()) + " erased their note card.");
 }
@@ -358,7 +366,10 @@ void AOClient::cmdNoteCardReveal(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
     const QStringList l_notecards = l_area->getNotecards();
 
     if (l_notecards.isEmpty())
@@ -385,8 +396,11 @@ void AOClient::cmdSubTheme(int argc, QStringList argv)
     Q_UNUSED(argc);
 
     QString l_subtheme = argv.join(" ");
-    const auto current_area = server->getAreaById(areaId());
-    for (int Index : current_area->joinedIDs()){
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
+    for (int Index : l_area->joinedIDs()){
         auto client = server->getClientByID(Index);
         if (client.isNull())
             continue;
