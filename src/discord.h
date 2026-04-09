@@ -67,7 +67,7 @@ class Discord : public QObject
      * @param f_reason The reason for the modcall.
      * @param f_buffer The area's log buffer.
      */
-    void onModcallWebhookRequested(const QStringList &f_name, const QString &f_area, const QString &f_reason, const QQueue<QString> &f_buffer);
+    void onModcallWebhookRequested(const QString &f_name, const QString &f_area, const QString &f_id, const QString &f_reason, const QQueue<QString> &f_buffer);
 
     /**
      * @brief Handles a ban webhook request.
@@ -77,9 +77,7 @@ class Discord : public QObject
      * @param f_duration The date the ban expires.
      * @param f_reason The reason of the ban.
      */
-    void onBanWebhookRequested(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID, const int &f_count);
-
-    void onUnbanWebhookRequested(const QString &f_ipid, const QStringList &f_moderator, const int &f_banID, const int &f_ban_duration, const QDateTime &f_date, const QStringList &f_reason);
+    void onBanWebhookRequested(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID);
 
   private:
     /**
@@ -101,7 +99,7 @@ class Discord : public QObject
      *
      * @return A JSON document for the modcall.
      */
-    QJsonDocument constructModcallJson(const QStringList &f_name, const QString &f_area, const QString &f_reason) const;
+    QJsonDocument constructModcallJson(const QString &f_name, const QString &f_area, const QString &f_id, const QString &f_reason) const;
 
     /**
      * @brief Constructs a new QHttpMultiPart document for log files.
@@ -144,9 +142,7 @@ class Discord : public QObject
      *
      * @return A JSON document for the ban.
      */
-    QJsonDocument constructBanJson(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID, const int &f_counts);
-
-    QJsonDocument constructUnbanJson(const QString &f_ipid, const QStringList &f_moderator, const int &f_banID, const int &f_ban_duration, const QDateTime &f_date, const QStringList &f_reason);
+    QJsonDocument constructBanJson(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID);
 };
 
 #endif // DISCORD_H

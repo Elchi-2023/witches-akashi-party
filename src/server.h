@@ -28,7 +28,6 @@
 #include <QTimer>
 #include <QWebSocket>
 #include <QWebSocketServer>
-#include <QPointer> /* smart pointer (qobject) guards */
 
 #include "medieval_parser.h"
 #include "network/aopacket.h"
@@ -84,8 +83,7 @@ class Server : public QObject
     {
         AUTHENTICATED,
         MODCHAT,
-        ADVERT,
-        AFKSTATUS
+        ADVERT
     };
     Q_ENUM(TARGET_TYPE)
 
@@ -94,7 +92,7 @@ class Server : public QObject
      *
      * @return A list of all clients currently in the server.
      */
-    QVector<QPointer<AOClient>> getClients();
+    QVector<AOClient *> getClients();
 
     /**
      * @brief Gets a pointer to a client by IPID.
@@ -105,7 +103,7 @@ class Server : public QObject
      *
      * @see Server::getClientsByIpid() to get all clients ran by the same user.
      */
-    QPointer<AOClient> getClient(QString ipid);
+    AOClient *getClient(QString ipid);
 
     /**
      * @brief Gets a list of pointers to all clients with the given IPID.
@@ -114,7 +112,7 @@ class Server : public QObject
      *
      * @return A list of clients whose IPID match. List may be empty.
      */
-    QList<QPointer<AOClient>> getClientsByIpid(QString ipid);
+    QList<AOClient *> getClientsByIpid(QString ipid);
 
     /**
      * @brief Gets a list of pointers to all clients with the given HWID.
@@ -123,7 +121,7 @@ class Server : public QObject
      *
      * @return A list of clients whose HWID match. List may be empty.
      */
-    QList<QPointer<AOClient>> getClientsByHwid(QString f_hwid);
+    QList<AOClient *> getClientsByHwid(QString f_hwid);
 
     /**
      * @brief Gets a pointer to a client by user ID.
@@ -132,7 +130,7 @@ class Server : public QObject
      *
      * @return A pointer to the client if found, a nullpointer if not.
      */
-    QPointer<AOClient> getClientByID(int id);
+    AOClient *getClientByID(int id);
 
     /**
      * @brief Returns the overall player count in the server.
@@ -200,17 +198,6 @@ class Server : public QObject
     void broadcast(AOPacket *packet, TARGET_TYPE target);
 
     /**
-     * @brief Sends a packet to a specific usergroup in a given area.
-     *
-     * @param The packet to send to the clients.
-     *
-     * @param area_index the area to send the packet to.
-     *
-     * @param ENUM to determine the targets of the altered packet.
-     */
-    void broadcast(AOPacket *packet, int area_index, TARGET_TYPE target);
-
-    /**
      * @brief Sends a packet to clients, sends an altered packet to a specific usergroup.
      *
      * @param The packet to send to the clients.
@@ -250,7 +237,7 @@ class Server : public QObject
      *
      * @return A list of areas.
      */
-    QVector<QPointer<AreaData>> getAreas();
+    QVector<AreaData *> getAreas();
 
     /**
      * @brief Returns the number of areas in the server.
@@ -264,7 +251,7 @@ class Server : public QObject
      *
      * @return A pointer to the area or null.
      */
-    QPointer<AreaData> getAreaById(int f_area_id);
+    AreaData *getAreaById(int f_area_id);
 
     /**
      * @brief Getter for an area specific buffer from the logger.
@@ -406,7 +393,7 @@ class Server : public QObject
      * @param f_reason The reason the client specified for the modcall.
      * @param f_buffer The area's log buffer.
      */
-    void modcallWebhookRequest(const QStringList &f_name, const QString &f_area, const QString &f_reason, const QQueue<QString> &f_buffer);
+    void modcallWebhookRequest(const QString &f_name, const QString &f_area, const QString &f_id, const QString &f_reason, const QQueue<QString> &f_buffer);
 
     /**
      * @brief Sends a ban webhook request, emitted by AOClient::cmdBan
@@ -416,9 +403,7 @@ class Server : public QObject
      * @param f_reason The reason for the ban.
      * @param f_banID The ID of the issued ban.
      */
-    void banWebhookRequest(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID, const int &f_count);
-
-    void UnbanWebhookRequested(const QString &f_ipid, const QStringList &f_moderator, const int &f_banID, const int &f_ban_duration, const QDateTime &f_date, const QStringList &f_reason);
+    void banWebhookRequest(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID);
 
     /**
      * @brief Signal connected to universal logger. Logs a client connection attempt.
@@ -462,12 +447,12 @@ class Server : public QObject
     /**
      * @brief The collection of all currently connected clients.
      */
-    QVector<QPointer<AOClient>> m_clients;
+    QVector<AOClient *> m_clients;
 
     /**
      * @brief Collection of all clients with their userID as key.
      */
-    QHash<int, QPointer<AOClient>> m_clients_ids;
+    QHash<int, AOClient *> m_clients_ids;
     PlayerStateObserver m_player_state_observer;
 
     /**
@@ -489,7 +474,7 @@ class Server : public QObject
     /**
      * @brief The areas on the server.
      */
-    QVector<QPointer<AreaData>> m_areas;
+    QVector<AreaData *> m_areas;
 
     /**
      * @brief The names of the areas on the server.
