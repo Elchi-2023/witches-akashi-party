@@ -33,7 +33,7 @@ void Discord::onModcallWebhookRequested(const QStringList &f_name, const QString
     QJsonDocument l_json = constructModcallJson(f_name, f_area, f_reason);
     postJsonWebhook(l_json);
 
-    if (ConfigManager::discordModcallWebhookSendFile()) {
+    if (ConfigManager::discordModcallWebhookSendFile() && !f_buffer.isEmpty()) {
         QHttpMultiPart *l_multipart = constructLogMultipart(f_buffer);
         postMultipartWebhook(*l_multipart);
     }

@@ -14,40 +14,51 @@ PacketInfo PacketZZ::getPacketInfo() const
 {
     PacketInfo info{
         .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 2,
+        .min_args = 1,
         .header = "ZZ"};
     return info;
 }
 
 void PacketZZ::handlePacket(AreaData *area, AOClient &client) const
 {
-    QStringList l_name(QString("[%1] %2 (%3)").arg(QString::number(client.clientId()), client.name(), client.getIpid()));
-    if (client.name().isEmpty())
-        l_name.replace(0, QString("[%1] %2 (%3)").arg(QString::number(client.clientId()), client.character().isEmpty() ? "Spectator" : client.character(), client.getIpid()));
+    QPointer<AreaData> CurrentArea = area;
+    QPointer<Server> CurrentServer = client.getServer();
 
-    const QString l_areaName = area->name();
+    QStringList PrintToOOC("──── MODCALL ───");
+    if (CurrentServer.isNull() /* preventing segfault when calling <server> pointer.. */ || m_content[0].trimmed().isEmpty() /* preventing accepting <empty reasons> */)
+        return;
+    QStringList l_names, m_name({"[" + QString::number(client.clientId()) + "]", client.character().isEmpty() ? "Spectator" : client.character(), "[" + client.getIpid() + "]"});
+    if (!client.name().isEmpty())
+        m_name.insert(1, ": (" + client.name() + ")");
+    PrintToOOC.append("├── Caller: " + m_name.join(' '));
+    l_names.append(m_name.join(' '));
+    PrintToOOC.append("├── Area: " + (CurrentArea.isNull() ? "[UNKNOWN]" : QString("[%1] %2").arg(QString::number(CurrentArea->index()), CurrentArea->name())));
 
-    QStringList l_notification{"Area: " + l_areaName, "Caller: " + l_name.at(0)};
+    if (m_content.size() >= 2){ /* if the caller/client using <report button> feature */
+        bool target_ok = false;
+        const int target_id = m_content.at(1).toInt(&target_ok);
+        if (target_ok && !CurrentServer->getClientByID(target_id).isNull()){ /* make sure both param are vaild.. */
+            const auto t_client = CurrentServer->getClientByID(target_id);
+            QPointer<AreaData> t_clientArea(CurrentServer->getAreaById(t_client->areaId()));
 
-    const int target_id = m_content.at(1).toInt();
-    if (target_id >= 0 && !client.getServer()->getClientByID(target_id).isNull()){
-        const AOClient *target = client.getServer()->getClientByID(target_id);
-        if (target->character().isEmpty())
-            l_name.append(QString("[%1] %2 (%3)").arg(QString::number(target->clientId()), target->character().isEmpty() ? "Spectator" : target->character(), target->getIpid()));
-        else
-            l_name.append(QString("[%1] %2 (%3)").arg(QString::number(target->clientId()), target->name(), target->getIpid()));
-        l_notification.append("Regarding: " + l_name.last());
+            QStringList t_name({"[" + QString::number(t_client->clientId()) + "]", t_client->character().isEmpty() ? "Spectator" : t_client->character(), "[" + t_client->getIpid() + "]"});
+            if (!t_client->name().isEmpty())
+                t_name.insert(1, ": (" + t_client->name() + ")");
+            const QString t_areaname(t_clientArea.isNull() ? "[UNKNOWN]" : t_clientArea == CurrentArea ? "[THIS AREA]" : QString("[%1] %2").arg(QString::number(t_clientArea->index()), t_clientArea->name()));
+            PrintToOOC.append(QString("├── Regarding: %1 in %2").arg(t_name.join(' '), t_areaname));
+            l_names.append(" • Name: " + t_name.join(' ') + "\n • In: " + t_areaname);
+        }
     }
-    l_notification.append("Reason: " + m_content[0]);
 
-    const QVector<QPointer<AOClient>> l_clients = client.getServer()->getClients();
-    for (auto l_client : l_clients){
-        if (l_client->m_authenticated)
-            l_client->sendPacket(PacketFactory::createPacket("ZZ", {"!!!MODCALL!!!\n" + l_notification.join('\n')}));
+    PrintToOOC.append("├── Reason: " + m_content[0]);
+    PrintToOOC.append("└───────────────");
+
+    for (auto l_client : CurrentServer->getClients()){
+        if (!l_client.isNull() && l_client->m_authenticated)
+            l_client->sendPacket(PacketFactory::createPacket("ZZ", {PrintToOOC.join('\n')}));
     }
-    auto CurrentArea = client.getServer()->getAreaById(client.areaId());
-    emit client.logModcall((client.character() + " " + client.characterName()), client.m_ipid, client.name(), CurrentArea.isNull() ? "[NULL]" : CurrentArea->name());
-
+    emit client.logModcall((client.character() + " " + client.characterName()), client.m_ipid, client.name(), CurrentArea.isNull() ? "[UNKNOWN-AREA]" : CurrentArea->name());
     if (ConfigManager::discordWebhookEnabled())
-        emit client.getServer()->modcallWebhookRequest(l_name, l_areaName, m_content[0], client.getServer()->getAreaBuffer(l_areaName));
+        emit client.getServer()->modcallWebhookRequest(l_names, CurrentArea.isNull() ? "<UNKNOWN>" : CurrentArea->name(), m_content[0], client.getServer()->getAreaBuffer(CurrentArea.isNull() ? "" : CurrentArea->name()));
+
 }
