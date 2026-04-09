@@ -23,22 +23,47 @@ PacketInfo PacketCT::getPacketInfo() const
 
 void PacketCT::handlePacket(AreaData *area, AOClient &client) const
 {
-    if (client.m_is_ooc_muted) {
+    if (client.m_is_ooc_muted && !client.m_authenticated) {
         client.sendServerMessage("You are OOC muted, and cannot speak.");
         return;
     }
 
-    client.setName(client.dezalgo(m_content[0]).replace(QRegularExpression("\\[|\\]|\\{|\\}|\\#|\\$|\\%|\\&"), "")); // no fucky wucky shit here
-    if (client.name().trimmed().replace("​", "").isEmpty() || client.name() == ConfigManager::serverName())        // impersonation & empty name protection
+    const QString Name = client.dezalgo(m_content[0]).remove(QRegularExpression("\\[|\\]|\\{|\\}|\\#|\\$|\\%|\\&")).remove(QString::fromUtf8("\xE2\x80\x8B")).remove(QString::fromUtf8("\xE2\x80\x8E")); // no fucky wucky shit here
+    if (Name.trimmed().isEmpty() || Name == ConfigManager::serverName()) /* impersonation & empty name protection */
         return;
 
-    if (client.name().length() > 30) {
+    if (Name.length() > 30) {
         client.sendServerMessage("Your name is too long! Please limit it to under 30 characters.");
         return;
     }
 
-    if (client.m_is_logging_in) {
-        client.loginAttempt(m_content[1]);
+    client.setName(Name);
+    if (client.m_is_logging_in){
+        if (m_content[1].toLower() == "/cancel"){
+            client.m_is_logging_in = false;
+            client.sendServerMessage("Exiting login prompt.");
+            client.totalAttempt = qMakePair(0, 0); /* reset the counts */
+            return;
+        }
+
+        const bool Pass = client.loginAttempt(m_content[1]);
+        if (Pass){
+            client.m_is_logging_in = false;
+            client.totalAttempt = qMakePair(0, 0); /* reset the counts */
+        }
+        else{
+            ++client.totalAttempt.first;
+            if (client.totalAttempt.first > 3){
+                ++client.totalAttempt.second;
+                for (auto I : client.getServer()->getClients()){
+                    if (I->m_authenticated)
+                        I->sendPacket("CT", {"[ALERT]", QString("A user %1 (aka %2) attempted to logining, %3 tries.").arg(client.m_ipid, client.name(), QString::number(client.totalAttempt.second)), "1"});
+                }
+                qInfo() << "[Login Prompt]: " << client.m_ipid << " (aka " << client.name() << ") attempting to logining, " << client.totalAttempt.second << " tries.";
+                client.totalAttempt.first = 0;
+            }
+            client.sendServerMessage("Please try again or /cancel to exit");
+        }
         return;
     }
 
@@ -48,6 +73,9 @@ void PacketCT::handlePacket(AreaData *area, AOClient &client) const
         return;
 
     if (!ConfigManager::filterList().isEmpty()) {
+
+        QString l_censor_message = l_message.toLower();
+
         foreach (const QString &regex, ConfigManager::filterList()) {
             QRegularExpression re(regex, QRegularExpression::CaseInsensitiveOption);
             l_message.replace(re, "❌");
@@ -62,12 +90,30 @@ void PacketCT::handlePacket(AreaData *area, AOClient &client) const
         int l_cmd_argc = l_cmd_argv.length();
 
         client.handleCommand(l_command, l_cmd_argc, l_cmd_argv);
-        emit client.logCMD((client.character() + " " + client.characterName()), client.m_ipid, client.name(), l_command, l_cmd_argv, client.getServer()->getAreaById(client.areaId())->name());
+        emit client.logCMD((client.character() + " " + client.characterName()), client.m_ipid, client.name(), l_command, l_cmd_argv, client.getServer()->getAreaById(client.areaId()).isNull() ? "[NULL]" : client.getServer()->getAreaById(client.areaId())->name());
         return;
     }
-    else {
-        AOPacket *final_packet = PacketFactory::createPacket("CT", {client.name(), l_message, "0"});
-        client.getServer()->broadcast(final_packet, client.areaId());
+    else if (!client.m_is_ooc_muted){
+        if (client.m_is_gimped)
+            l_message = ConfigManager::gimpList().at((client.genRand(1, ConfigManager::gimpList().size() - 1)));
+        if (client.m_is_medieval || area->isMedievalMode())
+            l_message = client.getServer()->getMedievalParser()->degrootify(l_message);
+        if (client.m_is_shaken) {
+            QStringList l_parts = l_message.split(QRegularExpression(R"([^A-Za-z0-9]+)"));
+
+            std::random_device rng;
+            std::mt19937 urng(rng());
+            std::shuffle(l_parts.begin(), l_parts.end(), urng);
+
+            l_message = l_parts.join(" ");
+        }
+        if (client.m_is_disemvoweled)
+            l_message = QString(l_message).remove(QRegularExpression("[AEIOUaeiou]"));
+        
+        client.getServer()->broadcast(PacketFactory::createPacket("CT", {client.name(), l_message, "0"}), client.areaId());
     }
+    else
+        client.sendServerMessage("You are OOC muted, and cannot speak. (even you are moderator)");
+    
     emit client.logOOC((client.character() + " " + client.characterName()), client.name(), client.m_ipid, area->name(), l_message);
 }
