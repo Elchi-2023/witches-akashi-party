@@ -57,7 +57,7 @@ void PacketZZ::handlePacket(AreaData *area, AOClient &client) const
         if (!l_client.isNull() && l_client->m_authenticated)
             l_client->sendPacket(PacketFactory::createPacket("ZZ", {PrintToOOC.join('\n')}));
     }
-    emit client.logModcall((client.character() + " " + client.characterName()), client.m_ipid, client.name(), CurrentArea.isNull() ? "[UNKNOWN-AREA]" : CurrentArea->name());
+    emit client.logModcall((client.character() + " " + client.characterName()), {client.clientId(), client.m_ipid}, client.name(), CurrentArea.isNull() ? "SERVER" : CurrentArea->name());
     if (ConfigManager::discordWebhookEnabled())
         emit client.getServer()->modcallWebhookRequest(l_names, CurrentArea.isNull() ? "<UNKNOWN>" : CurrentArea->name(), m_content[0], client.getServer()->getAreaBuffer(CurrentArea.isNull() ? "" : CurrentArea->name()));
 

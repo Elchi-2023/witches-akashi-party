@@ -20,29 +20,28 @@ PacketInfo PacketMS::getPacketInfo() const
     return info;
 }
 
-void PacketMS::handlePacket(AreaData *area, AOClient &client) const
-{
+void PacketMS::handlePacket(AreaData *area, AOClient &client) const{
     if (client.m_is_muted) {
         client.sendServerMessage("You cannot speak while muted.");
         return;
     }
-
-    if (!area->isMessageAllowed() || !client.getServer()->isMessageAllowed()) {
-        return;
-    }
-
+    
+    const QPointer<Server> CurrentServer(client.getServer());
+    if (QPointer<AreaData>(area).isNull() || CurrentServer.isNull() || !area->isMessageAllowed() || !CurrentServer->isMessageAllowed())
+        return; /* safely first */
+    
     AOPacket *validated_packet = validateIcPacket(client);
     if (validated_packet->getPacketInfo().header == "INVALID" || QPointer<AreaData>(area).isNull())
         return;
-
+    
     if (client.m_pos != "")
         validated_packet->setContentField(5, client.m_pos);
-
+    
     // Check if evidence was presented and we need to handle HIDDEN_CM mode
     int evi_idx = m_content[11].toInt();
     int real_evidence_idx = -1;
     bool evidence_presented = false;
-
+    
     if (evi_idx > 0 && area->eviMod() == AreaData::EvidenceMod::HIDDEN_CM) {
         // Find the real evidence index
         real_evidence_idx = area->getEvidenceIndexByVisibleIndex(evi_idx, client.m_pos, client.checkPermission(ACLRole::CM));
@@ -53,69 +52,84 @@ void PacketMS::handlePacket(AreaData *area, AOClient &client) const
             evidence_presented = true;
         }
     }
-
+    
     if (evidence_presented){ /* Send individual packets to each client with correct evidence indices */
         for (int Index : area->joinedIDs()){
-            auto l_client = client.getServer()->getClientByID(Index);
+            auto l_client = CurrentServer->getClientByID(Index);
             if (l_client.isNull())
                 continue;
-
+            
             // Create a copy of the packet content
             QStringList packet_content = validated_packet->getContent();
-
+            
             // Convert the real evidence index to visible index for this client
             int visible_idx = area->getVisibleIndexByEvidenceIndex(real_evidence_idx, l_client->m_pos, l_client->checkPermission(ACLRole::CM));
             packet_content[11] = QString::number(visible_idx);
-
+            
             // Send the customized packet to this client
             AOPacket *custom_packet = PacketFactory::createPacket("MS", packet_content);
             l_client->sendPacket(custom_packet);
         }
     }
     else /* Normal broadcast for non-evidence messages or non-HIDDEN_CM areas */
-        client.getServer()->broadcast(validated_packet, client.areaId());
-
-    emit client.logIC((client.character() + " " + client.characterName()), client.name(), client.m_ipid, client.getServer()->getAreaById(client.areaId()).isNull() ? "[NULL]" : client.getServer()->getAreaById(client.areaId())->name(), client.m_last_message);
+        CurrentServer->broadcast(validated_packet, client.areaId());
+    
+    emit client.logIC((client.character() + " " + client.characterName()), client.name(), {client.clientId(), client.m_ipid}, CurrentServer->getAreaById(client.areaId()).isNull() ? "[NULL]" : CurrentServer->getAreaById(client.areaId())->name(), client.m_last_message);
     area->updateLastICMessage(validated_packet->getContent());
-
+    
     area->startMessageFloodguard(ConfigManager::messageFloodguard());
-    client.getServer()->startMessageFloodguard(ConfigManager::globalMessageFloodguard());
+    CurrentServer->startMessageFloodguard(ConfigManager::globalMessageFloodguard());
+}
+
+static QString NormalizeName(QString s){ /* > normalize of [zero-width & any invisible unicode] < */
+    static const ushort BadChars[] = {
+        0x200B, 0x200C, 0x200D, 0x2060, 0xFEFF, 0x180E,
+        0x200E, 0x200F,
+        0x202A, 0x202B, 0x202C, 0x202D, 0x202E,
+        0x2066, 0x2067, 0x2068, 0x2069
+    }; // thanks to google(s).. i guess..
+
+    for (ushort u : BadChars)
+        s.remove(QChar(u));
+
+    return s.trimmed();
 }
 
 AOPacket *PacketMS::validateIcPacket(AOClient &client) const
 {
     // Welcome to the super cursed server-side IC chat validation hell
-
+    
     // I wanted to use enums or #defines here to make the
     // indicies of the args arrays more readable. But,
     // in typical AO fasion, the indicies for the incoming
     // and outgoing packets are different. Just RTFM.
-
+    
     // This packet can be sent with a minimum required args of 15.
     // 2.6+ extensions raise this to 19, and 2.8 further raises this to 26.
-
+    
+    const QPointer<Server> CurrentServer(client.getServer());
     AOPacket *l_invalid = PacketFactory::createPacket("INVALID", {});
     QStringList l_args;
     if (client.isSpectator() || client.character().isEmpty() || !client.m_joined)
         // Spectators cannot use IC
         return l_invalid;
-    QPointer<AreaData> area = client.getServer()->getAreaById(client.areaId());
+    QPointer<AreaData> area = CurrentServer->getAreaById(client.areaId());
     if (area.isNull() || (area->lockStatus() == AreaData::LockStatus::SPECTATABLE && !area->invited().contains(client.clientId()) && !client.checkPermission(ACLRole::BYPASS_LOCKS)))
         // Non-invited players cannot speak in spectatable areas
         return l_invalid;
-
+    
     QList<QVariant> l_incoming_args;
     for (const QString &l_arg : m_content) {
         l_incoming_args.append(QVariant(l_arg));
     }
-
+    
     // desk modifier
     const QMap<QString, int> allowed_desk_mods{{"chat", 1}, {"0", 0}, {"1", 1}, {"2", 2}, {"3", 3}, {"4", 4}, {"5", 5}}; /* this just simple a "hack" by using qmap.., the original "hack" you can see on next commented */
     if (allowed_desk_mods.contains(l_incoming_args[0].toString()))
         l_args.append(QString::number(allowed_desk_mods[l_incoming_args[0].toString()]));
     else
         return l_invalid;
-
+    
     /* == this orignally "hack" and not been deleted ===
     QStringList allowed_desk_mods;
     allowed_desk_mods << "chat"
@@ -140,17 +154,17 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     else
         return l_invalid;
     */
-
+    
     // preanim
     l_args.append(l_incoming_args[1].toString());
-
+    
     // char name
     if (client.character().toLower() != l_incoming_args[2].toString().toLower()) {
         // Selected char is different from supplied folder name
         // This means the user is INI-swapped
         if (!area->iniswapAllowed()) {
             QStringList l_character_split = l_incoming_args[2].toString().split("/");
-            if (!client.getServer()->getCharacters().contains(l_character_split.at(0), Qt::CaseInsensitive) || l_character_split.contains(".."))
+            if (!CurrentServer->getCharacters().contains(l_character_split.at(0), Qt::CaseInsensitive) || l_character_split.contains(".."))
                 return l_invalid;
         }
         // qDebug() << "INI swap detected from " << client.getIpid(); /* disable this, don't want bloating the consoles */
@@ -158,85 +172,85 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     }
     else if (!client.m_current_iniswap.isEmpty())
         client.m_current_iniswap.clear();
-
+    
     l_args.append(l_incoming_args[2].toString());
-
+    
     // emote
     client.m_emote = l_incoming_args[3].toString();
     if (client.m_first_person)
         client.m_emote = "";
     l_args.append(client.m_emote);
-
+    
     // message text
     if (l_incoming_args[4].toString().size() > ConfigManager::maxCharacters())
         return l_invalid;
-
+    
     // Doublepost prevention. Has to ignore blankposts and testimony commands.
     QString l_incoming_msg = client.dezalgo(l_incoming_args[4].toString().trimmed());
     QRegularExpressionMatch match = isTestimonyJumpCommand(client.decodeMessage(l_incoming_msg));
     bool msg_is_testimony_cmd = (match.hasMatch() || l_incoming_msg == ">" || l_incoming_msg == "<");
     if (!client.m_last_message.isEmpty()           // If the last message you sent isn't empty,
-        && l_incoming_msg == client.m_last_message // and it matches the one you're sending,
-        && !msg_is_testimony_cmd)                  // and it's not a testimony command,
+            && l_incoming_msg == client.m_last_message // and it matches the one you're sending,
+            && !msg_is_testimony_cmd)                  // and it's not a testimony command,
         return l_invalid;                          // get it the hell outta here!
-
+    
     if (l_incoming_msg.trimmed().isEmpty() && area->blankpostingAllowed() == false) {
         client.sendServerMessage("Blankposting has been forbidden in this area.");
         return l_invalid;
     }
-
+    
     client.m_last_message = l_incoming_msg;
-
+    
     if (!ConfigManager::filterList().isEmpty()) {
         foreach (const QString &regex, ConfigManager::filterList()) {
             QRegularExpression re(regex, QRegularExpression::CaseInsensitiveOption);
             l_incoming_msg.replace(re, "❌");
         }
     }
-
+    
     if (client.m_is_gimped)
         l_incoming_msg = ConfigManager::gimpList().at((client.genRand(1, ConfigManager::gimpList().size() - 1)));
-
+    
     if (client.m_is_medieval || area->isMedievalMode())
-        l_incoming_msg = client.getServer()->getMedievalParser()->degrootify(l_incoming_msg);
-
+        l_incoming_msg = CurrentServer->getMedievalParser()->degrootify(l_incoming_msg);
+    
     if (client.m_is_shaken) {
         QStringList l_parts = l_incoming_msg.split(QRegularExpression(R"([^A-Za-z0-9]+)"));
-
+        
         std::random_device rng;
         std::mt19937 urng(rng());
         std::shuffle(l_parts.begin(), l_parts.end(), urng);
-
+        
         l_incoming_msg = l_parts.join(" ");
     }
-
+    
     if (client.m_is_disemvoweled)
         l_incoming_msg = l_incoming_msg.remove(QRegularExpression("[AEIOUaeiou]")); /* john madden */
-
+    
     /* Capture current m_holiday_mode (param) and target [Value] struct of holiday JSON*/
     const QPair<QPair<bool, QString>, ConfigManager::HolidaysDesc> HolidayState = qMakePair(client.m_holiday_mode, ConfigManager::m_holidayList->value(client.m_holiday_mode.second));
     if (HolidayState.first.first){
         if (client.genRand(1, HolidayState.second.chance) == 1) /* generate number between 1 and chance */
             l_incoming_msg = HolidayState.second.msg_replacement; /* if the number is 1, the message will be overwritten by replacement word in the JSON */
     }
-
+    
     l_args.append(l_incoming_msg);
-
+    
     // side
     // this is validated clientside so w/e
     QString side = area->side();
     if (side.isEmpty())
         side = l_incoming_args[5].toString();
     l_args.append(side);
-
+    
     if (client.m_pos != l_incoming_args[5].toString()) {
         client.m_pos = l_incoming_args[5].toString().remove("../").remove("..\\");
-        client.updateEvidenceList(client.getServer()->getAreaById(client.areaId()));
+        client.updateEvidenceList(CurrentServer->getAreaById(client.areaId()));
     }
-
+    
     // sfx name
     l_args.append(l_incoming_args[6].toString());
-
+    
     // emote modifier
     // Now, gather round, y'all. Here is a story that is truly a microcosm of the AO dev experience.
     // If this value is a 4, it will crash the client. Why? Who knows, but it does.
@@ -246,7 +260,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     // But, for some reason, nobody traced the cause of this issue for many many years.
     // The serverside fix is needed to ensure invalid values are not sent, because the client sucks
     const int emote_mod = l_incoming_args[7].toInt();
-
+    
     switch (emote_mod){
     case 0: case 1: case 2: case 5: case 6:
         l_args.append(QString::number(emote_mod));
@@ -257,15 +271,15 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     default:
         return l_invalid;
     }
-
+    
     // char id
     if (l_incoming_args[8].toInt() != client.m_char_id)
         return l_invalid;
     l_args.append(l_incoming_args[8].toString());
-
+    
     // sfx delay
     l_args.append(l_incoming_args[9].toString());
-
+    
     // objection modifier
     if (area->isShoutAllowed()) {
         if (l_incoming_args[10].toString().contains("4")) /* custom shout includes text metadata */
@@ -282,14 +296,14 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
             client.sendServerMessage("Shouts have been disabled in this area.");
         l_args.append("0");
     }
-
+    
     // evidence
     int evi_idx = l_incoming_args[11].toInt();
     if (evi_idx > area->evidence().length())
         return l_invalid;
-
+    
     l_args.append(QString::number(evi_idx));
-
+    
     // flipping
     bool l_filp_pass = false;
     int l_flip = l_incoming_args[12].toInt(&l_filp_pass);
@@ -297,25 +311,25 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         return l_invalid;
     client.m_flipping = QString::number(l_flip);
     l_args.append(client.m_flipping);
-
+    
     // realization
     bool l_realization_pass = false;
     int l_realization = l_incoming_args[13].toInt(&l_realization_pass);
     if (!l_realization || l_realization < 0 || l_realization > 1)
         return l_invalid;
     l_args.append(QString::number(l_realization));
-
+    
     // text color
     bool l_text_color_pass = false;
     int l_text_color = l_incoming_args[14].toInt(&l_text_color_pass);
     if (!l_text_color_pass || l_text_color < 0 || l_text_color > 11)
         return l_invalid;
     l_args.append(QString::number(l_text_color));
-
+    
     // 2.6 packet extensions
     if (l_incoming_args.length() >= 19) {
         // showname
-        QString l_incoming_showname = client.dezalgo(l_incoming_args[15].toString().trimmed());
+        QString l_incoming_showname = NormalizeName(client.dezalgo(l_incoming_args[15].toString()));
         if (!(l_incoming_showname == client.character() || l_incoming_showname.isEmpty()) && !area->shownameAllowed()) {
             client.sendServerMessage("Shownames are not allowed in this area!");
             return l_invalid;
@@ -324,27 +338,27 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
             client.sendServerMessage("Your showname is too long! Please limit it to under 30 characters");
             return l_invalid;
         }
-
+        
         // if the raw input is not empty but the trimmed input is, use a single space
         if (l_incoming_showname.isEmpty() && !l_incoming_args[15].toString().isEmpty())
             l_incoming_showname = " ";
-
+        
         /* [Holiday Mode] if a user message has replacement word in it, the showname changes too. */
         if (HolidayState.first.first && QRegularExpression(QString("\\b" + HolidayState.second.msg_replacement + "\\b"), QRegularExpression::CaseInsensitiveOption).match(l_incoming_msg).hasMatch())
             l_incoming_showname = QStringList({HolidayState.second.emoji_before, HolidayState.second.pre_name, l_incoming_showname.size() > 30 ? "LongName" : " " + l_incoming_showname + " ", HolidayState.second.emoji_after}).join(""); /* basically the name will change to "[emoji][word][showname][emoji2] */
-
+        
         l_args.append(l_incoming_showname);
         if (!HolidayState.first.first) /* don't set real showname when [Holiday Mode] enabled */
             client.setCharacterName(l_incoming_showname);
-
+        
         // other char id
         // things get a bit hairy here
         // don't ask me how this works, because i don't know either
         const QStringList l_pair_data = l_incoming_args[16].toString().split("^");
         QPair<int, QStringList> l_other_data = qMakePair(0, QStringList{"", "", ""});
-
+        
         if (area->checkPairSync(client.clientId())){ /* [Pair Sync] server-side */
-            auto target_synced = client.getServer()->getClientByID(area->getPairSyncList()[client.clientId()]);
+            auto target_synced = CurrentServer->getClientByID(area->getPairSyncList()[client.clientId()]);
             if (!target_synced.isNull() && area->joinedIDs().contains(target_synced->clientId())){ /* capture target from current area */
                 if (area->checkPairSync(target_synced->clientId())){ /* target were in pair_sync list */
                     if (area->get_pair_sync_clientID(target_synced->clientId()) == client.clientId()){ /* when user been targeted by that targets */
@@ -363,7 +377,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         }
         else /* client-side */
             client.m_pairing_with = l_pair_data[0].toInt();
-
+        
         int l_front_back = -1;
         if (client.m_pair_order > -1)
             l_front_back = client.m_pair_order;
@@ -371,13 +385,13 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
             l_front_back = l_pair_data[1].toInt();
         int l_other_charid = client.m_pairing_with;
         bool l_pairing = false;
-
+        
         /* heavy scans clients on current area */
         for (int _clientid : area->joinedIDs()){
-            const auto Target_client = client.getServer()->getClientByID(_clientid);
+            const auto Target_client = CurrentServer->getClientByID(_clientid);
             if (Target_client.isNull()) /* another smart pointer guards */
                 continue; /* Prevented */
-
+            
             /* Capture an target which paired with *this* client */
             if (!Target_client->isSpectator() && Target_client->m_pairing_with == client.m_char_id && l_other_charid != client.m_char_id && Target_client->m_char_id == client.m_pairing_with && Target_client->m_pos == client.m_pos) {
                 l_other_data = qMakePair(Target_client->m_flipping.toInt(), QStringList{Target_client->m_current_iniswap.isEmpty() ? Target_client->character() : Target_client->m_current_iniswap, Target_client->m_emote, Target_client->m_offset});
@@ -385,7 +399,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
                 break;
             }
         }
-
+        
         if (!l_pairing) {
             l_other_charid = -1;
             l_front_back = -1;
@@ -393,13 +407,13 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         l_args.append(QString::number(l_other_charid) + QString(l_front_back > -1 ? QString("^" + QString::number(l_front_back)) : ""));
         l_args.append(l_other_data.second[0]);
         l_args.append(l_other_data.second[1]);
-
+        
         // self offset
         if (!client.m_offset_override.isEmpty()) //if the override isn't empty, offset will be equal to it
             client.m_offset = client.m_offset_override;
         else
             client.m_offset = l_incoming_args[17].toString(); //if the override is empty, offset will equal to client offset
-
+        
         // versions 2.6-2.8 cannot validate y-offset so we send them just the x-offset
         if (client.m_version.is_webao) /* > gonnna bypassed checker for webao < */
             l_args.append({client.m_offset, l_other_data.second[2]});
@@ -416,7 +430,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         else
             return l_invalid;
         l_args.append(QString::number(l_other_data.first));
-
+        
         // immediate text processing
         bool l_immediate_pass = false;
         int l_immediate = l_incoming_args[18].toInt(&l_immediate_pass);
@@ -434,7 +448,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
             return l_invalid;
         l_args.append(QString::number(l_immediate));
     }
-
+    
     // 2.8 packet extensions
     if (l_incoming_args.length() >= 26) {
         // sfx looping
@@ -443,29 +457,29 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         if (!l_sfx_loop_pass || l_sfx_loop < 0 || l_sfx_loop > 1)
             return l_invalid;
         l_args.append(QString::number(l_sfx_loop));
-
+        
         // screenshake
         bool l_screenshake_pass = false;
         int l_screenshake = l_incoming_args[20].toInt(&l_screenshake_pass);
         if (!l_screenshake_pass || l_screenshake < 0 || l_screenshake > 1)
             return l_invalid;
         l_args.append(QString::number(l_screenshake));
-
+        
         // frames shake
         l_args.append(l_incoming_args[21].toString());
-
+        
         // frames realization
         l_args.append(l_incoming_args[22].toString());
-
+        
         // frames sfx
         l_args.append(l_incoming_args[23].toString());
-
+        
         // additive
         bool l_additive_pass = false;
         int l_additive = l_incoming_args[24].toInt(&l_additive_pass);
         if (!l_additive_pass)
             return l_invalid;
-
+        
         switch (l_additive){ /* use switch instead. . */
         case 0:
             break;
@@ -481,7 +495,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
             return l_invalid;
         }
         l_args.append(QString::number(l_additive));
-
+        
         // effect
         l_args.append(l_incoming_args[25].toString());
     }
@@ -493,22 +507,22 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         // slide toggle
         l_args.append(l_incoming_args[27].toString());
     }
-
+    
     // Testimony playback
     QString client_name = client.name();
     if (client_name.isEmpty())
         client_name = client.character(); // fallback in case of empty ooc name
-
+    
     switch (area->testimonyRecording()){
     case AreaData::TestimonyRecording::RECORDING: case AreaData::TestimonyRecording::ADD:
         if (area.isNull())
             return l_invalid;
-
+        
         if (!l_args[4].isEmpty()){
             if (area->statement() == -1) { // -1 indicates title
                 l_args[4] = "~~-- " + l_args[4] + " --";
                 l_args[14] = "3";
-                client.getServer()->broadcast(PacketFactory::createPacket("RT", {"testimony1", "0"}), client.areaId());
+                CurrentServer->broadcast(PacketFactory::createPacket("RT", {"testimony1", "0"}), client.areaId());
             }
             client.addStatement(l_args);
         }
@@ -520,18 +534,18 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     {
         if (area.isNull())
             return l_invalid;
-
+        
         AreaData::TestimonyProgress l_progress;
         QRegularExpressionMatch match = isTestimonyJumpCommand(client.decodeMessage(l_args[4])); // Get rid of that pesky encoding, then do the fun part
-
+        
         if (l_args[4] == ">") {
             auto l_statement = area->jumpToStatement(area->statement() + 1);
             l_args = l_statement.first;
             l_progress = l_statement.second;
             client.m_pos = l_args[5];
-
+            
             client.sendServerMessageArea(client_name + " moved to the next statement.");
-
+            
             if (l_progress == AreaData::TestimonyProgress::LOOPED)
                 client.sendServerMessageArea("Last statement reached. Looping to first statement.");
         }
@@ -540,9 +554,9 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
             l_args = l_statement.first;
             l_progress = l_statement.second;
             client.m_pos = l_args[5];
-
+            
             client.sendServerMessageArea(client_name + " moved to the previous statement.");
-
+            
             if (l_progress == AreaData::TestimonyProgress::STAYED_AT_FIRST)
                 client.sendServerMessage("First statement reached.");
         }
@@ -551,7 +565,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
             l_args = l_statement.first;
             l_progress = l_statement.second;
             client.m_pos = l_args[5];
-
+            
             client.sendServerMessageArea(client_name + " repeated the current statement.");
         }
         else if (match.hasMatch()) {
@@ -560,9 +574,9 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
             l_args = l_statement.first;
             l_progress = l_statement.second;
             client.m_pos = l_args[5];
-
+            
             client.sendServerMessageArea(client_name + " jumped to statement number " + QString::number(jump_idx) + ".");
-
+            
             switch (l_progress) {
             case AreaData::TestimonyProgress::LOOPED:
             {
@@ -580,11 +594,12 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
                 break;
             }
         }
+        break;
     }
     default:
         return l_invalid;
     }
-
+    
     return PacketFactory::createPacket("MS", l_args);
 }
 

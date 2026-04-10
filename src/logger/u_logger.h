@@ -56,14 +56,20 @@ class ULogger : public QObject
     /**
      * @brief Adds an IC log entry to the area buffer and writes it to the respective log format.
      */
-    void logIC(const QString &f_char_name, const QString &f_ooc_name, const QString &f_ipid,
+    void logIC(const QString &f_char_name, const QString &f_ooc_name, const QPair<int, QString> &f_ids,
                const QString &f_area_name, const QString &f_message);
 
     /**
      * @brief Adds an OOC log entry to the area buffer and writes it to the respective log format.
      */
-    void logOOC(const QString &f_char_Name, const QString &f_ooc_name, const QString &f_ipid,
+    void logOOC(const QString &f_char_Name, const QString &f_ooc_name, const QPair<int, QString> &f_ids,
                 const QString &f_area_name, const QString &f_message);
+
+    /**
+     * @brief Adds an Music log entry to the area buffer and writes it to the respective log format.
+     */
+    void logMusic(const QString &f_char_Name, const QString &f_ooc_name, const QPair<int, QString> &f_ids,
+                const QString &f_area_name, const QString &f_track);
 
     /**
      * @brief Adds an login attempt to the area buffer and writes it to the respective log format.
@@ -90,7 +96,7 @@ class ULogger : public QObject
     /**
      * @brief Adds a modcall event to the area buffer, also triggers modcall writing.
      */
-    void logModcall(const QString &f_char_name, const QString &f_ipid, const QString &f_ooc_name, const QString &f_area_name);
+    void logModcall(const QString &f_char_name, const QPair<int, QString> &f_ids, const QString &f_ooc_name, const QString &f_area_name);
 
     /**
      * @brief Logs any connection attempt to the server, wether sucessful or not.
@@ -134,17 +140,18 @@ class ULogger : public QObject
      *          This QMap contains all default values and overwrites them on logger construction.
      */
     QHash<QString, QString> m_logtext{
-        {"ic", "[%1][%5][IC][%2(%3)][%4]%6"},
-        {"ooc", "[%1][%5][OOC][%2(%3)][%4]%6"},
-        {"login", "[%1][LOGIN][%2][%3][%4(%5)]"},
-        {"cmdlogin", "[%1][%2][LOGIN][%5][%3(%4)]"},
-        {"cmdrootpass", "[%1][%2][ROOTPASS][%5][%3(%4)]"},
-        {"cmdadduser", "[%1][%2][USERADD][%6][%3(%4)]%5"},
-        {"cmd", "[%1][%2][CMD][%7][%3(%4)]/%5 %6"},
-        {"kick", "[%1][%2][KICK][%3]"},
-        {"ban", "[%1][%2][BAN][%3][%4]"},
-        {"modcall", "[%1][%2][MODCALL][%5][%3(%4)]"},
-        {"connect", "[%1][CONNECT][%2][%3][%4]"}};
+        {"ic", "[<time>][<area>][IC][<id>][<char>(<ooc>)][<ipid>]: <message>"},
+        {"ooc", "[<time>][<area>][OOC][<id>][<char>(<ooc>)][<ipid>]: <message>"},
+        {"music", "[<time>][<area>][MUSIC][<id>][<char>(<ooc>)][<ipid>]: <track>"},
+        {"login", "[<time>][LOGIN][<char>(<ooc>)][<ipid>]: <passed>"},
+        {"cmdlogin", "[<time>][<area>][LOGIN][<ipid>][<char>(<ooc>)]"},
+        {"cmdrootpass", "[<time>][<area>][ROOTPASS][<ipid>][<char>(<ooc>)]"},
+        {"cmdadduser", "[<time>][<area>][USERADD][<ipid>][<char>(<ooc>)] <user>"},
+        {"cmd", "[<time>][<area>][CMD][<ipid>][<char>(<ooc>)]: /<cmd_name> <cmd_arg>"},
+        {"kick", "[<time>][<m_name>][KICK][<ipid>]"},
+        {"ban", "[<time>][<m_name>][BAN][<ipid>][<duration>]"},
+        {"modcall", "[<time>][<area>][MODCALL][<id>][<ipid>][<char>(<ooc>)]"},
+        {"connect", "[<time>][CONNECT][<ip>][<ipid>][<hwid>]"}};
 };
 
 #endif // U_LOGGER_H

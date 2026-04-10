@@ -226,8 +226,9 @@ void AOClient::cmdSaveTestimony(int argc, QStringList argv){
 
     if (checkPermission(ACLRole::SAVETEST) || m_testimony_saving){
         auto l_area = server->getAreaById(areaId());
-    if (l_area.isNull())
-        return;
+        if (l_area.isNull())
+            return;
+
         if (l_area->testimony().size() - 1 <= 0)
             sendServerMessage("Can't save an empty testimony.");
         else{
