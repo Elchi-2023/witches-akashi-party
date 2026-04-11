@@ -597,7 +597,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         break;
     }
     default:
-        return l_invalid;
+        break;
     }
     
     return PacketFactory::createPacket("MS", l_args);
