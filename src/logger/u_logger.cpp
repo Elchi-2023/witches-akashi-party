@@ -80,20 +80,12 @@ void ULogger::logCMD(const QString &f_char_name, const QString &f_ipid, const QS
     const QString l_time = QDateTime::currentDateTime().toString("ddd MMMM d yyyy | hh:mm:ss");
     QString l_logEntry;
     /* Some commands contain sensitive data, like passwords, These must be filtered out */
-    const QHash<QString, QString> selected_command{
-        {"login", QString(m_logtext.value("cmdlogin")).replace("<time>", l_time).replace("<area>", f_area_name)
-                    .replace("<char>", f_char_name).replace("<ooc>", f_ooc_name)
-                    .replace("<ipid>", f_ipid)},
-        {"rootpass", QString(m_logtext.value("cmdrootpass")).replace("<time>", l_time).replace("<area>", f_area_name)
-                    .replace("<char>", f_char_name).replace("<ooc>", f_ooc_name)
-                    .replace("<ipid>", f_ipid)},
-        {"adduser", QString(m_logtext.value("cmdadduser")).replace("<time>", l_time).replace("<area>", f_area_name)
-                    .replace("<char>", f_char_name).replace("<ooc>", f_ooc_name)
-                    .replace("<ipid>", f_ipid).replace("<user>", f_args.at(0))}
-    };
-
-    if (selected_command.contains(f_command))
-        l_logEntry = selected_command[f_command];
+    if (f_command == "login")
+        l_logEntry = QString(m_logtext.value("cmdlogin")).replace("<time>", l_time).replace("<area>", f_area_name).replace("<char>", f_char_name).replace("<ooc>", f_ooc_name).replace("<ipid>", f_ipid);
+    else if (f_command == "rootpass")
+        l_logEntry = QString(m_logtext.value("cmdrootpass")).replace("<time>", l_time).replace("<area>", f_area_name).replace("<char>", f_char_name).replace("<ooc>", f_ooc_name).replace("<ipid>", f_ipid);
+    else if (f_command == "adduser")
+        l_logEntry = QString(m_logtext.value("cmdadduser")).replace("<time>", l_time).replace("<area>", f_area_name).replace("<char>", f_char_name).replace("<ooc>", f_ooc_name).replace("<ipid>", f_ipid).replace("<user>", f_args.at(0));
     else /* > any cmd < */
         l_logEntry = QString(m_logtext.value("cmd")).replace("<time>", l_time).replace("<area>", f_area_name)
                 .replace("<char>", f_char_name).replace("<ooc>", f_ooc_name)

@@ -26,14 +26,21 @@ void PacketMS::handlePacket(AreaData *area, AOClient &client) const{
         return;
     }
     
-    const QPointer<Server> CurrentServer(client.getServer());
-    if (QPointer<AreaData>(area).isNull() || CurrentServer.isNull() || !area->isMessageAllowed() || !CurrentServer->isMessageAllowed())
-        return; /* safely first */
+    const QPointer<Server> CurrentServer(client.getServer()); const QPointer<AreaData> CurrentArea(area);
+    if (CurrentArea.isNull() || CurrentServer.isNull()){
+        qDebug() << "[W][AKASHI][MS]: An client id" << client.clientId() << "attempting to calling an [NULL] area/server pointer.";
+        return;
+    }
+
+    if (!area->isMessageAllowed() || !CurrentServer->isMessageAllowed()){
+        qWarning() << "[W][AKASHI][MS]: An client id" << client.clientId() << "attempting to talk [NOT ALLOWED TALK] in area (" + CurrentArea->name() + ")";
+        return;
+    }
     
     AOPacket *validated_packet = validateIcPacket(client);
-    if (validated_packet->getPacketInfo().header == "INVALID" || QPointer<AreaData>(area).isNull())
+    if (validated_packet->getPacketInfo().header == "INVALID")
         return;
-    
+
     if (client.m_pos != "")
         validated_packet->setContentField(5, client.m_pos);
     
@@ -42,9 +49,9 @@ void PacketMS::handlePacket(AreaData *area, AOClient &client) const{
     int real_evidence_idx = -1;
     bool evidence_presented = false;
     
-    if (evi_idx > 0 && area->eviMod() == AreaData::EvidenceMod::HIDDEN_CM) {
+    if (evi_idx > 0 && CurrentArea->eviMod() == AreaData::EvidenceMod::HIDDEN_CM) {
         // Find the real evidence index
-        real_evidence_idx = area->getEvidenceIndexByVisibleIndex(evi_idx, client.m_pos, client.checkPermission(ACLRole::CM));
+        real_evidence_idx = CurrentArea->getEvidenceIndexByVisibleIndex(evi_idx, client.m_pos, client.checkPermission(ACLRole::CM));
         if (real_evidence_idx >= 0) {
             area->setEvidenceOwnerToAll(real_evidence_idx);
             // Update evidence list for all clients in the area
@@ -54,7 +61,7 @@ void PacketMS::handlePacket(AreaData *area, AOClient &client) const{
     }
     
     if (evidence_presented){ /* Send individual packets to each client with correct evidence indices */
-        for (int Index : area->joinedIDs()){
+        for (int Index : CurrentArea->joinedIDs()){
             auto l_client = CurrentServer->getClientByID(Index);
             if (l_client.isNull())
                 continue;
@@ -75,9 +82,9 @@ void PacketMS::handlePacket(AreaData *area, AOClient &client) const{
         CurrentServer->broadcast(validated_packet, client.areaId());
     
     emit client.logIC((client.character() + " " + client.characterName()), client.name(), {client.clientId(), client.m_ipid}, CurrentServer->getAreaById(client.areaId()).isNull() ? "[NULL]" : CurrentServer->getAreaById(client.areaId())->name(), client.m_last_message);
-    area->updateLastICMessage(validated_packet->getContent());
+    CurrentArea->updateLastICMessage(validated_packet->getContent());
     
-    area->startMessageFloodguard(ConfigManager::messageFloodguard());
+    CurrentArea->startMessageFloodguard(ConfigManager::messageFloodguard());
     CurrentServer->startMessageFloodguard(ConfigManager::globalMessageFloodguard());
 }
 
@@ -114,10 +121,10 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         // Spectators cannot use IC
         return l_invalid;
     QPointer<AreaData> area = CurrentServer->getAreaById(client.areaId());
-    if (area.isNull() || (area->lockStatus() == AreaData::LockStatus::SPECTATABLE && !area->invited().contains(client.clientId()) && !client.checkPermission(ACLRole::BYPASS_LOCKS)))
+    if (area->lockStatus() == AreaData::LockStatus::SPECTATABLE && !area->invited().contains(client.clientId()) && !client.checkPermission(ACLRole::BYPASS_LOCKS))
         // Non-invited players cannot speak in spectatable areas
         return l_invalid;
-    
+
     QList<QVariant> l_incoming_args;
     for (const QString &l_arg : m_content) {
         l_incoming_args.append(QVariant(l_arg));
@@ -212,7 +219,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         l_incoming_msg = ConfigManager::gimpList().at((client.genRand(1, ConfigManager::gimpList().size() - 1)));
     
     if (client.m_is_medieval || area->isMedievalMode())
-        l_incoming_msg = CurrentServer->getMedievalParser()->degrootify(l_incoming_msg);
+        CurrentServer->getMedievalParser()->degrootify(l_incoming_msg);
     
     if (client.m_is_shaken) {
         QStringList l_parts = l_incoming_msg.split(QRegularExpression(R"([^A-Za-z0-9]+)"));
@@ -330,7 +337,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     if (l_incoming_args.length() >= 19) {
         // showname
         QString l_incoming_showname = NormalizeName(client.dezalgo(l_incoming_args[15].toString()));
-        if (!(l_incoming_showname == client.character() || l_incoming_showname.isEmpty()) && !area->shownameAllowed()) {
+        if (!area->shownameAllowed() && !l_incoming_showname.isEmpty()) {
             client.sendServerMessage("Shownames are not allowed in this area!");
             return l_invalid;
         }
