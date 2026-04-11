@@ -194,7 +194,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
             && !msg_is_testimony_cmd)                  // and it's not a testimony command,
         return l_invalid;                          // get it the hell outta here!
     
-    if (l_incoming_msg.trimmed().isEmpty() && area->blankpostingAllowed() == false) {
+    if (l_incoming_msg.trimmed().isEmpty() && !area->blankpostingAllowed()) {
         client.sendServerMessage("Blankposting has been forbidden in this area.");
         return l_invalid;
     }
@@ -315,7 +315,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     // realization
     bool l_realization_pass = false;
     int l_realization = l_incoming_args[13].toInt(&l_realization_pass);
-    if (!l_realization || l_realization < 0 || l_realization > 1)
+    if (!l_realization_pass || l_realization < 0 || l_realization > 1)
         return l_invalid;
     l_args.append(QString::number(l_realization));
     
