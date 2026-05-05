@@ -219,7 +219,7 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
         l_incoming_msg = ConfigManager::gimpList().at((client.genRand(1, ConfigManager::gimpList().size() - 1)));
     
     if (client.m_is_medieval || area->isMedievalMode())
-        CurrentServer->getMedievalParser()->degrootify(l_incoming_msg);
+        l_incoming_msg = CurrentServer->getMedievalParser()->degrootify(l_incoming_msg);
     
     if (client.m_is_shaken) {
         QStringList l_parts = l_incoming_msg.split(QRegularExpression(R"([^A-Za-z0-9]+)"));
