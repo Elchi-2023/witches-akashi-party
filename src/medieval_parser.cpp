@@ -1,6 +1,7 @@
 #include "medieval_parser.h"
 
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -36,6 +37,7 @@ MedievalParser::MedievalParser()
 QString MedievalParser::degrootify(QString message)
 {
     if (!datafile_valid) {
+        qWarning() << "[medieval][debug] degrootify called but datafile_valid=false; returning unchanged:" << message;
         return message;
     }
     bool do_pends = true;
@@ -46,7 +48,9 @@ QString MedievalParser::degrootify(QString message)
         final_text.remove(0, 1);
     }
 
-    return modifySpeech(final_text, do_pends, false);
+    QString out = modifySpeech(final_text, do_pends, false);
+    qDebug() << "[medieval][debug] in:" << message << "out:" << out;
+    return out;
 }
 
 void MedievalParser::parseDataFile()
@@ -54,7 +58,11 @@ void MedievalParser::parseDataFile()
     datafile_valid = true;
 
     QFile l_datafile_json("config/text/autorp.json");
-    l_datafile_json.open(QIODevice::ReadOnly | QIODevice::Text);
+    if (!l_datafile_json.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qWarning() << "[medieval][debug] Could not open" << QFileInfo(l_datafile_json).absoluteFilePath() << "-" << l_datafile_json.errorString();
+        datafile_valid = false;
+        return;
+    }
 
     QJsonParseError l_error;
     const QJsonDocument &l_datafile_list_json = QJsonDocument::fromJson(l_datafile_json.readAll(), &l_error);
@@ -71,6 +79,7 @@ void MedievalParser::parseDataFile()
     }
 
     if (prepended_words.isEmpty()) {
+        qWarning() << "[medieval][debug] prepended_words is empty after parsing; disabling medieval mode";
         datafile_valid = false;
         return;
     }
@@ -82,6 +91,7 @@ void MedievalParser::parseDataFile()
     }
 
     if (appended_words.isEmpty()) {
+        qWarning() << "[medieval][debug] appended_words is empty after parsing; disabling medieval mode";
         datafile_valid = false;
         return;
     }
@@ -129,9 +139,14 @@ void MedievalParser::parseDataFile()
         word_replacements.append(replacement_struct);
     }
     if (word_replacements.isEmpty()) {
+        qWarning() << "[medieval][debug] word_replacements is empty after parsing; disabling medieval mode";
         datafile_valid = false;
         return;
     }
+    qDebug() << "[medieval][debug] parseDataFile OK -"
+             << "prepended:" << prepended_words.size()
+             << "appended:" << appended_words.size()
+             << "replacements:" << word_replacements.size();
 }
 
 QString MedievalParser::getRandomPre()
