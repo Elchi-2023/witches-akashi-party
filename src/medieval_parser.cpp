@@ -115,13 +115,13 @@ void MedievalParser::parseDataFile()
             }
             else if (key == "word_plural") {
                 replacement_struct.plurals = QVector<QString>(rep_obj[key].toVariant().toStringList().toVector());
-                for (const QString &word : replacement_struct.words) {
+                for (const QString &word : replacement_struct.plurals) {
                     word_vector.append(word);
                 }
             }
             else if (key == "prev") {
                 replacement_struct.prev_words = QVector<QString>(rep_obj[key].toVariant().toStringList().toVector());
-                for (const QString &word : replacement_struct.words) {
+                for (const QString &word : replacement_struct.prev_words) {
                     word_vector.append(word);
                 }
             }
@@ -218,7 +218,7 @@ bool MedievalParser::replaceWord(ReplacementCheck *check, QString *rep_str, bool
                 // Ensure we don't choose two of the same prepends
                 int rnd = 0;
                 do {
-                    rnd = randomInt(0, rep_ptr->prepended.count());
+                    rnd = randomInt(0, rep_ptr->prepended.count() - 1);
                 } while (vector_used.contains(rnd));
                 vector_used.append(rnd);
 
