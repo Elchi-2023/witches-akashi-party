@@ -307,6 +307,16 @@ class AOClient : public QObject
     bool m_is_medieval = false;
 
     /**
+     * @brief If true, the client's in-character messages will be transformed into UwU-speak.
+     */
+    bool m_is_uwu = false;
+
+    /**
+     * @brief If true, the client's in-character messages will be translated into Pig Latin.
+     */
+    bool m_is_pig = false;
+
+    /**
      * @brief I was asked to make something configurable for all holidays, so here we go! It has a chance to change a person's message and name
      *
      * @details <bool> were on/off, <QString> were Value
@@ -1899,6 +1909,42 @@ class AOClient : public QObject
      * @iscommand
      */
     void cmdUnMedieval(int argc, QStringList argv);
+
+    /**
+     * @brief Transforms a target client's in-character messages into UwU-speak.
+     *
+     * @details The only argument is **the target's ID** whom the client wants to uwu-ify.
+     *
+     * @iscommand
+     */
+    void cmdUwu(int argc, QStringList argv);
+
+    /**
+     * @brief Allows a UwU-fied client to speak normally.
+     *
+     * @details The only argument is **the target's ID** whom the client wants to un-uwu.
+     *
+     * @iscommand
+     */
+    void cmdUnUwu(int argc, QStringList argv);
+
+    /**
+     * @brief Translates a target client's in-character messages into Pig Latin.
+     *
+     * @details The only argument is **the target's ID** whom the client wants to pig-latin-ify.
+     *
+     * @iscommand
+     */
+    void cmdPig(int argc, QStringList argv);
+
+    /**
+     * @brief Allows a Pig Latin-speaking client to speak normally.
+     *
+     * @details The only argument is **the target's ID** whom the client wants to un-pig.
+     *
+     * @iscommand
+     */
+    void cmdUnPig(int argc, QStringList argv);
 
     /**
      * @brief Toggles whether a client will recieve @ref cmdPM private messages or not.

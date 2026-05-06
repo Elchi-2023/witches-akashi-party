@@ -6,6 +6,58 @@
 #include <QDebug>
 #include <QRegularExpression>
 
+QString PacketMS::applyUwu(const QString &input)
+{
+    QString result = input;
+    result.replace("r", "w").replace("R", "W");
+    result.replace("l", "w").replace("L", "W");
+    result.replace("th", "d").replace("Th", "D").replace("TH", "D");
+    result.replace("na", "nya").replace("Na", "Nya").replace("NA", "NYA");
+    result.replace("ne", "nye").replace("Ne", "Nye");
+    result.replace("ni", "nyi").replace("Ni", "Nyi");
+    result.replace("no", "nyo").replace("No", "Nyo");
+    result.replace("nu", "nyu").replace("Nu", "Nyu");
+    result.replace("ove", "uv").replace("Ove", "Uv");
+    return result;
+}
+
+QString PacketMS::applyPigLatin(const QString &input)
+{
+    static const QString vowels = "aeiouAEIOU";
+    QStringList words = input.split(' ');
+    for (QString &word : words) {
+        if (word.isEmpty())
+            continue;
+        QString punct;
+        while (!word.isEmpty() && !word.back().isLetterOrNumber()) {
+            punct.prepend(word.back());
+            word.chop(1);
+        }
+        if (word.isEmpty()) {
+            word += punct;
+            continue;
+        }
+        bool startsUpper = word[0].isUpper();
+        if (startsUpper)
+            word[0] = word[0].toLower();
+        if (vowels.contains(word[0])) {
+            word += "way";
+        } else {
+            int i = 0;
+            while (i < word.size() && !vowels.contains(word[i]))
+                ++i;
+            if (i == word.size())
+                word += "ay";
+            else
+                word = word.mid(i) + word.left(i) + "ay";
+        }
+        if (startsUpper)
+            word[0] = word[0].toUpper();
+        word += punct;
+    }
+    return words.join(' ');
+}
+
 PacketMS::PacketMS(QStringList &contents) :
     AOPacket(contents)
 {
@@ -233,7 +285,13 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
     
     if (client.m_is_disemvoweled)
         l_incoming_msg = l_incoming_msg.remove(QRegularExpression("[AEIOUaeiou]")); /* john madden */
-    
+
+    if (client.m_is_uwu)
+        l_incoming_msg = applyUwu(l_incoming_msg);
+
+    if (client.m_is_pig)
+        l_incoming_msg = applyPigLatin(l_incoming_msg);
+
     /* Capture current m_holiday_mode (param) and target [Value] struct of holiday JSON*/
     const QPair<QPair<bool, QString>, ConfigManager::HolidaysDesc> HolidayState = qMakePair(client.m_holiday_mode, ConfigManager::m_holidayList->value(client.m_holiday_mode.second));
     if (HolidayState.first.first){
