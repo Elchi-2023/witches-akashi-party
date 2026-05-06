@@ -315,10 +315,7 @@ void AOClient::cmdRandomSong(int argc, QStringList argv)
     QString l_song = l_songs.at(l_index);
 
     AreaData *l_area = server->getAreaById(areaId());
-    QString l_name = character();
-    if (!characterName().isEmpty()) {
-        l_name = characterName();
-    }
+    QString l_name = !characterName().isEmpty() ? characterName() : character();
     l_area->changeMusic(l_name, l_song);
     // Packet args: song name, char ID, showname, autoplay (1 = yes), loop (0 = no)
     AOPacket *music_change = PacketFactory::createPacket("MC", {l_song, QString::number(server->getCharID(character())), characterName(), "1", "0"});
