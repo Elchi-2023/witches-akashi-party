@@ -450,6 +450,9 @@ void AOClient::cmdShuffle(int argc, QStringList argv)
         return;
     }
 
+    // Clear the existing queue so shuffle replaces it rather than appending.
+    l_area->clearJukeboxQueue();
+
     // Shuffle using a seeded Mersenne Twister for good randomness
     std::mt19937 rng(QRandomGenerator::system()->generate());
     std::shuffle(l_songs.begin(), l_songs.end(), rng);
