@@ -2318,6 +2318,7 @@ class AOClient : public QObject
     void cmdJukeboxSkip(int argc, QStringList argv);
 
     /**
+    /**
      * @brief Plays a single random song from the server music list via the jukebox.
      */
     void cmdRandomSong(int argc, QStringList argv);
@@ -2411,6 +2412,14 @@ class AOClient : public QObject
      */
     long long parseTime(QString input);
     QString getReprimand(bool f_positive = false);
+
+    /**
+     * @brief Returns a list of playable song names from the area music list,
+     * filtering out category headers and non-audio entries.
+     *
+     * @return A QStringList containing only valid audio song entries.
+     */
+    QStringList getPlayableSongs() const;
 
     /**
      * @brief Clears QVector of the current area.

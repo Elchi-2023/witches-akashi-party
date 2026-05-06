@@ -507,3 +507,72 @@ void AOClient::cmdPlaylistAdd(int argc, QStringList argv)
     else
         sendServerMessage(l_results.join('\n'));
 }
+
+void AOClient::cmdPlaylistAdd(int argc, QStringList argv)
+{
+    Q_UNUSED(argc);
+
+    AreaData *l_area = server->getAreaById(areaId());
+
+    // Only area CMs (owners), VIPs, and mods may add songs to the playlist.
+    if (!l_area->owners().contains(clientId()) && !checkPermission(ACLRole::JUKEBOX)) {
+        sendServerMessage("You do not have permission to use that command.");
+        return;
+    }
+
+    if (!l_area->isjukeboxEnabled()) {
+        sendServerMessage("The jukebox is not enabled in this area.");
+        return;
+    }
+
+    QString l_song = argv.join(" ");
+    sendServerMessage(l_area->addJukeboxSong(l_song));
+}
+
+void AOClient::cmdShuffle(int argc, QStringList argv)
+{
+    Q_UNUSED(argc);
+    Q_UNUSED(argv);
+
+    AreaData *l_area = server->getAreaById(areaId());
+
+    if (!l_area->isjukeboxEnabled()) {
+        sendServerMessage("The jukebox is not enabled in this area.");
+        return;
+    }
+
+    QStringList l_songs = getPlayableSongs();
+
+    if (l_songs.isEmpty()) {
+        sendServerMessage("No songs available to shuffle.");
+        return;
+    }
+
+    int l_index = QRandomGenerator::global()->bounded(l_songs.size());
+    QString l_song = l_songs.at(l_index);
+    sendServerMessage(l_area->addJukeboxSong(l_song));
+}
+
+void AOClient::cmdRandomSong(int argc, QStringList argv)
+{
+    Q_UNUSED(argc);
+    Q_UNUSED(argv);
+
+    QStringList l_songs = getPlayableSongs();
+
+    if (l_songs.isEmpty()) {
+        sendServerMessage("No songs available.");
+        return;
+    }
+
+    int l_index = QRandomGenerator::global()->bounded(l_songs.size());
+    QString l_song = l_songs.at(l_index);
+
+    AreaData *l_area = server->getAreaById(areaId());
+    QString l_name = !characterName().isEmpty() ? characterName() : character();
+    l_area->changeMusic(l_name, l_song);
+    // Packet args: song name, char ID, showname, autoplay (1 = yes), loop (0 = no)
+    AOPacket *music_change = PacketFactory::createPacket("MC", {l_song, QString::number(server->getCharID(character())), characterName(), "1", "0"});
+    server->broadcast(music_change, areaId());
+    sendServerMessage("Now playing a random song: " + l_song);
+}
