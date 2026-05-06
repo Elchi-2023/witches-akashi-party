@@ -932,6 +932,6 @@
          "playlistadd"
       ],
       "usage":"/playlistadd <song1> [song2] [song3] ...",
-      "text":"Adds one or more songs to the jukebox queue. Pass local song names or approved CDN URLs separated by spaces. Custom URLs play for 5 minutes each. The jukebox must be enabled in the area. Examples: '/playlistadd TH01_Boss.mp3' or '/playlistadd TH01_Boss.mp3 TH02_Stage.mp3' or '/playlistadd https://cdn.example.com/song.mp3'."
+      "text":"Adds one or more songs to the jukebox queue. Pass local song names or approved CDN URLs separated by spaces. Custom URLs play for 5 minutes each. The jukebox must be enabled in the area.\nLocal song example: /playlistadd TH01_Boss.mp3 TH02_Stage.mp3 TH03_Ending.mp3\nCustom URL example: /playlistadd https://cdn.example.com/song1.mp3 https://cdn.example.com/song2.mp3"
    }
 ]
