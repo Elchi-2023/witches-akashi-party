@@ -918,20 +918,20 @@
          "randomsong"
       ],
       "usage":"/randomsong",
-      "text":"Picks a random song from the server music list and adds it to the jukebox queue. The jukebox must be enabled in the area. This command takes no arguments."
+      "text":"Picks a random song from the server music list and adds it to the jukebox queue. The jukebox must be enabled in the area. Example: /randomsong → might queue 'TH01_Boss.mp3'."
    },
    {
       "names": [
          "shuffle"
       ],
       "usage":"/shuffle",
-      "text":"Fills the jukebox queue with all available songs in a random order. The jukebox must be enabled in the area. A manual /play will override the currently playing jukebox song. This command takes no arguments."
+      "text":"Fills the jukebox queue with all available songs in a random order. The jukebox must be enabled in the area. Example: /shuffle → queues every song on the server in a random order."
    },
    {
       "names": [
          "playlistadd"
       ],
       "usage":"/playlistadd <song1> [song2] [song3] ...",
-      "text":"Adds one or more songs to the jukebox queue by name. Separate multiple song names with spaces. The jukebox must be enabled in the area."
+      "text":"Adds one or more songs to the jukebox queue. Pass local song names or approved CDN URLs separated by spaces. Custom URLs play for 5 minutes each. The jukebox must be enabled in the area. Examples: '/playlistadd TH01_Boss.mp3' or '/playlistadd TH01_Boss.mp3 TH02_Stage.mp3' or '/playlistadd https://cdn.example.com/song.mp3'."
    }
 ]

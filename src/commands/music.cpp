@@ -472,12 +472,34 @@ void AOClient::cmdPlaylistAdd(int argc, QStringList argv)
         return;
     }
 
+    // Default fallback duration for custom URLs (5 minutes in seconds).
+    static constexpr float URL_FALLBACK_DURATION = 300.0f;
+
     QStringList l_results;
     for (const QString &song : qAsConst(argv)) {
         const QString l_song = song.trimmed();
         if (l_song.isEmpty())
             continue;
-        l_results.append(l_song + ": " + l_area->addJukeboxSong(l_song));
+
+        // Determine whether this entry is a remote URL or a local song name.
+        const int l_validation = m_music_manager->ValidataSong(
+            QUrl::fromUserInput(l_song, "", QUrl::UserInputResolutionOption::AssumeLocalFile),
+            ConfigManager::cdnList());
+
+        if (l_validation == -1) {
+            l_results.append(l_song + ": Invalid URL.");
+        }
+        else if (l_validation == -2) {
+            l_results.append(l_song + ": That URL is not from an allowed CDN.");
+        }
+        else if (l_validation == 1) {
+            // Valid remote URL — use the fallback duration since we can't know its length.
+            l_results.append(l_song + ": " + l_area->addJukeboxSong(l_song, URL_FALLBACK_DURATION));
+        }
+        else {
+            // Local song name — look it up in the music list normally.
+            l_results.append(l_song + ": " + l_area->addJukeboxSong(l_song));
+        }
     }
 
     if (l_results.isEmpty())
