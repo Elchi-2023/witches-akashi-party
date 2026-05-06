@@ -386,6 +386,10 @@ void AOClient::cmdG(int argc, QStringList argv)
     }
     if (m_is_disemvoweled)
         l_sender_message = QString(l_sender_message).remove(QRegularExpression("[AEIOUaeiou]"));
+    if (m_is_uwu)
+        l_sender_message = PacketMS::applyUwu(l_sender_message);
+    if (m_is_pig)
+        l_sender_message = PacketMS::applyPigLatin(l_sender_message);
 
     for (auto I : server->getClients()){
         if (!I->m_joined || !I->m_global_enabled)
@@ -488,6 +492,10 @@ void AOClient::cmdPM(int argc, QStringList argv)
             }
             if (m_is_disemvoweled)
                 l_message = QString(l_message).remove(QRegularExpression("[AEIOUaeiou]"));
+            if (m_is_uwu)
+                l_message = PacketMS::applyUwu(l_message);
+            if (m_is_pig)
+                l_message = PacketMS::applyPigLatin(l_message);
 
             l_target_client->sendServerMessage("Message from " + name() + " (" + QString::number(clientId()) + "): " + l_message);
             sendServerMessage("PM sent to " + QString::number(l_target_id) + ". Message: " + l_message);
@@ -746,6 +754,114 @@ void AOClient::cmdUnMedieval(int argc, QStringList argv)
     l_target->m_is_medieval = false;
 }
 
+void AOClient::cmdUwu(int argc, QStringList argv)
+{
+    Q_UNUSED(argc);
+
+    bool conv_ok = false;
+    int l_uid = argv[0].toInt(&conv_ok);
+    if (!conv_ok) {
+        sendServerMessage("Invalid user ID.");
+        return;
+    }
+
+    auto l_target = server->getClientByID(l_uid);
+
+    if (l_target.isNull()) {
+        sendServerMessage("No client with that ID found.");
+        return;
+    }
+
+    if (l_target->m_is_uwu)
+        sendServerMessage("That player is already UwU-fied!");
+    else {
+        sendServerMessage("UwU-fied player.");
+        l_target->sendServerMessage("OwO What's this?! Youw speech has been UwU-fied! " + getReprimand());
+    }
+    l_target->m_is_uwu = true;
+}
+
+void AOClient::cmdUnUwu(int argc, QStringList argv)
+{
+    Q_UNUSED(argc);
+
+    bool conv_ok = false;
+    int l_uid = argv[0].toInt(&conv_ok);
+    if (!conv_ok) {
+        sendServerMessage("Invalid user ID.");
+        return;
+    }
+
+    auto l_target = server->getClientByID(l_uid);
+
+    if (l_target.isNull()) {
+        sendServerMessage("No client with that ID found.");
+        return;
+    }
+
+    if (!(l_target->m_is_uwu))
+        sendServerMessage("That player is not UwU-fied!");
+    else {
+        sendServerMessage("Un-UwU-fied player.");
+        l_target->sendServerMessage("A moderator has restored your normal speech! " + getReprimand(true));
+    }
+    l_target->m_is_uwu = false;
+}
+
+void AOClient::cmdPig(int argc, QStringList argv)
+{
+    Q_UNUSED(argc);
+
+    bool conv_ok = false;
+    int l_uid = argv[0].toInt(&conv_ok);
+    if (!conv_ok) {
+        sendServerMessage("Invalid user ID.");
+        return;
+    }
+
+    auto l_target = server->getClientByID(l_uid);
+
+    if (l_target.isNull()) {
+        sendServerMessage("No client with that ID found.");
+        return;
+    }
+
+    if (l_target->m_is_pig)
+        sendServerMessage("That player is already speaking Pig Latin!");
+    else {
+        sendServerMessage("Pig Latin'd player.");
+        l_target->sendServerMessage("Youway avehay eenbay igpay atinlay'd! " + getReprimand());
+    }
+    l_target->m_is_pig = true;
+}
+
+void AOClient::cmdUnPig(int argc, QStringList argv)
+{
+    Q_UNUSED(argc);
+
+    bool conv_ok = false;
+    int l_uid = argv[0].toInt(&conv_ok);
+    if (!conv_ok) {
+        sendServerMessage("Invalid user ID.");
+        return;
+    }
+
+    auto l_target = server->getClientByID(l_uid);
+
+    if (l_target.isNull()) {
+        sendServerMessage("No client with that ID found.");
+        return;
+    }
+
+    if (!(l_target->m_is_pig))
+        sendServerMessage("That player is not speaking Pig Latin!");
+    else {
+        sendServerMessage("Un-Pig Latin'd player.");
+        l_target->sendServerMessage("A moderator has restored your normal speech! " + getReprimand(true));
+    }
+    l_target->m_is_pig = false;
+}
+
 void AOClient::cmdMutePM(int argc, QStringList argv)
 {
     Q_UNUSED(argc);
@@ -953,6 +1069,10 @@ void AOClient::cmdA(int argc, QStringList argv)
         }
         if (m_is_disemvoweled)
             l_sender.second = QString(l_sender.second).remove(QRegularExpression("[AEIOUaeiou]"));
+        if (m_is_uwu)
+            l_sender.second = PacketMS::applyUwu(l_sender.second);
+        if (m_is_pig)
+            l_sender.second = PacketMS::applyPigLatin(l_sender.second);
 
         server->broadcast(PacketFactory::createPacket("CT", {"[CM]" + l_sender.first, l_sender.second}), l_area->index());
     }
@@ -980,6 +1100,10 @@ void AOClient::cmdS(int argc, QStringList argv)
     }
     if (m_is_disemvoweled)
         l_sender.second = QString(l_sender.second).remove(QRegularExpression("[AEIOUaeiou]"));
+    if (m_is_uwu)
+        l_sender.second = PacketMS::applyUwu(l_sender.second);
+    if (m_is_pig)
+        l_sender.second = PacketMS::applyPigLatin(l_sender.second);
 
     for (auto Area : server->getAreas()){
         if (!Area.isNull() && Area->owners().contains(clientId()))
