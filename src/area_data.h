@@ -966,7 +966,7 @@ class AreaData : public QObject
     /**
      * @brief Clears the jukebox queue and stops its timer without disabling the jukebox.
      *
-     * @details Called when a direct /play, /playonce, /radio, or /shuffle command interrupts
+     * @details Called when a direct /play, /play_once, /radio, or /shuffle command interrupts
      * an active queue so that the jukebox no longer overrides the manually chosen song.
      */
     void clearJukeboxQueue();
