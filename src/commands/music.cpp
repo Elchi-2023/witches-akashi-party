@@ -47,6 +47,7 @@ void AOClient::cmdPlay(int argc, QStringList argv)
 
     const ACLRole l_role = server->getACLRolesHandler()->getRoleById(m_acl_role_id);
     if (m_vip_authenticated || m_authenticated){ /* bypassed for vip and mods, no matter if area not free play or has cms on it*/
+        l_area->clearJukeboxQueue();
         l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), l_song, true);
         AOPacket *music_change = PacketFactory::createPacket("MC", {l_song, QString::number(server->getCharID(character())), characterName(), "1", "0"});
         server->broadcast(music_change, areaId());
@@ -65,6 +66,7 @@ void AOClient::cmdPlay(int argc, QStringList argv)
             sendServerMessage("That link/URL wasn't Allowed.");
             break;
         default:
+            l_area->clearJukeboxQueue();
             l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), l_song, true);
             server->broadcast(PacketFactory::createPacket("MC", {l_song, QString::number(server->getCharID(character())), characterName(), "1", "0"}), areaId());
             break;
@@ -89,6 +91,7 @@ void AOClient::cmdPlayOnce(int argc, QStringList argv){
 
         const ACLRole current_role = server->getACLRolesHandler()->getRoleById(m_acl_role_id);
         if (m_vip_authenticated || m_authenticated){ /* bypassed for vip and mods, no matter if area not free play or has cms on it*/
+            l_area->clearJukeboxQueue();
             l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), Song, false);
             AOPacket *music_change = PacketFactory::createPacket("MC", {Song, QString::number(server->getCharID(character())), characterName(), "0", "0"});
             server->broadcast(music_change, areaId());
@@ -104,6 +107,7 @@ void AOClient::cmdPlayOnce(int argc, QStringList argv){
                 sendServerMessage("That link/URL wasn't Allowed.");
                 break;
             default:
+                l_area->clearJukeboxQueue();
                 l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), Song, false);
                 server->broadcast(PacketFactory::createPacket("MC", {Song, QString::number(server->getCharID(character())), characterName(), "0", "0"}), areaId());
                 break;
@@ -137,6 +141,7 @@ void AOClient::cmdRadio(int argc, QStringList argv)
             const ACLRole current_role = server->getACLRolesHandler()->getRoleById(m_acl_role_id);
             if (m_vip_authenticated || m_authenticated){
                 sendServerMessage("Streaming radio: " + Radio_name + ".");
+                l_area->clearJukeboxQueue();
                 l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), Selected_Radio, false);
                 server->broadcast(PacketFactory::createPacket("MC", {Selected_Radio, QString::number(server->getCharID(character())), characterName(), "0", "0"}), areaId());
             }
@@ -144,6 +149,7 @@ void AOClient::cmdRadio(int argc, QStringList argv)
                 sendServerMessage("Can't Streaming radio cause this area aren't [Free music play] enabled.");
             else{
                 sendServerMessage("Streaming radio: " + Radio_name + ".");
+                l_area->clearJukeboxQueue();
                 l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), Selected_Radio, false);
                 server->broadcast(PacketFactory::createPacket("MC", {Selected_Radio, QString::number(server->getCharID(character())), characterName(), "0", "0"}), areaId());
             }
@@ -443,6 +449,9 @@ void AOClient::cmdShuffle(int argc, QStringList argv)
         sendServerMessage("No songs available to shuffle.");
         return;
     }
+
+    // Clear the existing queue so shuffle replaces it rather than appending.
+    l_area->clearJukeboxQueue();
 
     // Shuffle using a seeded Mersenne Twister for good randomness
     std::mt19937 rng(QRandomGenerator::system()->generate());
