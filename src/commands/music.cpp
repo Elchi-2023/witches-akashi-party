@@ -23,6 +23,9 @@
 #include "packet/packet_factory.h"
 #include "server.h"
 
+#include <algorithm>
+#include <random>
+
 // This file is for commands under the music category in aoclient.h
 // Be sure to register the command in the header before adding it here!
 
@@ -372,4 +375,117 @@ void AOClient::cmdJukeboxSkip(int argc, QStringList argv)
     }
     else
         sendServerMessage("Unable to skip song. The jukebox is not running.");
+}
+
+void AOClient::cmdRandomSong(int argc, QStringList argv)
+{
+    Q_UNUSED(argc);
+    Q_UNUSED(argv);
+
+    if (m_is_dj_blocked) {
+        sendServerMessage("You are blocked from changing the music.");
+        return;
+    }
+
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
+    if (!l_area->isjukeboxEnabled()) {
+        sendServerMessage("The jukebox is not enabled in this area.");
+        return;
+    }
+
+    // Filter the root music list to actual songs only (categories have no file extension)
+    QStringList l_all = m_music_manager->rootMusiclist();
+    QStringList l_songs;
+    for (const QString &entry : qAsConst(l_all)) {
+        if (entry.contains('.'))
+            l_songs.append(entry);
+    }
+
+    if (l_songs.isEmpty()) {
+        sendServerMessage("No songs available in the music list.");
+        return;
+    }
+
+    const int l_index = static_cast<int>(QRandomGenerator::system()->bounded(static_cast<quint32>(l_songs.size())));
+    sendServerMessage(l_area->addJukeboxSong(l_songs.at(l_index)));
+}
+
+void AOClient::cmdShuffle(int argc, QStringList argv)
+{
+    Q_UNUSED(argc);
+    Q_UNUSED(argv);
+
+    if (m_is_dj_blocked) {
+        sendServerMessage("You are blocked from changing the music.");
+        return;
+    }
+
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
+    if (!l_area->isjukeboxEnabled()) {
+        sendServerMessage("The jukebox is not enabled in this area.");
+        return;
+    }
+
+    // Filter to actual songs only
+    QStringList l_all = m_music_manager->rootMusiclist();
+    QStringList l_songs;
+    for (const QString &entry : qAsConst(l_all)) {
+        if (entry.contains('.'))
+            l_songs.append(entry);
+    }
+
+    if (l_songs.isEmpty()) {
+        sendServerMessage("No songs available to shuffle.");
+        return;
+    }
+
+    // Shuffle using a seeded Mersenne Twister for good randomness
+    std::mt19937 rng(QRandomGenerator::system()->generate());
+    std::shuffle(l_songs.begin(), l_songs.end(), rng);
+
+    int l_added = 0;
+    for (const QString &song : qAsConst(l_songs)) {
+        if (l_area->addJukeboxSong(song) == "Song added to Jukebox.")
+            l_added++;
+    }
+
+    sendServerMessage(QString("Shuffle complete. Added %1 song(s) to the jukebox queue.").arg(l_added));
+}
+
+void AOClient::cmdPlaylistAdd(int argc, QStringList argv)
+{
+    Q_UNUSED(argc);
+
+    if (m_is_dj_blocked) {
+        sendServerMessage("You are blocked from changing the music.");
+        return;
+    }
+
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
+    if (!l_area->isjukeboxEnabled()) {
+        sendServerMessage("The jukebox is not enabled in this area.");
+        return;
+    }
+
+    QStringList l_results;
+    for (const QString &song : qAsConst(argv)) {
+        const QString l_song = song.trimmed();
+        if (l_song.isEmpty())
+            continue;
+        l_results.append(l_song + ": " + l_area->addJukeboxSong(l_song));
+    }
+
+    if (l_results.isEmpty())
+        sendServerMessage("No songs provided.");
+    else
+        sendServerMessage(l_results.join('\n'));
 }

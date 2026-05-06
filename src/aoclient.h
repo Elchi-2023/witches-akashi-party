@@ -2271,6 +2271,21 @@ class AOClient : public QObject
      */
     void cmdJukeboxSkip(int argc, QStringList argv);
 
+    /**
+     * @brief Plays a single random song from the server music list via the jukebox.
+     */
+    void cmdRandomSong(int argc, QStringList argv);
+
+    /**
+     * @brief Fills the jukebox queue with all available songs in a random order.
+     */
+    void cmdShuffle(int argc, QStringList argv);
+
+    /**
+     * @brief Adds one or more named songs to the jukebox queue.
+     */
+    void cmdPlaylistAdd(int argc, QStringList argv);
+
     ///@}
 
     /**
