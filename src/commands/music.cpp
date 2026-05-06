@@ -377,6 +377,19 @@ void AOClient::cmdJukeboxSkip(int argc, QStringList argv)
         sendServerMessage("Unable to skip song. The jukebox is not running.");
 }
 
+// Returns only the actual playable songs from the root music list,
+// filtering out category headers (which have no file extension).
+static QStringList playableSongs(MusicManager *musicManager)
+{
+    QStringList l_songs;
+    const QStringList l_all = musicManager->rootMusiclist();
+    for (const QString &entry : qAsConst(l_all)) {
+        if (entry.contains('.'))
+            l_songs.append(entry);
+    }
+    return l_songs;
+}
+
 void AOClient::cmdRandomSong(int argc, QStringList argv)
 {
     Q_UNUSED(argc);
@@ -396,14 +409,7 @@ void AOClient::cmdRandomSong(int argc, QStringList argv)
         return;
     }
 
-    // Filter the root music list to actual songs only (categories have no file extension)
-    QStringList l_all = m_music_manager->rootMusiclist();
-    QStringList l_songs;
-    for (const QString &entry : qAsConst(l_all)) {
-        if (entry.contains('.'))
-            l_songs.append(entry);
-    }
-
+    const QStringList l_songs = playableSongs(m_music_manager);
     if (l_songs.isEmpty()) {
         sendServerMessage("No songs available in the music list.");
         return;
@@ -432,14 +438,7 @@ void AOClient::cmdShuffle(int argc, QStringList argv)
         return;
     }
 
-    // Filter to actual songs only
-    QStringList l_all = m_music_manager->rootMusiclist();
-    QStringList l_songs;
-    for (const QString &entry : qAsConst(l_all)) {
-        if (entry.contains('.'))
-            l_songs.append(entry);
-    }
-
+    QStringList l_songs = playableSongs(m_music_manager);
     if (l_songs.isEmpty()) {
         sendServerMessage("No songs available to shuffle.");
         return;
@@ -449,13 +448,10 @@ void AOClient::cmdShuffle(int argc, QStringList argv)
     std::mt19937 rng(QRandomGenerator::system()->generate());
     std::shuffle(l_songs.begin(), l_songs.end(), rng);
 
-    int l_added = 0;
-    for (const QString &song : qAsConst(l_songs)) {
-        if (l_area->addJukeboxSong(song) == "Song added to Jukebox.")
-            l_added++;
-    }
+    for (const QString &song : qAsConst(l_songs))
+        l_area->addJukeboxSong(song);
 
-    sendServerMessage(QString("Shuffle complete. Added %1 song(s) to the jukebox queue.").arg(l_added));
+    sendServerMessage(QString("Shuffle complete. %1 song(s) queued in the jukebox.").arg(l_songs.size()));
 }
 
 void AOClient::cmdPlaylistAdd(int argc, QStringList argv)
