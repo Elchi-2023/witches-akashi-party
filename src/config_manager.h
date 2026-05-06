@@ -60,7 +60,7 @@ class ConfigManager
     /**
      * @brief Returns the character list of the server..
      */
-    static QStringList charlist();
+    static QStringList charlist(const bool write = false);
 
     /**
      * @brief Returns the a QStringList of the available backgrounds..
@@ -71,6 +71,11 @@ class ConfigManager
      * @brief Returns a QStringlist of the available songs..
      */
     static MusicList musiclist();
+
+    /**
+     * @brief Returns a QStringlist of radio links..
+     */
+    static QMap<int, QPair<QString,QString>> radiolist();
 
     /**
      * @brief Returns an ordered QList of all basesongs of this server..
@@ -330,6 +335,22 @@ class ConfigManager
     static QStringList gimpList();
 
     /**
+     * @brief A struct for storing data from holiday json, it's a silly thing...
+     */
+    struct HolidaysDesc
+    {
+        QString pre_name;   //a word before the name, in the holiday json
+        QString msg_replacement;    //message sent can be replaced to this
+        QString emoji_before;   //emoji that comes before the pre_name
+        QString emoji_after; // emoji that comes after person's name
+        int chance;     //the chance of all of this thingamajig to happen (1 in chance)
+    };
+
+    static QMap<QString, HolidaysDesc> holidaylist();
+
+    static QMap<QString, HolidaysDesc> *m_holidayList;
+
+    /**
      * @brief Returns the server regex filter list.
      */
     static QStringList filterList();
@@ -348,6 +369,11 @@ class ConfigManager
      * @brief Returns the IP or URL of the masterserver.
      */
     static QUrl serverlistURL();
+
+    /**
+     * @brief Returns the URL of the webdownloader.
+     */
+    static QUrl ServerWebdownloaderURL();
 
     /**
      * @brief Returns an optional hostname paramemter for the advertiser.
@@ -467,6 +493,11 @@ class ConfigManager
      * @brief Contains an ordered list for the musiclist.
      */
     static QStringList *m_ordered_list;
+
+    /**
+     * @brief Contains the radiolist with names and url.
+     */
+    static QMap<int, QPair<QString, QString>> *m_radioList;
 
     /**
      * @brief QHash containing the help information for all commands registered to the server.

@@ -28,11 +28,7 @@
 
 void AOClient::cmdBan(int argc, QStringList argv)
 {
-    QString l_args_str = argv[2];
-    if (argc > 3) {
-        for (int i = 3; i < argc; i++)
-            l_args_str += " " + argv[i];
-    }
+    Q_UNUSED(argc)
 
     DBManager::BanInfo l_ban;
 
@@ -47,12 +43,26 @@ void AOClient::cmdBan(int argc, QStringList argv)
         return;
     }
 
+    bool isclientID;
+    int clientID = argv[0].toInt(&isclientID);
     l_ban.duration = l_duration_seconds;
-    l_ban.ipid = argv[0];
-    l_ban.reason = l_args_str;
+    if (isclientID){
+        const auto target = QPointer<AOClient>(server->getClientByID(clientID));
+        if (target.isNull()){
+            sendServerMessage("Target ID are not exist or invaild.");
+            return;
+        }
+        l_ban.ipid = target->m_ipid;
+    }
+    else if (argv[0].size() != 8){
+        sendServerMessage("Invaild target ipid, length must exacty 8.");
+        return;
+    }
+    else
+        l_ban.ipid = argv[0];
+
+    l_ban.reason = argv.mid(2).join(" ");
     l_ban.time = QDateTime::currentDateTime().toSecsSinceEpoch();
-    bool l_ban_logged = false;
-    int l_kick_counter = 0;
 
     switch (ConfigManager::authType()) {
     case DataTypes::AuthType::SIMPLE:
@@ -63,72 +73,123 @@ void AOClient::cmdBan(int argc, QStringList argv)
         break;
     }
 
-    const QList<AOClient *> l_targets = server->getClientsByIpid(l_ban.ipid);
-    for (AOClient *l_client : l_targets) {
-        if (!l_ban_logged) {
-            l_ban.ip = l_client->m_remote_ip;
-            l_ban.hdid = l_client->m_hwid;
-            server->getDatabaseManager()->addBan(l_ban);
-            sendServerMessage("Banned user with ipid " + l_ban.ipid + " for reason: " + l_ban.reason);
-            l_ban_logged = true;
+    const QList<QPointer<AOClient>> l_targets = server->getClientsByIpid(l_ban.ipid);
+    if (l_targets.isEmpty()){ /* We're banning someone not connected. */
+        server->getDatabaseManager()->addBan(l_ban);
+        sendPacket("CT", {"[Moderation]", "You are banned ipid of " + l_ban.ipid + " with reason: " + l_ban.reason, "1"});
+        if (ConfigManager::discordBanWebhookEnabled()){
+            QDateTime ban_until = QDateTime::fromSecsSinceEpoch(l_ban.time);
+            const QString l_ban_duration = l_ban.duration >= 0 ? ban_until.addSecs(l_ban.duration).toString("MM/dd/yyyy, hh:mm") : "Permanently.";
+
+            const int l_ban_id = server->getDatabaseManager()->getBanIDByIPID(l_ban.ipid);
+
+            QStringList Name{"[" + QString::number(clientId()) + "]", "(" + l_ban.moderator + ")"};
+            if (!name().isEmpty())
+                Name.insert(1, name());
+            const QString l_ban_duration_discord_format = l_ban.duration >= 0 ? QString("<t:%1:R>").arg(ban_until.addSecs(l_ban.duration).toSecsSinceEpoch()) : "Permanently";
+
+            emit server->banWebhookRequest(l_ban.ipid, Name.join(' '), l_ban_duration_discord_format, l_ban.reason, l_ban_id, 0); /* why "0" you wonder?.. cause not existing clients to be counts lol */
         }
-        QString l_ban_duration;
-        if (!(l_ban.duration == -2)) {
-            l_ban_duration = QDateTime::fromSecsSinceEpoch(l_ban.time).addSecs(l_ban.duration).toString("MM/dd/yyyy, hh:mm");
-        }
-        else {
-            l_ban_duration = "Permanently.";
-        }
-        int l_ban_id = server->getDatabaseManager()->getBanID(l_ban.ip);
-        l_client->sendPacket("KB", {l_ban.reason + "\nID: " + QString::number(l_ban_id) + "\nUntil: " + l_ban_duration});
-        l_client->m_socket->close();
-        l_kick_counter++;
+    }
+    else if (l_targets.size() == 1){
+        auto target = l_targets.first();
+        l_ban.ip = target->m_remote_ip;
+        l_ban.hdid = target->m_hwid;
+        server->getDatabaseManager()->addBan(l_ban);
+        sendPacket("CT", {"[Moderation]", "You are banned client id of [" + QString::number(target->clientId()) + "] (aka "+ l_ban.ipid + ") with reason: " + l_ban.reason, "1"});
+
+        QDateTime ban_until = QDateTime::fromSecsSinceEpoch(l_ban.time);
+        const QString l_ban_duration = l_ban.duration >= 0 ? ban_until.addSecs(l_ban.duration).toString("MM/dd/yyyy, hh:mm") : "Permanently.";
+
+        const int l_ban_id = server->getDatabaseManager()->getBanID(l_ban.ip);
+        target->m_is_multiclient = false;
+        target->m_disconnect_reason = Disconnected::BAN;
+        target->sendPacket("KB", {QStringList({l_ban.reason, "ID: " + QString::number(l_ban_id), "Until: " + l_ban_duration}).join('\n')});
+        target->m_socket->close();
 
         emit logBan(l_ban.moderator, l_ban.ipid, l_ban_duration, l_ban.reason);
-        if (ConfigManager::discordBanWebhookEnabled())
-            emit server->banWebhookRequest(l_ban.ipid, l_ban.moderator, l_ban_duration, l_ban.reason, l_ban_id);
+        if (ConfigManager::discordBanWebhookEnabled()){
+            QStringList Name{"[" + QString::number(clientId()) + "]", "(" + l_ban.moderator + ")"};
+            if (!name().isEmpty())
+                Name.insert(1, name());
+            const QString l_ban_duration_discord_format = l_ban.duration >= 0 ? QString("<t:%1:R>").arg(ban_until.addSecs(l_ban.duration).toSecsSinceEpoch()) : "Permanently";
+            emit server->banWebhookRequest(l_ban.ipid, Name.join(' '), l_ban_duration_discord_format, l_ban.reason, l_ban_id, l_targets.size());
+        }
     }
-
-    if (l_kick_counter > 1)
-        sendServerMessage("Kicked " + QString::number(l_kick_counter) + " clients with matching ipids.");
-
-    // We're banning someone not connected.
-    if (!l_ban_logged) {
+    else{
+        auto target = l_targets.first();
+        l_ban.ip = target->m_remote_ip;
+        l_ban.hdid = target->m_hwid;
         server->getDatabaseManager()->addBan(l_ban);
-        sendServerMessage("Banned " + l_ban.ipid + " for reason: " + l_ban.reason);
+
+        QDateTime ban_until = QDateTime::fromSecsSinceEpoch(l_ban.time);
+        const int l_ban_id = server->getDatabaseManager()->getBanID(l_ban.ip);
+        int l_kick_counter = 0;
+
+        for (auto target : l_targets){
+            const QString l_ban_duration = l_ban.duration >= 0 ? ban_until.addSecs(l_ban.duration).toString("MM/dd/yyyy, hh:mm") : "Permanently.";
+            target->m_is_multiclient = l_kick_counter >= 1;
+            target->m_disconnect_reason = Disconnected::BAN;
+            target->sendPacket("KB", {QStringList({l_ban.reason, "ID: " + QString::number(l_ban_id), "Until: " + l_ban_duration}).join('\n')});
+            target->m_socket->close();
+            l_kick_counter += 1;
+        }
+
+        emit logBan(l_ban.moderator, l_ban.ipid, l_ban.duration >= 0 ? ban_until.addSecs(l_ban.duration).toString("MM/dd/yyyy, hh:mm") : "Permanently.", l_ban.reason);
+        if (ConfigManager::discordBanWebhookEnabled()){
+            QStringList Name{"[" + QString::number(clientId()) + "]", "(" + l_ban.moderator + ")"};
+            if (!name().isEmpty())
+                Name.insert(1, name());
+            const QString l_ban_duration_discord_format = l_ban.duration >= 0 ? QString("<t:%1:R>").arg(ban_until.addSecs(l_ban.duration).toSecsSinceEpoch()) : "Permanently";
+            emit server->banWebhookRequest(l_ban.ipid, Name.join(' '), l_ban_duration_discord_format, l_ban.reason, l_ban_id, l_targets.size());
+        }
+        sendPacket("CT", {"[Moderation]", QString("You are banned client id of [%1] (aka %2) for reason: [%2] and kicked %3 clients with matching ipids.").arg(QString::number(target->clientId()), l_ban.ipid, l_ban.reason, QString::number(l_targets.size())), "1"});
     }
 }
 
 void AOClient::cmdKick(int argc, QStringList argv)
 {
+    Q_UNUSED(argc)
+
     QString l_target_ipid = argv[0];
-    QString l_reason = argv[1];
+    QString l_reason = argv.mid(1).join(" ");
     int l_kick_counter = 0;
 
-    if (argc > 2) {
-        for (int i = 2; i < argv.length(); i++) {
-            l_reason += " " + argv[i];
-        }
+    bool isclientID;
+    int clientID = l_target_ipid.toInt(&isclientID);
+    if (isclientID && server->getClientByID(clientID) != nullptr)
+        l_target_ipid = server->getClientByID(clientID)->m_ipid;
+
+    const QList<QPointer<AOClient>> l_targets = server->getClientsByIpid(l_target_ipid);
+    for (int index = 0; index < l_targets.size(); ++index){
+        l_targets[index]->m_is_multiclient = index != 0;
+        l_targets[index]->m_disconnect_reason = Disconnected::KICK;
+        l_targets[index]->sendPacket("KK", {l_reason});
+        l_targets[index]->m_socket->close();
+        l_kick_counter = index +1;
     }
 
-    const QList<AOClient *> l_targets = server->getClientsByIpid(l_target_ipid);
-    for (AOClient *l_client : l_targets) {
-        l_client->sendPacket("KK", {l_reason});
-        l_client->m_socket->close();
-        l_kick_counter++;
+    switch (l_kick_counter){
+        case 0:
+            sendServerMessage("User with ipid not found!");
+            break;
+        default:
+            if (m_authenticated){
+                if (ConfigManager::authType() == DataTypes::AuthType::ADVANCED)
+                    emit logKick(m_moderator_name, l_target_ipid, l_reason);
+                else
+                    emit logKick("Moderator", l_target_ipid, l_reason);
+                sendServerMessage("Kicked " + QString::number(l_kick_counter) + " client(s) with ipid " + l_target_ipid + " for reason: " + l_reason);
+            }
+            else if (m_vip_authenticated){
+                if (ConfigManager::authType() == DataTypes::AuthType::ADVANCED)
+                    emit logKick("[VIP] " + m_moderator_name, l_target_ipid, l_reason);
+                else
+                    emit logKick("[VIP]", l_target_ipid, l_reason);
+                sendServerMessage("Kicked " + QString::number(l_kick_counter) + " client(s) for reason: " + l_reason);
+            }
+            break;
     }
-
-    if (l_kick_counter > 0) {
-        if (ConfigManager::authType() == DataTypes::AuthType::ADVANCED) {
-            emit logKick(m_moderator_name, l_target_ipid, l_reason);
-        }
-        else {
-            emit logKick("Moderator", l_target_ipid, l_reason);
-        }
-        sendServerMessage("Kicked " + QString::number(l_kick_counter) + " client(s) with ipid " + l_target_ipid + " for reason: " + l_reason);
-    }
-    else
-        sendServerMessage("User with ipid not found!");
 }
 
 void AOClient::cmdMods(int argc, QStringList argv)
@@ -136,26 +197,253 @@ void AOClient::cmdMods(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    QStringList l_entries;
-    int l_online_count = 0;
-    const QVector<AOClient *> l_clients = server->getClients();
-    for (AOClient *l_client : l_clients) {
-        if (l_client->m_authenticated) {
-            l_entries << "---";
-            if (ConfigManager::authType() != DataTypes::AuthType::SIMPLE) {
-                l_entries << "Moderator: " + l_client->m_moderator_name;
-                l_entries << "Role:" << l_client->m_acl_role_id;
+    QHash<int, QStringList> EntriesMap; /* why use qhash/qmap?.. because we needs area_id for get areas name */
+    for (auto client : server->getClients()){
+        if (client->m_authenticated){
+            QStringList user_entry(QString("[%1] %2").arg(QString::number(client->clientId()), client->character().isEmpty() ? "[Spectator]" : client->character()));
+            if (client->m_moderator_name == "root") /* marked the "👑" for "root"/owner */
+                user_entry.replace(0, QString("[👑][%1] %2").arg(QString::number(client->clientId()), client->character().isEmpty() ? "[Spectator]" : client->character()));
+
+            if (m_authenticated){ /* only moderator can see names */
+                if (!client->name().trimmed().isEmpty() && client->name().trimmed().toLower() != client->m_moderator_name.toLower()) /* capture the diff name between their oocname and their moderator name */
+                    user_entry.append("(" + QStringList({client->name().trimmed(), client->m_moderator_name}).join(" | ") + ")");
+                else /* otherwise.. just shown their moderator name instead */
+                    user_entry.append("(" + client->m_moderator_name + ")");
             }
-            l_entries << "OOC name: " + l_client->name();
-            l_entries << "ID: " + QString::number(l_client->clientId());
-            l_entries << "Area: " + QString::number(l_client->areaId());
-            l_entries << "Character: " + l_client->character();
-            l_online_count++;
+            user_entry.prepend(client == this ? " ➤ " : " · "); /* if /getarea(s) has user marked.. why not we do the same for this */
+            if (EntriesMap.contains(client->areaId())) /* if area_id was on enteriesmap, we adds another entry */
+                EntriesMap[client->areaId()].append(user_entry.join(' '));
+            else /* otherwise, we needs captures area_id and entry */
+                EntriesMap.insert(client->areaId(), {user_entry.join(' ')});
         }
     }
-    l_entries << "---";
-    l_entries << "Total online: " << QString::number(l_online_count);
-    sendServerMessage(l_entries.join("\n"));
+
+    /* kfo/tsu-like behavior */
+    QStringList entry("=== Moderator ===");
+    int entry_count = 0;
+
+    for (auto EMap = EntriesMap.begin(); EMap != EntriesMap.end(); ++EMap){
+        if (server->getAreaById(EMap.key()).isNull())
+            continue;
+
+        entry.append(QString("=== [%1] %2 ===\n%3").arg(QString::number(server->getAreaById(EMap.key())->index()), server->getAreaById(EMap.key())->name(), EMap.value().join('\n')));
+        entry_count += EMap.value().size();
+    }
+    entry.append(QString("=== Total online : %1 ===").arg(QString::number(entry_count)));
+
+    sendServerMessage('\n' + entry.join('\n'));
+}
+
+void AOClient::cmdCurses(int argc, QStringList argv){
+    if (argc <= 0)
+        return;
+    bool vaild_id = false;
+    int target_id = argv[0].toInt(&vaild_id);
+
+    if (!vaild_id){
+        sendServerMessage("Invalid user ID.");
+        return;
+    }
+
+    auto target_client = server->getClientByID(target_id);
+
+    if (target_client == nullptr){
+        sendServerMessage("No client with that ID found.");
+        return;
+    }
+
+    const QStringList m_type{"disemvoweled", "shaked", "medievaled", "gimped"};
+    switch (argc){
+    case 1:
+        if (target_client->m_is_disemvoweled)
+            sendServerMessage("That target are already been curses (disemvoweled).");
+        else{
+            target_client->m_is_disemvoweled = true;
+            sendServerMessage("You gives target an curses (disemvoweled).");
+            target_client->sendServerMessage("You been curses (disemvoweled) by Moderator! " + getReprimand(false));
+        }
+        break;
+    case 2: default:
+        bool vaild_type = false;
+        const int _type = argv[1].toInt(&vaild_type);
+        if (!vaild_type){
+            sendServerMessage("Invaild Type.");
+            return;
+        }
+
+        const QList<bool*> target_state{&target_client->m_is_disemvoweled, &target_client->m_is_shaken, &target_client->m_is_medieval, &target_client->m_is_gimped};
+        switch (_type){
+        case -1:
+            if (target_client->m_is_disemvoweled && target_client->m_is_shaken && target_client->m_is_medieval && target_client->m_is_gimped)
+                sendServerMessage("That target are already been *TRUE* curses.");
+            else{
+                for (auto state : target_state){
+                    if (!*state)
+                        *state = true;
+                }
+                sendServerMessage("You gives target an *TRUE* curses.");
+                target_client->sendServerMessage("You been *TRUE* curses by Moderator! " + getReprimand(false));
+            }
+            break;
+        case 0: case 1: case 2: case 3:
+            if (*target_state[_type])
+                sendServerMessage(QString("That target are already been curses (%1)").arg(m_type[_type]));
+            else{
+                *target_state[_type] = true;
+                sendServerMessage(QString("You gives target an curses (%1).").arg(m_type[_type]));
+                target_client->sendServerMessage(QString("You been curses (%1) by Moderator! ").arg(m_type[_type]) + getReprimand(false));
+            }
+            break;
+        default:
+            if (target_client->m_is_disemvoweled)
+                sendServerMessage("That target are already been curses (disemvoweled).");
+            else{
+                target_client->m_is_disemvoweled = true;
+                sendServerMessage("You gives target an curses (disemvoweled).");
+                target_client->sendServerMessage("You been curses (disemvoweled) by Moderator! " + getReprimand(false));
+            }
+        }
+        break;
+    }
+}
+
+void AOClient::cmdUnCurses(int argc, QStringList argv){
+    if (argc <= 0)
+        return;
+    bool vaild_id = false;
+    int target_id = argv[0].toInt(&vaild_id);
+
+    if (!vaild_id){
+        sendServerMessage("Invalid user ID.");
+        return;
+    }
+
+    auto target_client = server->getClientByID(target_id);
+
+    if (target_client == nullptr){
+        sendServerMessage("No client with that ID found.");
+        return;
+    }
+
+    const QStringList m_type{"disemvoweled", "shaked", "medievaled", "gimped"};
+    switch (argc){
+    case 1:
+        if (!target_client->m_is_disemvoweled)
+            sendServerMessage("That target are already been freed from curses (disemvoweled).");
+        else{
+            target_client->m_is_disemvoweled = false;
+            sendServerMessage("You freed target from an curses (disemvoweled).");
+            target_client->sendServerMessage("You been freed from an curses (disemvoweled) by Moderator! " + getReprimand(true));
+        }
+        break;
+    case 2: default:
+        bool vaild_type = false;
+        const int _type = argv[1].toInt(&vaild_type);
+        if (!vaild_type){
+            sendServerMessage("Invaild Type.");
+            return;
+        }
+
+        const QList<bool*> target_state{&target_client->m_is_disemvoweled, &target_client->m_is_shaken, &target_client->m_is_medieval, &target_client->m_is_gimped};
+        switch (_type){
+        case -1:
+            if (!target_client->m_is_disemvoweled && !target_client->m_is_shaken && !target_client->m_is_medieval && !target_client->m_is_gimped)
+                sendServerMessage("That target are already freed from an *TRUE* curses.");
+            else{
+                for (auto state : target_state){
+                    if (*state)
+                        *state = false;
+                }
+                sendServerMessage("You freed target from an *TRUE* curses.");
+                target_client->sendServerMessage("You been freed from an *TRUE* curses by Moderator! " + getReprimand(true));
+            }
+            break;
+        case 0: case 1: case 2: case 3:
+            if (!*target_state[_type])
+                sendServerMessage(QString("That target are already freed from an (%1)").arg(m_type[_type]));
+            else{
+                *target_state[_type] = false;
+                sendServerMessage(QString("You freed target from an curses (%1).").arg(m_type[_type]));
+                target_client->sendServerMessage(QString("You been freed from an curses (%1) by Moderator! ").arg(m_type[_type]) + getReprimand(true));
+            }
+            break;
+        default:
+            if (!target_client->m_is_disemvoweled)
+                sendServerMessage("That target are already been freed from curses (disemvoweled).");
+            else{
+                target_client->m_is_disemvoweled = false;
+                sendServerMessage("You freed target from an curses (disemvoweled).");
+                target_client->sendServerMessage("You been freed from an curses (disemvoweled) by Moderator! " + getReprimand(true));
+            }
+        }
+        break;
+    }
+}
+
+void AOClient::cmdUserInfo(int argc, QStringList argv){
+    Q_UNUSED(argc)
+    if (m_vip_authenticated){
+        return; /* just in case if vip has "ban" perms */
+    }
+
+    bool vaild;
+    const int ID = argv[0].toInt(&vaild);
+    if (!vaild || !server->getClientByID(ID))
+        sendServerMessage("Invalid user ID or Client.");
+    else{
+        const auto client = server->getClientByID(ID);
+        QStringList Data(QString("ID: %1 | %2").arg(QString::number(client->clientId()), client->m_ipid));
+        if (!client->name().isEmpty())
+            Data.append("OOC: " + client->name());
+        if (!client->characterName().trimmed().isEmpty())
+            Data.append("Showname: " + client->characterName().trimmed());
+        if (client->m_vip_authenticated || client->m_authenticated)
+            Data.append(QString("%1 As: %2").arg(client->m_vip_authenticated ? "VIP" : "Logging", client->m_moderator_name));
+        Data.append("HDID:" + client->m_hwid);
+        Data.append(QString("Character: %1").arg(client->isSpectator() ? "[Spectator]" : client->character()));
+        const auto current_area = server->getAreaById(qMax(0, client->areaId()));
+        if (!current_area.isNull())
+            Data.append(QString("AREA: [%1] %2").arg(QString::number(current_area->index()), current_area->name()));
+        auto clients = server->getClientsByIpid(client->m_ipid);
+        const auto client_version = client->m_version;
+        Data.append(QString("Clients: %1 | [%2]").arg(QString::number(qMax(1, clients.size())), client_version.is_webao ? "WEB" : client_version.get_string_version()));
+        if (clients.size() >= 2){
+            for (const auto &other_client : clients){
+                QStringList other_data(QString("[%1] %2").arg(QString::number(other_client->clientId()), other_client->isSpectator() ? "[Spectator]" : other_client->character()));
+                const auto area = server->getAreaById(qMax(0, other_client->areaId()));
+                if (other_client->m_vip_authenticated || other_client->m_authenticated)
+                    other_data.prepend(other_client->m_vip_authenticated ? "[VIP]" : "[M]");
+
+                if (other_client->m_version.is_webao)
+                    other_data.prepend("[🌐]");
+
+                QStringList Info;
+                const ClientVersion other_version = other_client->m_version;
+                if (!other_version.is_webao && !client->m_version.is_webao && other_version != client->m_version)
+                    Info.append("[" + other_version.get_string_version() + "]");
+                if (!other_client->characterName().trimmed().isEmpty() && !other_client->name().isEmpty())
+                    Info.append(QString("(%1 | %2)").arg(other_client->characterName().trimmed(), other_client->name()));
+                else if (!other_client->characterName().trimmed().isEmpty())
+                    Info.append("(" + other_client->characterName().trimmed() + ")");
+                else if (!other_client->name().isEmpty())
+                    Info.append("(" + other_client->name() + ")");
+                if (!Info.isEmpty())
+                    other_data.append(" : " + Info.join(' '));
+
+                if (!current_area.isNull()){
+                    if (other_client == client)
+                        other_data.prepend("[THIS] ");
+                    else
+                        other_data.prepend(QString("[%1] ").arg(area->index() == current_area->index() ? "*THIS AREA*" : area->name()));
+                Data.append(" · " + other_data.join(""));
+                }
+            }
+        }
+        if (client == this)
+            sendServerMessage(QString("=== [YOU] UserInfo ===\n%1\n=========").arg(Data.join('\n')));
+        else
+            sendServerMessage(QString("=== UserInfo ===\n%1\n=========").arg(Data.join('\n')));
+    }
 }
 
 void AOClient::cmdCommands(int argc, QStringList argv)
@@ -256,14 +544,27 @@ void AOClient::cmdUnBan(int argc, QStringList argv)
 
     bool ok;
     int l_target_ban = argv[0].toInt(&ok);
-    if (!ok) {
-        sendServerMessage("Invalid ban ID.");
-        return;
+    if (ok){
+        const auto list = server->getDatabaseManager()->getBanInfo("banid", QString::number(l_target_ban));
+        if (list.isEmpty())
+            sendServerMessage("That ban ID not exists.");
+        else if (server->getDatabaseManager()->invalidateBan(l_target_ban)){
+            const auto current = list.first();
+            sendServerMessage("Successfully invalidated ban " + argv[0] + ".");
+            if (ConfigManager::discordBanWebhookEnabled()){
+                QStringList m_name({"[" + QString::number(clientId()) + "]", "(" + m_moderator_name + ")"}), m_reason(current.reason);
+                if (name().toLower() != m_moderator_name.toLower())
+                    m_name.insert(1, name());
+                if (argv.size() > 1)
+                    m_reason.append(argv.mid(1).join(" "));
+                Q_EMIT server->UnbanWebhookRequested(current.ipid, {current.moderator, m_name.join(' ')}, current.id, current.duration, QDateTime::fromSecsSinceEpoch(current.time), m_reason);
+            }
+        }
+        else
+            sendServerMessage("Couldn't invalidate ban " + argv[0] + ".");
     }
-    else if (server->getDatabaseManager()->invalidateBan(l_target_ban))
-        sendServerMessage("Successfully invalidated ban " + argv[0] + ".");
     else
-        sendServerMessage("Couldn't invalidate ban " + argv[0] + ", are you sure it exists?");
+        sendServerMessage("Invalid ban ID.");
 }
 
 void AOClient::cmdAbout(int argc, QStringList argv)
@@ -277,7 +578,6 @@ void AOClient::cmdAbout(int argc, QStringList argv)
 void AOClient::cmdMute(int argc, QStringList argv)
 {
     Q_UNUSED(argc);
-
     bool conv_ok = false;
     int l_uid = argv[0].toInt(&conv_ok);
     if (!conv_ok) {
@@ -287,99 +587,182 @@ void AOClient::cmdMute(int argc, QStringList argv)
 
     AOClient *target = server->getClientByID(l_uid);
 
+    if (argv.isEmpty())
+        return;
+    else if (argv.size() == 1){
+        if (target == nullptr) {
+            sendServerMessage("No client with that ID found.");
+            return;
+        }
+
+        if (target->m_is_muted)
+            sendServerMessage("That player is already muted!");
+        else {
+            sendServerMessage("Muted player.");
+            target->sendServerMessage("You were muted by a moderator. " + getReprimand());
+            target->m_is_muted = true;
+        }
+    }
+    else{
+        bool type_ok = false;
+        int l_type = argv[1].toInt(&type_ok);
+        if (!type_ok){
+            sendServerMessage("Invaild Type.");
+            return;
+        }
+
+        switch (l_type){
+        case 0: default:
+            if (target->m_is_muted)
+                sendServerMessage("That player is already IC muted!");
+            else{
+                sendServerMessage("Muted IC player.");
+                target->sendServerMessage("You were IC muted by a moderator. " + getReprimand());
+                target->m_is_muted = true;
+            }
+            break;
+        case 1:
+            if (target->m_is_ooc_muted)
+                sendServerMessage("That player is already OOC muted!");
+            else{
+                sendServerMessage("OOC muted player.");
+                target->sendServerMessage("You were OOC muted by a moderator. " + getReprimand());
+                target->m_is_ooc_muted = true;
+            }
+            break;
+        case 2:
+            if (target->m_is_muted && target->m_is_ooc_muted)
+                sendServerMessage("That player is already [IC & OOC] muted!");
+            else{
+                if (!target->m_is_muted)
+                    target->m_is_muted = true;
+                if (!target->m_is_ooc_muted)
+                    target->m_is_ooc_muted = true;
+                sendServerMessage("[IC & OOC] muted player.");
+                target->sendServerMessage("You were [IC & OOC] muted by a moderator. " + getReprimand());
+            }
+            break;
+        }
+    }
+}
+
+void AOClient::cmdUnMute(int argc, QStringList argv)
+{
+    Q_UNUSED(argc)
+    bool conv_ok = false;
+    int l_uid = argv[0].toInt(&conv_ok);
+    if (!conv_ok) {
+        sendServerMessage("Invalid user ID.");
+        return;
+    }
+
+    AOClient *target = server->getClientByID(l_uid);
+
+    if (argv.isEmpty())
+        return;
+    else if (argv.size() == 1){
+        if (target == nullptr) {
+            sendServerMessage("No client with that ID found.");
+            return;
+        }
+
+        if (!target->m_is_muted)
+            sendServerMessage("That player is already unmuted!");
+        else {
+            sendServerMessage("Unmuted player.");
+            target->sendServerMessage("You were unmuted by a moderator. " + getReprimand());
+            target->m_is_muted = false;
+        }
+    }
+    else{
+        bool type_ok = false;
+        int l_type = argv[1].toInt(&type_ok);
+        if (!type_ok){
+            sendServerMessage("Invaild Type.");
+            return;
+        }
+
+        switch (l_type){
+        case 0: default:
+            if (!target->m_is_muted)
+                sendServerMessage("That player is already IC unmuted!");
+            else{
+                sendServerMessage("unmuted IC player.");
+                target->sendServerMessage("You were IC unmuted by a moderator. " + getReprimand());
+                target->m_is_muted = false;
+            }
+            break;
+        case 1:
+            if (!target->m_is_ooc_muted)
+                sendServerMessage("That player is already OOC unmuted!");
+            else{
+                sendServerMessage("OOC unmuted player.");
+                target->sendServerMessage("You were OOC unmuted by a moderator. " + getReprimand());
+                target->m_is_ooc_muted = false;
+            }
+            break;
+        case 2:
+            if (!target->m_is_muted && !target->m_is_ooc_muted)
+                sendServerMessage("That player is already [IC & OOC] unmuted!");
+            else{
+                if (target->m_is_muted)
+                    target->m_is_muted = false;
+                if (target->m_is_ooc_muted)
+                    target->m_is_ooc_muted = false;
+                sendServerMessage("[IC & OOC] unmuted player.");
+                target->sendServerMessage("You were [IC & OOC] unmuted by a moderator. " + getReprimand());
+            }
+            break;
+        }
+    }
+}
+
+void AOClient::cmdOocMute(int argc, QStringList argv){
+    Q_UNUSED(argc)
+    
+    bool conv_ok = false;
+    int l_uid = argv[0].toInt(&conv_ok);
+    if (!conv_ok) {
+        sendServerMessage("Invalid user ID.");
+        return;
+    }
+
+    AOClient *target = server->getClientByID(l_uid);
+    
     if (target == nullptr) {
         sendServerMessage("No client with that ID found.");
         return;
     }
 
-    if (target->m_is_muted)
-        sendServerMessage("That player is already muted!");
-    else {
-        sendServerMessage("Muted player.");
-        target->sendServerMessage("You were muted by a moderator. " + getReprimand());
-    }
-    target->m_is_muted = true;
-}
-
-void AOClient::cmdUnMute(int argc, QStringList argv)
-{
-    Q_UNUSED(argc);
-
-    bool conv_ok = false;
-    int l_uid = argv[0].toInt(&conv_ok);
-    if (!conv_ok) {
-        sendServerMessage("Invalid user ID.");
-        return;
-    }
-
-    AOClient *l_target = server->getClientByID(l_uid);
-
-    if (l_target == nullptr) {
-        sendServerMessage("No client with that ID found.");
-        return;
-    }
-
-    if (!l_target->m_is_muted)
-        sendServerMessage("That player is not muted!");
-    else {
-        sendServerMessage("Unmuted player.");
-        l_target->sendServerMessage("You were unmuted by a moderator. " + getReprimand(true));
-    }
-    l_target->m_is_muted = false;
-}
-
-void AOClient::cmdOocMute(int argc, QStringList argv)
-{
-    Q_UNUSED(argc);
-
-    bool conv_ok = false;
-    int l_uid = argv[0].toInt(&conv_ok);
-    if (!conv_ok) {
-        sendServerMessage("Invalid user ID.");
-        return;
-    }
-
-    AOClient *l_target = server->getClientByID(l_uid);
-
-    if (l_target == nullptr) {
-        sendServerMessage("No client with that ID found.");
-        return;
-    }
-
-    if (l_target->m_is_ooc_muted)
+    if (target->m_is_ooc_muted)
         sendServerMessage("That player is already OOC muted!");
-    else {
+    else{
         sendServerMessage("OOC muted player.");
-        l_target->sendServerMessage("You were OOC muted by a moderator. " + getReprimand());
+        target->sendServerMessage("You were OOC muted by a moderator. " + getReprimand());
+        target->m_is_ooc_muted = true;
     }
-    l_target->m_is_ooc_muted = true;
+    
 }
 
-void AOClient::cmdOocUnMute(int argc, QStringList argv)
-{
-    Q_UNUSED(argc);
-
+void AOClient::cmdOocUnMute(int argc, QStringList argv){
+    Q_UNUSED(argc)
+    
     bool conv_ok = false;
     int l_uid = argv[0].toInt(&conv_ok);
     if (!conv_ok) {
         sendServerMessage("Invalid user ID.");
         return;
     }
-
-    AOClient *l_target = server->getClientByID(l_uid);
-
-    if (l_target == nullptr) {
-        sendServerMessage("No client with that ID found.");
-        return;
-    }
-
-    if (!l_target->m_is_ooc_muted)
-        sendServerMessage("That player is not OOC muted!");
-    else {
+    
+    AOClient *target = server->getClientByID(l_uid);
+    
+    if (!target->m_is_ooc_muted)
+        sendServerMessage("That player is already OOC unmuted!");
+    else{
         sendServerMessage("OOC unmuted player.");
-        l_target->sendServerMessage("You were OOC unmuted by a moderator. " + getReprimand(true));
+        target->sendServerMessage("You were OOC unmuted by a moderator. " + getReprimand());
+        target->m_is_ooc_muted = false;
     }
-    l_target->m_is_ooc_muted = false;
 }
 
 void AOClient::cmdBlockWtce(int argc, QStringList argv)
@@ -442,7 +825,10 @@ void AOClient::cmdAllowBlankposting(int argc, QStringList argv)
     Q_UNUSED(argv);
 
     QString l_sender_name = name();
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
     l_area->toggleBlankposting();
     if (l_area->blankpostingAllowed() == false) {
         sendServerMessageArea(l_sender_name + " has set blankposting in the area to forbidden.");
@@ -508,7 +894,10 @@ void AOClient::cmdForceImmediate(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
     l_area->toggleImmediate();
     QString l_state = l_area->forceImmediate() ? "on." : "off.";
     sendServerMessage("Forced immediate text processing in this area is now " + l_state);
@@ -519,7 +908,10 @@ void AOClient::cmdAllowIniswap(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
     l_area->toggleIniswap();
     QString state = l_area->iniswapAllowed() ? "allowed." : "disallowed.";
     sendServerMessage("Iniswapping in this area is now " + state);
@@ -560,9 +952,17 @@ void AOClient::cmdKickUid(int argc, QStringList argv)
         sendServerMessage("No client with that ID found.");
         return;
     }
+    const QString targetData(QString("[%1] %2 (%3)").arg(QString::number(l_target->clientId()), l_target->name().isEmpty() ? l_target->character().isEmpty() ? "Spectator" : l_target->character() : l_target->name(), l_target->m_ipid));
     l_target->sendPacket("KK", {l_reason});
     l_target->m_socket->close();
     sendServerMessage("Kicked client with UID " + argv[0] + " for reason: " + l_reason);
+    if (m_vip_authenticated){
+        const QString userdata(QString("[%1] %2").arg(QString::number(clientId()), name().isEmpty() ? character().isEmpty() ? "Spectator" : character() : name()));
+        for (auto C : server->getClients()){
+            if (m_authenticated)
+                C->sendServerMessage(QString("[VIP]%1 was kicking %2: %3").arg(userdata, targetData, l_reason));
+        }
+    }
 }
 
 void AOClient::cmdUpdateBan(int argc, QStringList argv)
@@ -623,7 +1023,10 @@ void AOClient::cmdClearCM(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    AreaData *l_area = server->getAreaById(areaId());
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
     foreach (int l_client_id, l_area->owners()) {
         l_area->removeOwner(l_client_id);
     }
@@ -638,8 +1041,8 @@ void AOClient::cmdKickOther(int argc, QStringList argv)
 
     int l_kick_counter = 0;
 
-    QList<AOClient *> l_target_clients;
-    const QList<AOClient *> l_targets_hwid = server->getClientsByHwid(m_hwid);
+    QList<QPointer<AOClient>> l_target_clients;
+    const QList<QPointer<AOClient>> l_targets_hwid = server->getClientsByHwid(m_hwid);
     l_target_clients = server->getClientsByIpid(m_ipid);
 
     // Merge both lookups into one single list.)

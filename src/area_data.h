@@ -20,6 +20,7 @@
 
 #include <QDebug>
 #include <QElapsedTimer>
+#include <QHash>
 #include <QMap>
 #include <QRandomGenerator>
 #include <QSettings>
@@ -683,6 +684,15 @@ class AreaData : public QObject
     QString currentMusic() const;
 
     /**
+     * @brief Returns the music currently being played in the area.
+     *
+     * @return See short description.
+     *
+     * @see #m_currentMusic
+     */
+    bool currentMusicLoop() const;
+
+    /**
      * @brief Returns the ambient audio currently being played in the area.
      *
      * @return See short description.
@@ -723,8 +733,9 @@ class AreaData : public QObject
      *
      * @param f_source_r The showname of the client who initiated the music change.
      * @param f_newSong_r The name of the new song that is going to be played in the area.
+     * @param f_loop_song the loop of song.
      */
-    void changeMusic(const QString &f_source_r, const QString &f_newSong_r);
+    void changeMusic(const QString &f_source_r, const QString &f_newSong_r, const bool &f_loop_song);
 
     /**
      * @brief Changes the ambience audio being played in the area.
@@ -958,6 +969,15 @@ class AreaData : public QObject
     QString addJukeboxSong(QString f_song);
 
     /**
+     * @brief Adds a song to the Jukebox's queue with an explicit fallback duration.
+     *
+     * @details Used for custom URLs that are not present in any music list.
+     * When the song is found in the music list its registered duration takes
+     * priority; f_duration is only used when the lookup returns 0.
+     */
+    QString addJukeboxSong(QString f_song, float f_duration);
+
+    /**
      * @brief Returns a constant that includes all currently joined userids.
      */
     QVector<int> joinedIDs() const;
@@ -996,6 +1016,53 @@ class AreaData : public QObject
      * @param f_duration The duration of the message floodguard timer.
      */
     void startMessageFloodguard(int f_duration);
+
+    /**
+     * @brief Adds or change client id onto /pair sync list.
+     *
+     * @param Self client id, must not < 0 or vaild.
+     *
+     * @param Target client id, must not < 0 or vaild.
+     *
+     * @return True if success, false otherwise.
+     */
+    bool addPairSync(const int self, const int target);
+
+    /**
+     * @brief Remove client id from /pair sync list.
+     *
+     * @param Self client id, must not < 0 or vaild.
+     *
+     * @return True if success, false otherwise.
+     */
+
+    bool removePairSync(const int self, const int other = -1);
+    /**
+     * @brief check if client id were on /pair sync list.
+     *
+     * @param client id, must not < 0 or vaild.
+     *
+     * @param Choices between self or target, self by default.
+     *
+     * @return True if checked, false otherwise.
+     */
+    bool checkPairSync(const int client_id, const bool is_target = false);
+
+    /**
+     * @brief Get all ids from /pair sync list
+     */
+    QMap<int, int> getPairSyncList();
+
+    /**
+     * @brief Get client ids from specifc of /pair sync list.
+     *
+     * @param Client id, must not < 0 or vaild.
+     *
+     * @param Choices between target or visa.
+     *
+     * @return gives client id if success, -1 otherwise.
+     */
+    int get_pair_sync_clientID(const int client_id, const bool target = true);
 
   public slots:
 
@@ -1184,6 +1251,11 @@ class AreaData : public QObject
     QString m_musicPlayedBy;
 
     /**
+     * @brief The loop of music that started the currently playing music.
+     */
+    bool m_music_loop = false;
+
+    /**
      * @brief A pointer to a Logger, used to send requests to log data.
      */
     Logger *m_logger;
@@ -1274,6 +1346,14 @@ class AreaData : public QObject
     bool m_jukebox;
 
     /**
+     * @brief Stores explicit durations for custom URLs queued in the jukebox.
+     *
+     * @details Used as a fallback when a queued entry is not found in any music
+     * list, so that switchJukeboxSong can still time the song correctly.
+     */
+    QHash<QString, float> m_jukebox_durations;
+
+    /**
      * @brief Whether or not /play can be used without CM.
      */
     bool m_playcmd;
@@ -1302,6 +1382,11 @@ class AreaData : public QObject
      * @brief If true, all clients in the area are subject to Medieval Mode.
      */
     bool m_medieval_mode = false;
+
+    /**
+     * @brief The collection of all currently /pair sync clients.
+     */
+    QMap<int, int> m_clients_pairing_sync;
 
   private slots:
     /**

@@ -78,6 +78,8 @@ qt_add_executable(akashi
   src/packet/packet_rt.h
   src/packet/packet_setcase.cpp
   src/packet/packet_setcase.h
+  src/packet/packet_tt.cpp
+  src/packet/packet_tt.h
   src/packet/packet_zz.cpp
   src/packet/packet_zz.h
   src/acl_roles_handler.cpp

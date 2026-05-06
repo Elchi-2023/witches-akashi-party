@@ -1,6 +1,7 @@
 #include "medieval_parser.h"
 
 #include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -36,6 +37,7 @@ MedievalParser::MedievalParser()
 QString MedievalParser::degrootify(QString message)
 {
     if (!datafile_valid) {
+        qWarning() << "[medieval][debug] degrootify called but datafile_valid=false; returning unchanged:" << message;
         return message;
     }
     bool do_pends = true;
@@ -46,7 +48,9 @@ QString MedievalParser::degrootify(QString message)
         final_text.remove(0, 1);
     }
 
-    return modifySpeech(final_text, do_pends, false);
+    QString out = modifySpeech(final_text, do_pends, false);
+    qDebug() << "[medieval][debug] in:" << message << "out:" << out;
+    return out;
 }
 
 void MedievalParser::parseDataFile()
@@ -54,7 +58,11 @@ void MedievalParser::parseDataFile()
     datafile_valid = true;
 
     QFile l_datafile_json("config/text/autorp.json");
-    l_datafile_json.open(QIODevice::ReadOnly | QIODevice::Text);
+    if (!l_datafile_json.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        qWarning() << "[medieval][debug] Could not open" << QFileInfo(l_datafile_json).absoluteFilePath() << "-" << l_datafile_json.errorString();
+        datafile_valid = false;
+        return;
+    }
 
     QJsonParseError l_error;
     const QJsonDocument &l_datafile_list_json = QJsonDocument::fromJson(l_datafile_json.readAll(), &l_error);
@@ -71,6 +79,7 @@ void MedievalParser::parseDataFile()
     }
 
     if (prepended_words.isEmpty()) {
+        qWarning() << "[medieval][debug] prepended_words is empty after parsing; disabling medieval mode";
         datafile_valid = false;
         return;
     }
@@ -82,6 +91,7 @@ void MedievalParser::parseDataFile()
     }
 
     if (appended_words.isEmpty()) {
+        qWarning() << "[medieval][debug] appended_words is empty after parsing; disabling medieval mode";
         datafile_valid = false;
         return;
     }
@@ -115,13 +125,13 @@ void MedievalParser::parseDataFile()
             }
             else if (key == "word_plural") {
                 replacement_struct.plurals = QVector<QString>(rep_obj[key].toVariant().toStringList().toVector());
-                for (const QString &word : replacement_struct.words) {
+                for (const QString &word : replacement_struct.plurals) {
                     word_vector.append(word);
                 }
             }
             else if (key == "prev") {
                 replacement_struct.prev_words = QVector<QString>(rep_obj[key].toVariant().toStringList().toVector());
-                for (const QString &word : replacement_struct.words) {
+                for (const QString &word : replacement_struct.prev_words) {
                     word_vector.append(word);
                 }
             }
@@ -129,9 +139,14 @@ void MedievalParser::parseDataFile()
         word_replacements.append(replacement_struct);
     }
     if (word_replacements.isEmpty()) {
+        qWarning() << "[medieval][debug] word_replacements is empty after parsing; disabling medieval mode";
         datafile_valid = false;
         return;
     }
+    qDebug() << "[medieval][debug] parseDataFile OK -"
+             << "prepended:" << prepended_words.size()
+             << "appended:" << appended_words.size()
+             << "replacements:" << word_replacements.size();
 }
 
 QString MedievalParser::getRandomPre()
@@ -218,7 +233,7 @@ bool MedievalParser::replaceWord(ReplacementCheck *check, QString *rep_str, bool
                 // Ensure we don't choose two of the same prepends
                 int rnd = 0;
                 do {
-                    rnd = randomInt(0, rep_ptr->prepended.count());
+                    rnd = randomInt(0, rep_ptr->prepended.count() - 1);
                 } while (vector_used.contains(rnd));
                 vector_used.append(rnd);
 
@@ -441,20 +456,21 @@ QString MedievalParser::modifySpeech(QString text, bool generate_pre_and_post, b
                 }
             }
 
+
             if (changed) {
                 stored_word = current_word;
 
                 // match case of the first letter in the word we're replacing
-                if (text[current_word_cur] >= 'A' && text[current_word_cur] <= 'Z') {
-                    stored_word[0] = stored_word[0].toUpper();
-                }
-                else if (text[current_word_cur] >= 'a' && text[current_word_cur] <= 'z') {
-                    stored_word[0] = stored_word[0].toLower();
+                if (!stored_word.isEmpty() && current_word_cur < text.length()) {
+                    QChar originalFirst = text[current_word_cur];
+                    if (originalFirst.isUpper())
+                        stored_word.replace(0, 1, stored_word[0].toUpper());
+                    else if (originalFirst.isLower())
+                        stored_word.replace(0, 1, stored_word[0].toLower());
                 }
             }
-            else {
+            else
                 stored_word = check.word;
-            }
         }
 
         // Finished?

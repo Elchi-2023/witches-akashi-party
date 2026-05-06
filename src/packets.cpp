@@ -28,10 +28,11 @@
 
 void AOClient::sendEvidenceList(AreaData *area) const
 {
-    const QVector<AOClient *> l_clients = server->getClients();
-    for (AOClient *l_client : l_clients) {
-        if (l_client->areaId() == areaId())
-            l_client->updateEvidenceList(area);
+    for (int index : area->joinedIDs()){
+        auto l_client = server->getClientByID(index);
+        if (l_client.isNull())
+            continue;
+        l_client->updateEvidenceList(area);
     }
 }
 
@@ -101,8 +102,8 @@ QString AOClient::decodeMessage(QString incoming_message)
     return decoded_message;
 }
 
-void AOClient::loginAttempt(QString message)
-{
+bool AOClient::loginAttempt(QString message){
+    const auto CurrentArea = server->getAreaById(areaId());
     switch (ConfigManager::authType()) {
     case DataTypes::AuthType::SIMPLE:
         if (message == ConfigManager::modpass()) {
@@ -111,42 +112,48 @@ void AOClient::loginAttempt(QString message)
                 sendServerMessage("Logged in as a moderator.");
             m_authenticated = true;
             m_acl_role_id = ACLRolesHandler::SUPER_ID;
+            Q_EMIT ModeratorObserver();
+            emit logLogin((character() + " " + characterName()), name(), "Moderator",
+                          m_ipid, CurrentArea.isNull() ? "[NULL]" : CurrentArea->name(), m_authenticated);
+            return true;
         }
         else {
             sendPacket("AUTH", {"0"}); // Client: "Login unsuccessful."
             sendServerMessage("Incorrect password.");
+            emit logLogin((character() + " " + characterName()), name(), "Moderator",
+                          m_ipid, CurrentArea.isNull() ? "[NULL]" : CurrentArea->name(), m_authenticated);
+            return false;
         }
-        emit logLogin((character() + " " + characterName()), name(), "Moderator",
-                      m_ipid, server->getAreaById(areaId())->name(), m_authenticated);
         break;
     case DataTypes::AuthType::ADVANCED:
         QStringList l_login = message.split(" ");
         if (l_login.size() < 2) {
             sendServerMessage("You must specify a username and a password");
-            sendServerMessage("Exiting login prompt.");
-            m_is_logging_in = false;
-            return;
+            return false;
         }
         QString username = l_login[0];
         QString password = l_login[1];
         if (server->getDatabaseManager()->authenticate(username, password)) {
-            m_authenticated = true;
             m_acl_role_id = server->getDatabaseManager()->getACL(username);
             m_moderator_name = username;
-            sendPacket("AUTH", {"1"});
+            m_authenticated = QString(m_acl_role_id).toLower() != "vip";
+            m_vip_authenticated = QString(m_acl_role_id).toLower() == "vip";
+            sendPacket("AUTH", {QString::number(m_authenticated)});
             if (m_version.release <= 2 && m_version.major <= 9 && m_version.minor <= 0)
-                sendServerMessage("Logged in as a moderator.");
+                sendServerMessage(QString("Logged in as a %1.").arg(m_authenticated ? "moderator" : "VIP"));
             sendServerMessage("Welcome, " + username);
+            Q_EMIT ModeratorObserver();
+            emit logLogin((character() + " " + characterName()), name(), username, m_ipid,
+                          CurrentArea.isNull() ? "[NULL]" : CurrentArea->name(), m_authenticated);
+            return true;
         }
         else {
             sendPacket("AUTH", {"0"});
             sendServerMessage("Incorrect password.");
+            emit logLogin((character() + " " + characterName()), name(), username, m_ipid,
+                          CurrentArea.isNull() ? "[NULL]" : CurrentArea->name(), m_authenticated);
+            return false;
         }
-        emit logLogin((character() + " " + characterName()), name(), username, m_ipid,
-                      server->getAreaById(areaId())->name(), m_authenticated);
-        break;
     }
-    sendServerMessage("Exiting login prompt.");
-    m_is_logging_in = false;
-    return;
+    return true;
 }

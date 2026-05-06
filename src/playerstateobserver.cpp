@@ -10,8 +10,9 @@ void PlayerStateObserver::registerClient(AOClient *client)
 {
     Q_ASSERT(!m_client_list.contains(client));
 
-    PacketPR packet(client->clientId(), PacketPR::ADD);
-    sendToClientList(packet);
+    if (client->m_ipid.isEmpty())
+        client->calculateIpid();
+    UploadListStateToClients(client, PacketPR(client->clientId(), PacketPR::ADD));
 
     m_client_list.append(client);
 
@@ -19,20 +20,22 @@ void PlayerStateObserver::registerClient(AOClient *client)
     connect(client, &AOClient::characterChanged, this, &PlayerStateObserver::notifyCharacterChanged);
     connect(client, &AOClient::characterNameChanged, this, &PlayerStateObserver::notifyCharacterNameChanged);
     connect(client, &AOClient::areaIdChanged, this, &PlayerStateObserver::notifyAreaIdChanged);
+    connect(client, &AOClient::ModeratorObserver, this, &PlayerStateObserver::ModeratorRequestsData);
 
-    QList<AOPacket *> packets;
+    QVector<QSharedPointer<AOPacket>> packets; /* why QSharedPointer (smart pointer)?.. because we need release packets after. (unlike the originally code) */
     for (AOClient *i_client : qAsConst(m_client_list)) {
-        packets.append(new PacketPR(i_client->clientId(), PacketPR::ADD));
-        packets.append(new PacketPU(i_client->clientId(), PacketPU::NAME, i_client->name()));
-        packets.append(new PacketPU(i_client->clientId(), PacketPU::CHARACTER, i_client->character()));
-        packets.append(new PacketPU(i_client->clientId(), PacketPU::CHARACTER_NAME, i_client->characterName()));
-        packets.append(new PacketPU(i_client->clientId(), PacketPU::AREA_ID, i_client->areaId()));
+        packets.append(QSharedPointer<PacketPR>::create(i_client->clientId(), PacketPR::ADD));
+        QStringList l_name;
+        if (i_client->m_is_afk) l_name.prepend("[💤]");
+        if (!i_client->name().isEmpty()) l_name << i_client->name();
+        packets.append(QSharedPointer<PacketPU>::create(i_client->clientId(), PacketPU::NAME, l_name.join(' ')));
+        packets.append(QSharedPointer<PacketPU>::create(i_client->clientId(), PacketPU::CHARACTER, i_client->character()));
+        packets.append(QSharedPointer<PacketPU>::create(i_client->clientId(), PacketPU::CHARACTER_NAME, i_client->characterName()));
+        packets.append(QSharedPointer<PacketPU>::create(i_client->clientId(), PacketPU::AREA_ID, i_client->areaId()));
     }
 
-    for (AOPacket *packet : qAsConst(packets)) {
-        client->sendPacket(packet);
-        delete packet;
-    }
+    for (auto packet : qAsConst(packets))
+        client->sendPacket(packet.get());
 }
 
 void PlayerStateObserver::unregisterClient(AOClient *client)
@@ -43,33 +46,81 @@ void PlayerStateObserver::unregisterClient(AOClient *client)
 
     m_client_list.removeAll(client);
 
-    PacketPR packet(client->clientId(), PacketPR::REMOVE);
-    sendToClientList(packet);
+    UploadListStateToClients(client, PacketPR(client->clientId(), PacketPR::REMOVE));
+}
+
+void PlayerStateObserver::UploadListStateToClients(const AOClient *client, const PacketPR &State){
+    for (AOClient *clients : qAsConst(m_client_list)){
+        clients->sendPacket(&const_cast<PacketPR &>(State));
+        if (clients->isAuthenticated() && const_cast<PacketPR &>(State).getContent()[1].toInt() == PacketPR::ADD && !client->m_ipid.isEmpty())
+            clients->sendPacket(QSharedPointer<PacketPU>::create(client->clientId(), PacketPU::NAME, "(" + client->m_ipid + ")").get());
+    }
 }
 
 void PlayerStateObserver::sendToClientList(const AOPacket &packet)
 {
-    for (AOClient *client : qAsConst(m_client_list)) {
+    for (AOClient *client : qAsConst(m_client_list))
         client->sendPacket(&const_cast<AOPacket &>(packet));
+}
+
+void PlayerStateObserver::UploadStateToClients(const AOClient *client, const AOPacket &packet){
+    if (client == nullptr || const_cast<AOPacket &>(packet).getContent()[0].toInt() != client->clientId())
+        return;
+
+    for (AOClient *clients : qAsConst(m_client_list)){
+        if (clients->isAuthenticated()){
+            const QStringList args = const_cast<AOPacket &>(packet).getContent();
+            if (args[1].toInt() == PacketPU::NAME)
+                clients->sendPacket(QSharedPointer<PacketPU>::create(args[0].toInt(), PacketPU::NAME, QStringList({args[2], "(" + client->m_ipid + ")"}).join(client->m_version.is_webao ? '\n' : ' ')).get()); /* see the reason at line 81.. */
+            else{
+                clients->sendPacket(&const_cast<AOPacket &>(packet));
+                QStringList l_name("(" + client->m_ipid + ")");
+                if (client->m_is_afk) l_name.prepend("[💤]");
+                if (!client->name().isEmpty()){
+                    if (client->m_version.is_webao)
+                        l_name.insert(1, client->name() + "\n"); /* you might asking to me about why "\n" for webao?.. cause webao having lacky of playerlist layout.. */
+                    else
+                        l_name[l_name.size() -1].prepend(client->name() + " ");
+                }
+                clients->sendPacket(QSharedPointer<PacketPU>::create(args[0].toInt(), PacketPU::NAME, l_name.join(' ')).get());
+            }
+        }
+        else
+            clients->sendPacket(&const_cast<AOPacket &>(packet));
     }
 }
 
 void PlayerStateObserver::notifyNameChanged(const QString &name)
 {
-    sendToClientList(PacketPU(qobject_cast<AOClient *>(sender())->clientId(), PacketPU::NAME, name));
+    UploadStateToClients(qobject_cast<AOClient *>(sender()), PacketPU(qobject_cast<AOClient *>(sender())->clientId(), PacketPU::NAME, name));
 }
 
 void PlayerStateObserver::notifyCharacterChanged(const QString &character)
 {
-    sendToClientList(PacketPU(qobject_cast<AOClient *>(sender())->clientId(), PacketPU::CHARACTER, character));
+    UploadStateToClients(qobject_cast<AOClient *>(sender()), PacketPU(qobject_cast<AOClient *>(sender())->clientId(), PacketPU::CHARACTER, character));
 }
 
 void PlayerStateObserver::notifyCharacterNameChanged(const QString &characterName)
 {
-    sendToClientList(PacketPU(qobject_cast<AOClient *>(sender())->clientId(), PacketPU::CHARACTER_NAME, characterName));
+    UploadStateToClients(qobject_cast<AOClient *>(sender()), PacketPU(qobject_cast<AOClient *>(sender())->clientId(), PacketPU::CHARACTER_NAME, characterName));
 }
 
 void PlayerStateObserver::notifyAreaIdChanged(int areaId)
 {
-    sendToClientList(PacketPU(qobject_cast<AOClient *>(sender())->clientId(), PacketPU::AREA_ID, areaId));
+    UploadStateToClients(qobject_cast<AOClient *>(sender()), PacketPU(qobject_cast<AOClient *>(sender())->clientId(), PacketPU::AREA_ID, areaId));
+}
+
+void PlayerStateObserver::ModeratorRequestsData(){
+    AOClient *client_sender = qobject_cast<AOClient *>(sender());
+    if (client_sender == nullptr)
+        return;
+    for (AOClient *client : qAsConst(m_client_list)){
+        QStringList l_name;
+        if (client->m_is_afk) l_name.prepend("[💤]");
+        if (!client->name().isEmpty()) l_name << client->name();
+        if (client_sender->m_authenticated)
+            client_sender->sendPacket(QSharedPointer<PacketPU>::create(client->clientId(), PacketPU::NAME, QStringList({l_name.join(' '), "(" + client->m_ipid + ")"}).join(client->m_version.is_webao ? '\n' : ' ')).get());
+        else
+            client_sender->sendPacket(QSharedPointer<PacketPU>::create(client->clientId(), PacketPU::NAME, l_name.join(' ')).get());
+    }
 }

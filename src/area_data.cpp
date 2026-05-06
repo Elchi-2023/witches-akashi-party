@@ -113,7 +113,7 @@ void AreaData::addClient(int f_charId, int f_userId)
     emit sendAreaPacketClient(PacketFactory::createPacket("MC", {m_currentAmbience, QString::number(-1), ConfigManager::serverName(), QString::number(1), QString::number(1)}), f_userId);
     // The name will never be shown as we are using a spectator ID. Still nice for people who network sniff.
     // We auto-loop this so you'll never sit in silence unless wanted.
-    emit sendAreaPacketClient(PacketFactory::createPacket("MC", {m_currentMusic, QString::number(-1), ConfigManager::serverName(), QString::number(1)}), f_userId);
+    emit sendAreaPacketClient(PacketFactory::createPacket("MC", {m_currentMusic, QString::number(-1), ConfigManager::serverName(), QString::number((m_currentMusic.toLower() != "~stop.mp3" || !m_currentMusic.isEmpty()) || m_music_loop)}), f_userId);
 }
 
 QList<int> AreaData::owners() const
@@ -358,6 +358,51 @@ void AreaData::startMessageFloodguard(int f_duration)
     m_message_floodguard_timer->start(f_duration);
 }
 
+bool AreaData::addPairSync(const int self, const int target){
+    if (self < 0 || target < 0)
+        return false;
+
+    if (m_clients_pairing_sync.contains(self) && m_clients_pairing_sync[self] == target)
+        return false;
+    else if (m_clients_pairing_sync.contains(self) && m_clients_pairing_sync[self] != target)
+        m_clients_pairing_sync.insert(self, target);
+    else
+        m_clients_pairing_sync.insert(self, target);
+    return true;
+}
+
+bool AreaData::removePairSync(const int self, const int other){
+    if (self < 0)
+        return false;
+
+    if (m_clients_pairing_sync.contains(self)){
+        if (other >= 0 && checkPairSync(other) && get_pair_sync_clientID(self))
+            m_clients_pairing_sync.remove(other);
+        m_clients_pairing_sync.remove(self);
+        return true;
+    }
+
+    return false;
+}
+
+bool AreaData::checkPairSync(const int client_id, const bool is_target){
+    if (is_target)
+        return m_clients_pairing_sync.values().contains(client_id);
+
+    return m_clients_pairing_sync.contains(client_id);
+}
+
+QMap<int, int> AreaData::getPairSyncList(){
+    return m_clients_pairing_sync;
+}
+
+int AreaData::get_pair_sync_clientID(const int client_id, const bool target){
+    if (target)
+        return m_clients_pairing_sync.value(client_id, -1);
+
+    return m_clients_pairing_sync.key(client_id, -1);
+}
+
 void AreaData::toggleMusic()
 {
     m_toggleMusic = !m_toggleMusic;
@@ -498,7 +543,7 @@ QStringList AreaData::getNotecards()
 
     while (l_noteIter.hasNext()) {
         l_noteIter.next();
-        l_notecards << l_noteIter.key() << ": " << l_noteIter.value() << "\n";
+        l_notecards << l_noteIter.key() << ": " << l_noteIter.value();
     }
 
     m_notecards.clear();
@@ -516,10 +561,11 @@ void AreaData::setMusicPlayedBy(const QString &f_music_player)
     m_musicPlayedBy = f_music_player;
 }
 
-void AreaData::changeMusic(const QString &f_source_r, const QString &f_newSong_r)
+void AreaData::changeMusic(const QString &f_source_r, const QString &f_newSong_r, const bool &f_loop_song)
 {
     m_currentMusic = f_newSong_r;
     m_musicPlayedBy = f_source_r;
+    m_music_loop = f_loop_song;
 }
 
 void AreaData::changeAmbience(const QString &f_newSong_r)
@@ -530,6 +576,10 @@ void AreaData::changeAmbience(const QString &f_newSong_r)
 QString AreaData::currentMusic() const
 {
     return m_currentMusic;
+}
+
+bool AreaData::currentMusicLoop() const{
+    return m_music_loop;
 }
 
 QString AreaData::currentAmbience() const
@@ -665,6 +715,7 @@ void AreaData::toggleJukebox()
     m_jukebox = !m_jukebox;
     if (!m_jukebox) {
         m_jukebox_queue.clear();
+        m_jukebox_durations.clear();
         m_jukebox_timer->stop();
     }
 }
@@ -708,6 +759,31 @@ QString AreaData::addJukeboxSong(QString f_song)
     return "Unable to add song. Song already in Jukebox.";
 }
 
+QString AreaData::addJukeboxSong(QString f_song, float f_duration)
+{
+    if (!m_jukebox_queue.contains(f_song)) {
+        QPair<QString, float> l_song = m_music_manager->songInformation(f_song, index());
+        const float l_effective_duration = l_song.second > 0 ? l_song.second : f_duration;
+        const QString l_real_name = l_song.first.isEmpty() ? f_song : l_song.first;
+
+        if (l_effective_duration > 0) {
+            if (m_jukebox_queue.size() == 0) {
+                emit sendAreaPacket(PacketFactory::createPacket("MC", {l_real_name, QString::number(-1)}), index());
+                m_jukebox_timer->start(l_effective_duration * 1000);
+                setCurrentMusic(f_song);
+                setMusicPlayedBy("Jukebox");
+            }
+            m_jukebox_queue.append(f_song);
+            m_jukebox_durations.insert(f_song, l_effective_duration);
+            return "Song added to Jukebox.";
+        }
+        else {
+            return "Unable to add song. Duration shorter than 1.";
+        }
+    }
+    return "Unable to add song. Song already in Jukebox.";
+}
+
 QVector<int> AreaData::joinedIDs() const
 {
     return m_joined_ids;
@@ -719,16 +795,20 @@ void AreaData::switchJukeboxSong()
     if (m_jukebox_queue.size() == 1) {
         l_song_name = m_jukebox_queue[0];
         QPair<QString, float> l_song = m_music_manager->songInformation(l_song_name, index());
-        emit sendAreaPacket(PacketFactory::createPacket("MC", {l_song.first, "-1"}), m_index);
-        m_jukebox_timer->start(l_song.second * 1000);
+        const QString l_real_name = l_song.first.isEmpty() ? l_song_name : l_song.first;
+        const float l_duration = l_song.second > 0 ? l_song.second : m_jukebox_durations.value(l_song_name, 300.0f);
+        emit sendAreaPacket(PacketFactory::createPacket("MC", {l_real_name, "-1"}), m_index);
+        m_jukebox_timer->start(l_duration * 1000);
     }
     else {
         int l_random_index = QRandomGenerator::system()->bounded(m_jukebox_queue.size() - 1);
         l_song_name = m_jukebox_queue[l_random_index];
 
         QPair<QString, float> l_song = m_music_manager->songInformation(l_song_name, index());
-        emit sendAreaPacket(PacketFactory::createPacket("MC", {l_song.first, "-1"}), m_index);
-        m_jukebox_timer->start(l_song.second * 1000);
+        const QString l_real_name = l_song.first.isEmpty() ? l_song_name : l_song.first;
+        const float l_duration = l_song.second > 0 ? l_song.second : m_jukebox_durations.value(l_song_name, 300.0f);
+        emit sendAreaPacket(PacketFactory::createPacket("MC", {l_real_name, "-1"}), m_index);
+        m_jukebox_timer->start(l_duration * 1000);
 
         m_jukebox_queue.remove(l_random_index);
         m_jukebox_queue.squeeze();

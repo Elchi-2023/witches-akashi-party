@@ -42,6 +42,7 @@ void PacketID::handlePacket(AreaData *area, AOClient &client) const
         client.m_version.release = l_match.captured(1).toInt();
         client.m_version.major = l_match.captured(2).toInt();
         client.m_version.minor = l_match.captured(3).toInt();
+        client.m_version.is_webao = m_content[0] == "webAO";
     }
 
     if (client.m_version.release != 2) {

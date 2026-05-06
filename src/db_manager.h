@@ -112,6 +112,11 @@ class DBManager : public QObject
     int getBanID(QString hdid);
 
     /**
+     * @overload
+     */
+    int getBanIDByIPID(QString ipid);
+
+    /**
      * @brief Gets the last five bans made on the server.
      *
      * @return See brief description.

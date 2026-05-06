@@ -43,7 +43,7 @@ class AOPacket;
 class AOClient : public QObject
 {
     Q_OBJECT
-
+      
   public:
     /**
      * @brief Describes a command's details.
@@ -152,6 +152,9 @@ class AOClient : public QObject
     QString characterName() const;
     void setCharacterName(const QString &f_showname);
 
+    bool UserAFK() const;
+    void ToggleAFK(const bool afk = true);
+    
     int areaId() const;
     void setAreaId(const int f_area_id);
 
@@ -206,6 +209,20 @@ class AOClient : public QObject
     bool m_global_enabled = true;
 
     /**
+     * @brief If true, the client is willing to receive afk announcement from other players.
+     *
+     * @see AOClient::cmdToggleAfkmute
+     */
+    bool m_afk_received = true;
+
+    /**
+     * @brief If true, the client is willing to sending afk announcement to public.
+     *
+     * @see AOClient::cmdToggleAfkannounce
+     */
+    bool m_afk_announcement = true;
+
+    /**
      * @brief If true, the client's messages will be sent in first-person mode.
      *
      * @see AOClient::cmdFirstPerson
@@ -243,6 +260,18 @@ class AOClient : public QObject
         int release = -1;
         int major = -1;
         int minor = -1;
+        bool is_webao = false;
+
+        QString get_string_version() const{
+            return QStringList({QString::number(release), QString::number(major), QString::number(minor)}).join('.');
+        }
+
+        bool operator==(const ClientVersion &c) const{
+            return release == c.release && major == c.major && minor == c.minor && is_webao == c.is_webao;
+        }
+        bool operator!=(const ClientVersion &c) const{
+            return !(*this == c);
+        }
     };
 
     /**
@@ -276,6 +305,23 @@ class AOClient : public QObject
      * @brief If true, the client's in-character messages will be run through a chat parser to make them into Ye Olde English.
      */
     bool m_is_medieval = false;
+
+    /**
+     * @brief If true, the client's in-character messages will be transformed into UwU-speak.
+     */
+    bool m_is_uwu = false;
+
+    /**
+     * @brief If true, the client's in-character messages will be translated into Pig Latin.
+     */
+    bool m_is_pig = false;
+
+    /**
+     * @brief I was asked to make something configurable for all holidays, so here we go! It has a chance to change a person's message and name
+     *
+     * @details <bool> were on/off, <QString> were Value
+     */
+    QPair<bool, QString> m_holiday_mode = qMakePair(false, QString());
 
     /**
      * @brief If true, the client will be marked as AFK in /getarea. Automatically applied when a configurable
@@ -322,6 +368,25 @@ class AOClient : public QObject
      * @brief If true, the client is a spectator and his IC interactions will be limtied.
      */
     bool m_is_spectator = true;
+
+    /**
+    * @brief The disconnnect reason type.
+    */
+    enum Disconnected{
+        NORMAL = 0,
+        KICK,
+        BAN
+    };
+
+    /**
+      * @brief The disconnnect reason of client.
+      */
+    int m_disconnect_reason = Disconnected::NORMAL;
+
+    /**
+     * @brief if true, the client is multiclienting
+     */
+    bool m_is_multiclient = false;
 
     /**
      * @brief The hardware ID of the client.
@@ -413,6 +478,14 @@ class AOClient : public QObject
     void sendServerBroadcast(QString message);
 
     /**
+     * @brief Same like server::broadcast, to every client in the client's area.
+     *
+     * @param An packet to send.
+     *
+     */
+    void sendServerPacketArea(AOPacket *packet);
+
+    /**
      * @brief Calls AOClient::updateEvidenceList() for every client in the current client's area.
      *
      * @param area The current client's area.
@@ -458,7 +531,8 @@ class AOClient : public QObject
      *
      * @param message The OOC message the client has sent.
      */
-    void loginAttempt(QString message);
+    bool loginAttempt(QString message);
+    QPair<int, int> totalAttempt = qMakePair(0, 0);
 
     /**
      * @brief Changes the area the client is in.
@@ -553,6 +627,11 @@ class AOClient : public QObject
     bool m_authenticated = false;
 
     /**
+     * @brief If true, the client is a logged-in VIP.
+     */
+    bool m_vip_authenticated = false;
+
+    /**
      * @brief The ACL role identifier, used to determine what ACL role the client is linked to.
      */
     QString m_acl_role_id;
@@ -566,6 +645,14 @@ class AOClient : public QObject
      */
     int m_pairing_with = -1;
 
+    /**
+     * @brief The character ID of the other character that the client wants to pair up with.
+     *
+     * @details Though this uses character ID, a client with *that* character ID by /pair must exist in the area for the pairing to work.
+     * Furthermore, the owner of that character ID must also do the reverse to this client, making their `pairing_with` equal
+     * to this client's character ID.
+     */
+    bool m_pairing_override = false;
     /**
      * @brief The name of the emote last used by the client. No extension.
      *
@@ -583,6 +670,13 @@ class AOClient : public QObject
     QString m_offset = "";
 
     /**
+     * @brief The amount the client will be offset by if used the offset command.
+     *
+     * @details This variable is in the format of "[xoffset]&[yoffset]".
+     */
+    QString m_offset_override = "";
+
+    /**
      * @brief The last flipped state of the client.
      */
     QString m_flipping = "";
@@ -591,6 +685,14 @@ class AOClient : public QObject
      * @brief The last reported position of the client.
      */
     QString m_pos = "";
+
+    int m_pair_order = -1;
+    int m_other_charid = -1;
+    bool m_pairing = false;
+    QString m_other_name = "";
+    QString m_other_emote = "";
+    QString m_other_offset = "";
+    QString m_other_flip = "";
 
     ///@}
 
@@ -654,10 +756,12 @@ class AOClient : public QObject
      */
     void joined();
 
+    /* ==== playerstateobserver === */
     void nameChanged(const QString &);
     void characterChanged(const QString &);
     void characterNameChanged(const QString &);
     void areaIdChanged(int);
+    void ModeratorObserver();
 
   private:
     /**
@@ -686,6 +790,12 @@ class AOClient : public QObject
      * @param new_pos The new position of the client.
      */
     void changePosition(QString new_pos);
+
+    /**
+     * @brief Every specific time the client sends a message to the client.
+     *
+     */
+    void globalReminder();
 
     /**
      * @name Packet helper functions
@@ -1415,6 +1525,33 @@ class AOClient : public QObject
     void cmdRollP(int argc, QStringList argv);
 
     /**
+     * @brief Choose one option out of multiple things sent.
+     *
+     * @details accepts maximum of 20 arguments
+     *
+     * @iscommand
+     */
+    void cmdWheel(int argc, QStringList argv);
+
+    /**
+     * @brief Choose one option out of multiple things sent, and send result privately
+     *
+     * @details accepts maximum of 20 arguments
+     *
+     * @iscommand
+     */
+    void cmdWheelP(int argc, QStringList argv);
+
+    /**
+     * @brief Rock Paper Scissors game
+     *
+     * @details accepts an argument of either rock, paper, or scissors
+     *
+     * @iscommand
+     */
+    void cmdRps(int argc, QStringList argv);
+
+    /**
      * @brief Gets or sets the global or one of the area-specific timers.
      *
      * @details If called without arguments, sends an out-of-character message listing the statuses of both
@@ -1489,6 +1626,61 @@ class AOClient : public QObject
      * that are also related to messages or the client's self-management in some way.
      */
     ///@{
+
+    /**
+     * @brief Make the server into one of the holiday modes from a JSON, changing the user name and message.
+     *
+     * @details Usage: /holiday [holiday name].
+     *
+     * @iscommand
+     */
+    void cmdHoliday(int argc, QStringList argv);
+
+    /**
+     * @brief Disable holiday mode.
+     *
+     * @details Usage: /unholiday.
+     *
+     * @iscommand
+     */
+    void cmdUnHoliday(int argc, QStringList argv);
+
+        /**
+     * @brief Pairs with someone.
+     *
+     * @details Usage: /pair ID.
+     *
+     * @iscommand
+     */
+    void cmdPair(int argc, QStringList argv);
+
+    /**
+     * @brief Stop Pairing with someone.
+     *
+     * @details Usage:/unpair.
+     *
+     * @iscommand
+     */
+    void cmdUnPair(int argc, QStringList argv);
+
+    /**
+     * @brief Change the pairing order (front or behind).
+     *
+     * @details The argument is 0/front and 1/behind.
+     *
+     * @iscommand
+     */
+    void cmdPairOrder(int argc, QStringList argv);
+
+    /**
+     * @brief Change your offset (x offset and y offset).
+     *
+     * @details It takes to arguments, first for x offset and second for y offset. Writing only 1 argument changes only the x offset,
+     * and writing the argument as "rst" resets your offset to client setting.
+     *
+     * @iscommand
+     */
+    void cmdOffset(int argc, QStringList argv);
 
     /**
      * @brief Changes the client's position.
@@ -1583,6 +1775,15 @@ class AOClient : public QObject
     void cmdAnnounce(int argc, QStringList argv);
 
     /**
+     * @brief Sends corn to area.
+     *
+     * @details No arguments, sends a corn emoji.
+     *
+     * @iscommand
+     */
+    void cmdCorn(int argc, QStringList argv);
+
+    /**
      * @brief Sends a message in the server-wide, moderator only chat.
      *
      * @details The arguments are **the message** that the client wants to send.
@@ -1612,6 +1813,30 @@ class AOClient : public QObject
      * @see AOClient::cmdLM()
      */
     void cmdLM(int argc, QStringList argv);
+
+        /**
+     * @brief this commands gives **target id** an curses.
+     *
+     * @details The only argument is the **the target's ID** and **type** if there is.
+     *
+     * @iscommand
+     */
+    void cmdCurses(int argc, QStringList argv);
+
+    /**
+     * @brief this commands removes **target id** from an curses.
+     *
+     * @details The only argument is the **the target's ID** and **type** if there is.
+     *
+     * @iscommand
+     */
+    void cmdUnCurses(int argc, QStringList argv);
+
+    /**
+     * @brief Identify a target client (moderator only)
+     * @details This useful for staff want Identify someone..
+     */
+    void cmdUserInfo(int argc, QStringList argv);
 
     /**
      * @brief Replaces a target client's in-character messages with strings randomly selected from gimp.txt.
@@ -1686,6 +1911,42 @@ class AOClient : public QObject
     void cmdUnMedieval(int argc, QStringList argv);
 
     /**
+     * @brief Transforms a target client's in-character messages into UwU-speak.
+     *
+     * @details The only argument is **the target's ID** whom the client wants to uwu-ify.
+     *
+     * @iscommand
+     */
+    void cmdUwu(int argc, QStringList argv);
+
+    /**
+     * @brief Allows a UwU-fied client to speak normally.
+     *
+     * @details The only argument is **the target's ID** whom the client wants to un-uwu.
+     *
+     * @iscommand
+     */
+    void cmdUnUwu(int argc, QStringList argv);
+
+    /**
+     * @brief Translates a target client's in-character messages into Pig Latin.
+     *
+     * @details The only argument is **the target's ID** whom the client wants to pig-latin-ify.
+     *
+     * @iscommand
+     */
+    void cmdPig(int argc, QStringList argv);
+
+    /**
+     * @brief Allows a Pig Latin-speaking client to speak normally.
+     *
+     * @details The only argument is **the target's ID** whom the client wants to un-pig.
+     *
+     * @iscommand
+     */
+    void cmdUnPig(int argc, QStringList argv);
+
+    /**
      * @brief Toggles whether a client will recieve @ref cmdPM private messages or not.
      *
      * @details No arguments.
@@ -1702,6 +1963,24 @@ class AOClient : public QObject
      * @iscommand
      */
     void cmdToggleAdverts(int argc, QStringList argv);
+
+    /**
+     * @brief Toggles whether a client will recieve ooc messsages about people sent afk by timeout.
+     *
+     * @details No arguments.
+     *
+     * @iscommand
+     */
+    void cmdToggleAfkMute(int argc, QStringList argv);
+
+    /**
+     * @brief Toggles whether a client will/n't sending about client is AFK or not.
+     *
+     * @details No arguments.
+     *
+     * @iscommand
+     */
+    void cmdToggleAfkannounce(int argc, QStringList argv);
 
     /**
      * @brief Toggles whether this client is considered AFK.
@@ -1921,6 +2200,30 @@ class AOClient : public QObject
     void cmdPlay(int argc, QStringList argv);
 
     /**
+     * @brief Plays music once in the area.
+     *
+     * @details The arguments are **the song's filepath** originating from `base/sounds/music/`,
+     * or **the song's URL** if it's a stream.
+     *
+     * As described above, this command can be used to play songs by URL (for clients at and above version 2.9),
+     * but it can also be used to play songs locally available for the clients but not listed in the music list.
+     *
+     * @iscommand
+     */
+    void cmdPlayOnce(int argc, QStringList argv);
+
+    /**
+     * @brief shows radio list or play a radio url.
+     *
+     * @details If no argument is provided, this returns the list of radio links.
+     *
+     * If the argument provided is an id of the radio link (from JSON file), play that link.
+     *
+     * @iscommand
+     */
+    void cmdRadio(int argc, QStringList argv);
+
+    /**
      * @brief Plays ambience in the area.
      *
      * @details The arguments are **the song's filepath** originating from `base/sounds/music/`,
@@ -1963,6 +2266,12 @@ class AOClient : public QObject
      * @iscommand
      */
     void cmdCurrentMusic(int argc, QStringList argv);
+
+    /**
+     * @brief Returns the currently playing music in the area, and play it to user.
+     *
+     */
+    void cmdGetMusic(int argc, QStringList argv);
 
     /**
      * @brief Toggles music playing in the current area.
@@ -2009,19 +2318,20 @@ class AOClient : public QObject
     void cmdJukeboxSkip(int argc, QStringList argv);
 
     /**
-     * @brief Adds a song to the jukebox queue. Works in protected areas for users with JUKEBOX permission.
+    /**
+     * @brief Plays a single random song from the server music list via the jukebox.
      */
-    void cmdPlaylistAdd(int argc, QStringList argv);
+    void cmdRandomSong(int argc, QStringList argv);
 
     /**
-     * @brief Picks a random song from the area music list and adds it to the jukebox queue.
+     * @brief Fills the jukebox queue with all available songs in a random order.
      */
     void cmdShuffle(int argc, QStringList argv);
 
     /**
-     * @brief Picks a random song from the area music list and plays it immediately.
+     * @brief Adds one or more named songs to the jukebox queue.
      */
-    void cmdRandomSong(int argc, QStringList argv);
+    void cmdPlaylistAdd(int argc, QStringList argv);
 
     ///@}
 
@@ -2173,23 +2483,41 @@ class AOClient : public QObject
      */
     int packet_count;
 
+    /**
+     * @brief choice for rock paper scissor.
+     */
+    QString rps_choice;
+
+    /**
+     * @brief check if an RPS game is already in progress.
+     */
+    bool rps_waiting = false;
+
+    /**
+     * @brief The timer for the global reminder delay, just a silly reminder to rest and drink.
+     *
+     */
+    QTimer *m_global_reminder_timer;
+
   signals:
 
     /**
      * @brief Signal connected to universal logger. Sends IC chat usage to the logger.
      */
-    void logIC(const QString &f_areaName, const QString &f_ipid, const QString &f_oocName, const QString &f_id, const QString &f_charName, const QString &f_message);
-
-    /**
-     * @brief Signal connected to universal logger. Sends music usage to the logger.
-     */
-    void logMusic(const QString &f_charName, const QString &f_oocName, const QString &f_ipid,
-                  const QString &f_areaName, const QString &f_track);
+    void logIC(const QString &f_charName, const QString &f_oocName, const QPair<int, QString> &f_ids,
+               const QString &f_areaName, const QString &f_message);
 
     /**
      * @brief Signal connected to universal logger. Sends OOC chat usage to the logger.
      */
-    void logOOC(const QString &f_areaName, const QString &f_ipid, const QString &f_oocName, const QString &f_id, const QString &f_charName, const QString &f_message);
+    void logOOC(const QString &f_charName, const QString &f_oocName, const QPair<int, QString> &f_ids,
+                const QString &f_areaName, const QString &f_message);
+
+    /**
+     * @brief Signal connected to universal logger. Sends music usage to the logger.
+     */
+    void logMusic(const QString &f_charName, const QString &f_oocName, const QPair<int, QString> &f_ids,
+                const QString &f_areaName, const QString &f_track);
 
     /**
      * @brief Signal connected to universal logger. Sends login attempt to the logger.
@@ -2217,12 +2545,13 @@ class AOClient : public QObject
      * @brief Signal connected to universal logger. Sends modcall information to the logger, triggering a write of the buffer
      *        when modcall logging is used.
      */
-    void logModcall(const QString &f_area_name, const QString &f_ipid, const QString &f_ooc_name, const QString &f_id, const QString &f_char_name);
+    void logModcall(const QString &f_charName, const QPair<int, QString> &f_ids, const QString &f_oocName, const QString &f_areaName);
 
     /**
      * @brief Signals the server that the client has disconnected and marks its userID as free again.
      */
     void clientSuccessfullyDisconnected(const int &f_user_id);
+
 };
 
 #endif // AOCLIENT_H

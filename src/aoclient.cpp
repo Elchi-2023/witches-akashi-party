@@ -43,12 +43,21 @@ const QMap<QString, AOClient::CommandInfo> AOClient::COMMANDS{
     {"listperms", {{ACLRole::NONE}, 0, &AOClient::cmdListPerms}},
     {"logout", {{ACLRole::NONE}, 0, &AOClient::cmdLogout}},
     {"pos", {{ACLRole::NONE}, 1, &AOClient::cmdPos}},
+    {"holiday", {{ACLRole::NONE}, 0, &AOClient::cmdHoliday}},
+    {"unholiday", {{ACLRole::NONE}, 0, &AOClient::cmdUnHoliday}},
+    {"pair", {{ACLRole::NONE}, 1, &AOClient::cmdPair}},
+    {"unpair", {{ACLRole::NONE}, 0, &AOClient::cmdUnPair}},
+    {"pair_order", {{ACLRole::NONE}, 1, &AOClient::cmdPairOrder}},
+    {"offset", {{ACLRole::NONE}, 0, &AOClient::cmdOffset}},
     {"g", {{ACLRole::NONE}, 1, &AOClient::cmdG}},
     {"need", {{ACLRole::NONE}, 1, &AOClient::cmdNeed}},
     {"coinflip", {{ACLRole::NONE}, 0, &AOClient::cmdFlip}},
     {"roll", {{ACLRole::NONE}, 0, &AOClient::cmdRoll}},
     {"rolla", {{ACLRole::NONE}, 0, &AOClient::cmdRollA}},
     {"rollp", {{ACLRole::NONE}, 0, &AOClient::cmdRollP}},
+    {"wheel", {{ACLRole::NONE}, 0, &AOClient::cmdWheel}},
+    {"wheelp", {{ACLRole::NONE}, 0, &AOClient::cmdWheelP}},
+    {"rps", {{ACLRole::NONE}, 1, &AOClient::cmdRps}},
     {"doc", {{ACLRole::NONE}, 0, &AOClient::cmdDoc}},
     {"cleardoc", {{ACLRole::NONE}, 0, &AOClient::cmdClearDoc}},
     {"cm", {{ACLRole::NONE}, 0, &AOClient::cmdCM}},
@@ -61,6 +70,7 @@ const QMap<QString, AOClient::CommandInfo> AOClient::COMMANDS{
     {"timer", {{ACLRole::CM}, 0, &AOClient::cmdTimer}},
     {"area", {{ACLRole::NONE}, 1, &AOClient::cmdArea}},
     {"play", {{ACLRole::NONE}, 1, &AOClient::cmdPlay}},
+    {"radio", {{ACLRole::NONE}, 0, &AOClient::cmdRadio}},
     {"area_kick", {{ACLRole::CM}, 1, &AOClient::cmdAreaKick}},
     {"randomchar", {{ACLRole::NONE}, 0, &AOClient::cmdRandomChar}},
     {"switch", {{ACLRole::NONE}, 1, &AOClient::cmdSwitch}},
@@ -70,7 +80,9 @@ const QMap<QString, AOClient::CommandInfo> AOClient::COMMANDS{
     {"status", {{ACLRole::NONE}, 1, &AOClient::cmdStatus}},
     {"forcepos", {{ACLRole::CM}, 2, &AOClient::cmdForcePos}},
     {"currentmusic", {{ACLRole::NONE}, 0, &AOClient::cmdCurrentMusic}},
+    {"getmusic",  {{ACLRole::NONE}, 0, &AOClient::cmdGetMusic}},
     {"pm", {{ACLRole::NONE}, 2, &AOClient::cmdPM}},
+    {"play_once", {{ACLRole::NONE}, 1, &AOClient::cmdPlayOnce}},
     {"evidence_mod", {{ACLRole::EVI_MOD}, 1, &AOClient::cmdEvidenceMod}},
     {"motd", {{ACLRole::NONE}, 0, &AOClient::cmdMOTD}},
     {"set_motd", {{ACLRole::MOTD}, 1, &AOClient::cmdSetMOTD}},
@@ -106,6 +118,10 @@ const QMap<QString, AOClient::CommandInfo> AOClient::COMMANDS{
     {"undisemvowel", {{ACLRole::MUTE}, 1, &AOClient::cmdUnDisemvowel}},
     {"shake", {{ACLRole::MUTE}, 1, &AOClient::cmdShake}},
     {"unshake", {{ACLRole::MUTE}, 1, &AOClient::cmdUnShake}},
+    {"uwu", {{ACLRole::MUTE}, 1, &AOClient::cmdUwu}},
+    {"unuwu", {{ACLRole::MUTE}, 1, &AOClient::cmdUnUwu}},
+    {"pig", {{ACLRole::MUTE}, 1, &AOClient::cmdPig}},
+    {"unpig", {{ACLRole::MUTE}, 1, &AOClient::cmdUnPig}},
     {"force_noint_pres", {{ACLRole::CM}, 0, &AOClient::cmdForceImmediate}},
     {"allow_iniswap", {{ACLRole::CM}, 0, &AOClient::cmdAllowIniswap}},
     {"afk", {{ACLRole::NONE}, 0, &AOClient::cmdAfk}},
@@ -114,6 +130,8 @@ const QMap<QString, AOClient::CommandInfo> AOClient::COMMANDS{
     {"permitsaving", {{ACLRole::MODCHAT}, 1, &AOClient::cmdPermitSaving}},
     {"mutepm", {{ACLRole::NONE}, 0, &AOClient::cmdMutePM}},
     {"toggleadverts", {{ACLRole::NONE}, 0, &AOClient::cmdToggleAdverts}},
+    {"toggleafkmute", {{ACLRole::NONE}, 0, &AOClient::cmdToggleAfkMute}},
+    {"toggleafk_announce", {{ACLRole::NONE}, 0, &AOClient::cmdToggleAfkannounce}},
     {"ooc_mute", {{ACLRole::MUTE}, 1, &AOClient::cmdOocMute}},
     {"ooc_unmute", {{ACLRole::MUTE}, 1, &AOClient::cmdOocUnMute}},
     {"block_wtce", {{ACLRole::MUTE}, 1, &AOClient::cmdBlockWtce}},
@@ -150,13 +168,16 @@ const QMap<QString, AOClient::CommandInfo> AOClient::COMMANDS{
     {"toggle_shouts", {{ACLRole::CM}, 0, &AOClient::cmdToggleShouts}},
     {"kick_other", {{ACLRole::NONE}, 0, &AOClient::cmdKickOther}},
     {"jukebox_skip", {{ACLRole::CM}, 0, &AOClient::cmdJukeboxSkip}},
+    {"randomsong", {{ACLRole::NONE}, 0, &AOClient::cmdRandomSong}},
+    {"shuffle", {{ACLRole::NONE}, 0, &AOClient::cmdShuffle}},
     {"playlistadd", {{ACLRole::NONE}, 1, &AOClient::cmdPlaylistAdd}},
-    {"shuffle", {{ACLRole::JUKEBOX}, 0, &AOClient::cmdShuffle}},
-    {"randomsong", {{ACLRole::JUKEBOX}, 0, &AOClient::cmdRandomSong}},
     {"play_ambience", {{ACLRole::NONE}, 1, &AOClient::cmdPlayAmbience}},
     {"medieval", {{ACLRole::MUTE}, 1, &AOClient::cmdMedieval}},
     {"unmedieval", {{ACLRole::MUTE}, 1, &AOClient::cmdUnMedieval}},
     {"medievalmode", {{ACLRole::MUTE}, 0, &AOClient::cmdMedievalMode}},
+    {"curses", {{ACLRole::MUTE}, 1, &AOClient::cmdCurses}},
+    {"uncurses", {{ACLRole::MUTE}, 1, &AOClient::cmdUnCurses}},
+    {"userinfo", {{ACLRole::BAN}, 1, &AOClient::cmdUserInfo}},
 };
 
 void AOClient::clientDisconnected()
@@ -165,28 +186,56 @@ void AOClient::clientDisconnected()
     qDebug() << m_remote_ip.toString() << "disconnected";
 #endif
     if (m_joined) {
-        server->getAreaById(areaId())->removeClient(server->getCharID(character()), clientId());
+        auto current_area = server->getAreaById(areaId());
+        current_area->removeClient(server->getCharID(character()), clientId());
+        if (!current_area->joinedIDs().isEmpty()){
+            const QVector<int> current_joinedID = current_area->joinedIDs();
+            for (const int l_client_id : current_joinedID){ /* broadcasting when current area doesn't empty */
+                auto l_client = server->getClientByID(l_client_id);
+                if (!m_is_spectator && !m_is_multiclient){
+                    const QStringList Reason{"disconnected", "disconnected: (kicked)", "disconnected (banned)"};
+                    if (l_client->m_authenticated)
+                        l_client->sendServerMessage(QString("[%1] %2 are %3.").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character(), Reason[m_disconnect_reason]));
+                    else
+                        l_client->sendServerMessage(QString("[%1] %2 are %3.").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character(), Reason[m_disconnect_reason > Disconnected::KICK ? 0 : m_disconnect_reason]));
+                }
+
+                if (current_area->get_pair_sync_clientID(l_client->clientId()) == clientId() && current_area->get_pair_sync_clientID(clientId()) == l_client_id){ /* you know how this checkers goes, right? */
+                    l_client->sendServerMessage("You aren't longer synced pairing with target, target not longer exists."); /* we notfy the target about user weren't longer exists for pairs sync */
+                    current_area->removePairSync(clientId(), l_client->clientId()); /* freed both ids from pairs sync list.. */
+                }
+            }
+        }
+
+        if (current_area->checkPairSync(clientId())) /* double checks if user client id weren't on pairs sync list */
+            current_area->removePairSync(clientId());
+
         arup(ARUPType::PLAYER_COUNT, true);
     }
 
-    if (character() != "") {
+    if (!character().isEmpty())
         server->updateCharsTaken(server->getAreaById(areaId()));
-    }
 
     bool l_updateLocks = false;
 
-    const QVector<AreaData *> l_areas = server->getAreas();
-    for (AreaData *l_area : l_areas) {
-        if (l_area->invited().contains(m_id)) {
+    const QVector<QPointer<AreaData>> l_areas = server->getAreas();
+    for (QPointer<AreaData> l_area : l_areas) {
+        if (l_area.isNull())
+            continue;
+
+        if (l_area->invited().contains(m_id))
             l_area->uninvite(m_id);
+        if (l_area->removeOwner(clientId()) && !l_updateLocks)
+            l_updateLocks = true;
+        if (l_area->joinedIDs().isEmpty() && l_area->lockStatus() != AreaData::FREE){
+            l_area->unlock();
+            if (!l_updateLocks)
+                l_updateLocks = true;
         }
-
-        l_updateLocks = l_updateLocks || l_area->removeOwner(clientId());
     }
 
-    if (l_updateLocks) {
+    if (l_updateLocks)
         arup(ARUPType::LOCKED, true);
-    }
     arup(ARUPType::CM, true);
     emit clientSuccessfullyDisconnected(clientId());
 }
@@ -227,12 +276,28 @@ void AOClient::handlePacket(AOPacket *packet)
     }
 
     if (packet->getPacketInfo().header != "CH" && m_joined) {
-        if (m_is_afk) {
-            sendServerMessage("You are no longer AFK.");
-        }
-        m_is_afk = false;
-        if (characterName().endsWith(" [AFK]")) {
-            setCharacterName(characterName().remove(" [AFK]"));
+        if (UserAFK()){
+            if (m_afk_announcement){
+                auto current_area = server->getAreaById(areaId());
+                if (current_area.isNull())
+                    sendServerMessage("You are no longer AFK, Welcome back.");
+                else{
+                    for (const int client_id : current_area->joinedIDs()){
+                        auto l_client = server->getClientByID(client_id);
+                        if (l_client.isNull())
+                            continue;
+
+                        if (l_client == this) /* "this" ... current client (aka user) lol */
+                            l_client->sendServerMessage("You are no longer AFK, Welcome back.");
+                        else if (!l_client->isSpectator() && l_client->m_afk_received) /* lgnored spectator for moment.. */
+                            l_client->sendServerMessage(QString("[%1] %2 are no longer AFK.").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character()));
+                    }
+                }
+
+            }
+            else
+                sendServerMessage("You are no longer AFK. (unannouncement)");
+            ToggleAFK(false);
         }
         m_afk_timer->start(ConfigManager::afkTimeout() * 1000);
     }
@@ -262,14 +327,17 @@ void AOClient::changeArea(int new_area)
         server->getAreaById(areaId())->changeCharacter(server->getCharID(character()), -1);
         server->updateCharsTaken(server->getAreaById(areaId()));
     }
-    server->getAreaById(areaId())->removeClient(m_char_id, clientId());
+    auto previous_area = server->getAreaById(areaId());
+    previous_area->removeClient(m_char_id, clientId());
+
     bool l_character_taken = false;
-    if (server->getAreaById(new_area)->charactersTaken().contains(server->getCharID(character()))) {
+    auto next_area = server->getAreaById(new_area);
+    if (next_area->charactersTaken().contains(server->getCharID(character()))) {
         setCharacter("");
         m_char_id = -1;
         l_character_taken = true;
     }
-    server->getAreaById(new_area)->addClient(m_char_id, clientId());
+    next_area->addClient(m_char_id, clientId());
     setAreaId(new_area);
     arup(ARUPType::PLAYER_COUNT, true);
     sendEvidenceList(server->getAreaById(new_area));
@@ -279,9 +347,9 @@ void AOClient::changeArea(int new_area)
     if (l_character_taken) {
         sendPacket("DONE");
     }
-    const QList<QTimer *> l_timers = server->getAreaById(areaId())->timers();
+    const QList<QTimer *> l_timers = next_area->timers();
     for (QTimer *l_timer : l_timers) {
-        int l_timer_id = server->getAreaById(areaId())->timers().indexOf(l_timer) + 1;
+        int l_timer_id = next_area->timers().indexOf(l_timer) + 1;
         if (l_timer->isActive()) {
             sendPacket("TI", {QString::number(l_timer_id), "2"});
             sendPacket("TI", {QString::number(l_timer_id), "0", QString::number(QTime(0, 0).msecsTo(QTime(0, 0).addMSecs(l_timer->remainingTime())))});
@@ -291,11 +359,21 @@ void AOClient::changeArea(int new_area)
         }
     }
     sendServerMessage("You moved to area " + server->getAreaName(areaId()));
-    if (server->getAreaById(areaId())->sendAreaMessageOnJoin()) {
-        sendServerMessage(server->getAreaById(areaId())->areaMessage());
+    if (previous_area->checkPairSync(clientId())){
+        sendServerMessage("Reseted sync pairing.");
+        auto target = server->getClientByID(previous_area->get_pair_sync_clientID(clientId()));
+        if (!target.isNull()){
+            if (previous_area->joinedIDs().contains(target->clientId()) && previous_area->get_pair_sync_clientID(clientId()) == target->clientId() && previous_area->removePairSync(target->clientId()))
+                target->sendServerMessage(QString("You aren't longer synced pairing with [%1] %2, target moved area.").arg(QString::number(target->clientId()), target->character().isEmpty() ? "Spectator" : target->character()));
+        }
+        previous_area->removePairSync(clientId());
     }
 
-    if (server->getAreaById(areaId())->lockStatus() == AreaData::LockStatus::SPECTATABLE) {
+    if (next_area->sendAreaMessageOnJoin()) {
+        sendServerMessage(next_area->areaMessage());
+    }
+
+    if (next_area->lockStatus() == AreaData::LockStatus::SPECTATABLE) {
         sendServerMessage("Area " + server->getAreaName(areaId()) + " is spectate-only; to chat IC you will need to be invited by the CM.");
     }
 }
@@ -384,31 +462,31 @@ void AOClient::arup(ARUPType type, bool broadcast)
 {
     QStringList l_arup_data;
     l_arup_data.append(QString::number(type));
-    const QVector<AreaData *> l_areas = server->getAreas();
-    for (AreaData *l_area : l_areas) {
+    const QVector<QPointer<AreaData>> l_areas = server->getAreas();
+    for (QPointer<AreaData> l_area : l_areas) {
         switch (type) {
         case ARUPType::PLAYER_COUNT:
         {
-            l_arup_data.append(QString::number(l_area->playerCount()));
+            l_arup_data.append(QString::number(l_area.isNull() ? 0 : l_area->playerCount()));
             break;
         }
         case ARUPType::STATUS:
         {
-            QString l_area_status = QVariant::fromValue(l_area->status()).toString().replace("_", "-"); // LOOKING_FOR_PLAYERS to LOOKING-FOR-PLAYERS
+            QString l_area_status = l_area.isNull() ? "IDLE" : QVariant::fromValue(l_area->status()).toString().replace("_", "-"); // LOOKING_FOR_PLAYERS to LOOKING-FOR-PLAYERS
             l_arup_data.append(l_area_status);
             break;
         }
         case ARUPType::CM:
         {
-            if (l_area->owners().isEmpty()) {
+            if (l_area.isNull() || l_area->owners().isEmpty())
                 l_arup_data.append("FREE");
-            }
-            else {
+            else{
                 QStringList l_area_owners;
                 const QList<int> l_owner_ids = l_area->owners();
-                for (int l_owner_id : l_owner_ids) {
-                    AOClient *l_owner = server->getClientByID(l_owner_id);
-                    l_area_owners.append("[" + QString::number(l_owner->clientId()) + "] " + l_owner->character());
+                for (int l_owner_id : l_owner_ids){
+                    auto l_owner = server->getClientByID(l_owner_id);
+                    if (!l_owner.isNull())
+                        l_area_owners.append("[" + QString::number(l_owner->clientId()) + "] " + l_owner->character());
                 }
                 l_arup_data.append(l_area_owners.join(", "));
             }
@@ -416,7 +494,7 @@ void AOClient::arup(ARUPType type, bool broadcast)
         }
         case ARUPType::LOCKED:
         {
-            QString l_lock_status = QVariant::fromValue(l_area->lockStatus()).toString();
+            QString l_lock_status = l_area.isNull() ? "" : QVariant::fromValue(l_area->lockStatus()).toString();
             l_arup_data.append(l_lock_status);
             break;
         }
@@ -426,12 +504,8 @@ void AOClient::arup(ARUPType type, bool broadcast)
         }
         }
     }
-    if (broadcast) {
-        server->broadcast(PacketFactory::createPacket("ARUP", l_arup_data));
-    }
-    else {
-        sendPacket("ARUP", l_arup_data);
-    }
+
+    broadcast ? server->broadcast(PacketFactory::createPacket("ARUP", l_arup_data)) : sendPacket("ARUP", l_arup_data);
 }
 
 void AOClient::fullArup()
@@ -485,6 +559,9 @@ void AOClient::sendServerMessageArea(QString message)
 void AOClient::sendServerBroadcast(QString message)
 {
     server->broadcast(PacketFactory::createPacket("CT", {ConfigManager::serverTag(), message, "1"}));
+}
+void AOClient::sendServerPacketArea(AOPacket *packet){
+    server->broadcast(packet, areaId());
 }
 
 bool AOClient::checkPermission(ACLRole::Permission f_permission) const
@@ -591,6 +668,17 @@ void AOClient::setCharacterName(const QString &f_showname)
     }
 }
 
+bool AOClient::UserAFK() const{
+    return m_is_afk;
+}
+
+void AOClient::ToggleAFK(const bool afk){
+    if (m_is_afk != afk){
+        m_is_afk = afk;
+        Q_EMIT nameChanged(QStringList({m_ooc_name, "[💤] " + m_ooc_name})[m_is_afk]);
+    }
+}
+
 void AOClient::setSpectator(bool f_spectator)
 {
     m_is_spectator = f_spectator;
@@ -603,11 +691,29 @@ bool AOClient::isSpectator() const
 
 void AOClient::onAfkTimeout()
 {
-    if (!m_is_afk) {
-        sendServerMessage("You are now AFK.");
-        setCharacterName(characterName() + " [AFK]");
+    if (!UserAFK()) {
+        if (m_afk_announcement){
+            auto current_area = server->getAreaById(areaId());
+            for (const int client_id : current_area->joinedIDs()){
+                auto l_client = server->getClientByID(client_id);
+                if (l_client.isNull())
+                    continue;
+
+                if (l_client == this) /* "this" ... current client (aka user) lol */
+                    sendServerMessage("You are now AFK (due to inactivity).");
+                else if (!l_client->isSpectator() && l_client->m_afk_received) /* lgnored spectator for moment.. */
+                    l_client->sendServerMessage(QString("[%1] %2 are now AFK (due to inactivity).").arg(QString::number(clientId()), character().isEmpty() ? "Spectator" : character()));
+            }
+        }
+        else
+            sendServerMessage("You are now AFK (due to inactivity). (announcement)");
+        ToggleAFK();
     }
-    m_is_afk = true;
+}
+
+void AOClient::globalReminder()
+{
+    sendServerMessage("Don't forget to take breaks and hydrate <3");
 }
 
 AOClient::AOClient(Server *p_server, NetworkSocket *socket, QObject *parent, int user_id, MusicManager *p_manager) :
@@ -628,6 +734,9 @@ AOClient::AOClient(Server *p_server, NetworkSocket *socket, QObject *parent, int
     m_afk_timer = new QTimer;
     m_afk_timer->setSingleShot(true);
     connect(m_afk_timer, &QTimer::timeout, this, &AOClient::onAfkTimeout);
+    m_global_reminder_timer = new QTimer;
+    connect(m_global_reminder_timer, &QTimer::timeout, this, &AOClient::globalReminder);
+    m_global_reminder_timer->start(7200000);
 }
 
 AOClient::~AOClient()

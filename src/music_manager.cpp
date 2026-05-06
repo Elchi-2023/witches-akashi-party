@@ -85,6 +85,16 @@ bool MusicManager::validateSong(QString f_song_name, QStringList f_approved_cdns
     return true;
 }
 
+int MusicManager::ValidataSong(const QUrl Url, const QStringList Approved_cdns){
+    if (Url.isLocalFile())
+        return 0;
+    else if (!Url.isValid())
+        return -1;
+    else if (!Approved_cdns.contains(Url.host()))
+        return -2;
+    return 1;
+}
+
 bool MusicManager::addCustomSong(QString f_song_name, QString f_real_name, int f_duration, int f_area_id)
 {
     // Validate if simple name.

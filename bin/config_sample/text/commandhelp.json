@@ -912,5 +912,26 @@
       ],
       "usage":"/unmedieval <ID>",
       "text":"Allows Ye Olde client to speak normally. The user needs to be in Medieval Mode to be un-Medieval'd. Takes the client id as the only argument."
+   },
+   {
+      "names": [
+         "randomsong"
+      ],
+      "usage":"/randomsong",
+      "text":"Picks a random song from the server music list and adds it to the jukebox queue. The jukebox must be enabled in the area. Example: /randomsong → might queue 'TH01_Boss.mp3'."
+   },
+   {
+      "names": [
+         "shuffle"
+      ],
+      "usage":"/shuffle",
+      "text":"Fills the jukebox queue with all available songs in a random order. The jukebox must be enabled in the area. Example: /shuffle → queues every song on the server in a random order."
+   },
+   {
+      "names": [
+         "playlistadd"
+      ],
+      "usage":"/playlistadd <song1> [song2] [song3] ...",
+      "text":"Adds one or more songs to the jukebox queue. Pass local song names or approved CDN URLs separated by spaces. Custom URLs play for 5 minutes each. The jukebox must be enabled in the area.\nLocal song example: /playlistadd TH01_Boss.mp3 TH02_Stage.mp3 TH03_Ending.mp3\nCustom URL example: /playlistadd https://cdn.example.com/song1.mp3 https://cdn.example.com/song2.mp3"
    }
 ]

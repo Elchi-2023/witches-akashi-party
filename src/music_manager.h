@@ -76,7 +76,8 @@ class MusicManager : public QObject
      *
      * @return Wether or not the song can be played or added.
      */
-    bool validateSong(QString f_song_name, QStringList f_approved_cdns);
+    bool validateSong(QString f_song_name, QStringList f_approved_cdns); /* untouched */
+    int ValidataSong(const QUrl Url, const QStringList Approved_cdns);
 
     /**
      * @brief Attempts to add the new song to the custom musiclist.
