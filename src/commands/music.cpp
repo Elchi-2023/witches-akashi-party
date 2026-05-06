@@ -23,6 +23,9 @@
 #include "packet/packet_factory.h"
 #include "server.h"
 
+#include <algorithm>
+#include <random>
+
 // This file is for commands under the music category in aoclient.h
 // Be sure to register the command in the header before adding it here!
 
@@ -126,7 +129,7 @@ void AOClient::cmdRadio(int argc, QStringList argv)
         bool Vaild_radioID;
         int Radioid = argv[0].toInt(&Vaild_radioID);
         if (Vaild_radioID && l_radio.contains(Radioid)){ /* > Vaild ID (or index) < */
-            const auto [Radio_name, Selected_Radio] = l_radio.value(Vaild_radioID);
+            const auto [Radio_name, Selected_Radio] = l_radio.value(Radioid);
 
             auto l_area = server->getAreaById(areaId());
             if (l_area.isNull())
@@ -372,4 +375,135 @@ void AOClient::cmdJukeboxSkip(int argc, QStringList argv)
     }
     else
         sendServerMessage("Unable to skip song. The jukebox is not running.");
+}
+
+// Returns only the actual playable songs from the root music list,
+// filtering out category headers (which have no file extension).
+static QStringList playableSongs(MusicManager *musicManager)
+{
+    QStringList l_songs;
+    const QStringList l_all = musicManager->rootMusiclist();
+    for (const QString &entry : qAsConst(l_all)) {
+        if (entry.contains('.'))
+            l_songs.append(entry);
+    }
+    return l_songs;
+}
+
+void AOClient::cmdRandomSong(int argc, QStringList argv)
+{
+    Q_UNUSED(argc);
+    Q_UNUSED(argv);
+
+    if (m_is_dj_blocked) {
+        sendServerMessage("You are blocked from changing the music.");
+        return;
+    }
+
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
+    if (!l_area->isjukeboxEnabled()) {
+        sendServerMessage("The jukebox is not enabled in this area.");
+        return;
+    }
+
+    const QStringList l_songs = playableSongs(m_music_manager);
+    if (l_songs.isEmpty()) {
+        sendServerMessage("No songs available in the music list.");
+        return;
+    }
+
+    const int l_index = static_cast<int>(QRandomGenerator::system()->bounded(static_cast<quint32>(l_songs.size())));
+    sendServerMessage(l_area->addJukeboxSong(l_songs.at(l_index)));
+}
+
+void AOClient::cmdShuffle(int argc, QStringList argv)
+{
+    Q_UNUSED(argc);
+    Q_UNUSED(argv);
+
+    if (m_is_dj_blocked) {
+        sendServerMessage("You are blocked from changing the music.");
+        return;
+    }
+
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
+    if (!l_area->isjukeboxEnabled()) {
+        sendServerMessage("The jukebox is not enabled in this area.");
+        return;
+    }
+
+    QStringList l_songs = playableSongs(m_music_manager);
+    if (l_songs.isEmpty()) {
+        sendServerMessage("No songs available to shuffle.");
+        return;
+    }
+
+    // Shuffle using a seeded Mersenne Twister for good randomness
+    std::mt19937 rng(QRandomGenerator::system()->generate());
+    std::shuffle(l_songs.begin(), l_songs.end(), rng);
+
+    for (const QString &song : qAsConst(l_songs))
+        l_area->addJukeboxSong(song);
+
+    sendServerMessage(QString("Shuffle complete. %1 song(s) queued in the jukebox.").arg(l_songs.size()));
+}
+
+void AOClient::cmdPlaylistAdd(int argc, QStringList argv)
+{
+    Q_UNUSED(argc);
+
+    if (m_is_dj_blocked) {
+        sendServerMessage("You are blocked from changing the music.");
+        return;
+    }
+
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull())
+        return;
+
+    if (!l_area->isjukeboxEnabled()) {
+        sendServerMessage("The jukebox is not enabled in this area.");
+        return;
+    }
+
+    // Default fallback duration for custom URLs (5 minutes in seconds).
+    static constexpr float URL_FALLBACK_DURATION = 300.0f;
+
+    QStringList l_results;
+    for (const QString &song : qAsConst(argv)) {
+        const QString l_song = song.trimmed();
+        if (l_song.isEmpty())
+            continue;
+
+        // Determine whether this entry is a remote URL or a local song name.
+        const int l_validation = m_music_manager->ValidataSong(
+            QUrl::fromUserInput(l_song, "", QUrl::UserInputResolutionOption::AssumeLocalFile),
+            ConfigManager::cdnList());
+
+        if (l_validation == -1) {
+            l_results.append(l_song + ": Invalid URL.");
+        }
+        else if (l_validation == -2) {
+            l_results.append(l_song + ": That URL is not from an allowed CDN.");
+        }
+        else if (l_validation == 1) {
+            // Valid remote URL — use the fallback duration since we can't know its length.
+            l_results.append(l_song + ": " + l_area->addJukeboxSong(l_song, URL_FALLBACK_DURATION));
+        }
+        else {
+            // Local song name — look it up in the music list normally.
+            l_results.append(l_song + ": " + l_area->addJukeboxSong(l_song));
+        }
+    }
+
+    if (l_results.isEmpty())
+        sendServerMessage("No songs provided.");
+    else
+        sendServerMessage(l_results.join('\n'));
 }

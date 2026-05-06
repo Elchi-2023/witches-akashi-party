@@ -20,6 +20,7 @@
 
 #include <QDebug>
 #include <QElapsedTimer>
+#include <QHash>
 #include <QMap>
 #include <QRandomGenerator>
 #include <QSettings>
@@ -968,6 +969,15 @@ class AreaData : public QObject
     QString addJukeboxSong(QString f_song);
 
     /**
+     * @brief Adds a song to the Jukebox's queue with an explicit fallback duration.
+     *
+     * @details Used for custom URLs that are not present in any music list.
+     * When the song is found in the music list its registered duration takes
+     * priority; f_duration is only used when the lookup returns 0.
+     */
+    QString addJukeboxSong(QString f_song, float f_duration);
+
+    /**
      * @brief Returns a constant that includes all currently joined userids.
      */
     QVector<int> joinedIDs() const;
@@ -1334,6 +1344,14 @@ class AreaData : public QObject
      * @brief Wether or not the jukebox is enabled in this area.
      */
     bool m_jukebox;
+
+    /**
+     * @brief Stores explicit durations for custom URLs queued in the jukebox.
+     *
+     * @details Used as a fallback when a queued entry is not found in any music
+     * list, so that switchJukeboxSong can still time the song correctly.
+     */
+    QHash<QString, float> m_jukebox_durations;
 
     /**
      * @brief Whether or not /play can be used without CM.
