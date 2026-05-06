@@ -150,7 +150,7 @@ const QMap<QString, AOClient::CommandInfo> AOClient::COMMANDS{
     {"toggle_shouts", {{ACLRole::CM}, 0, &AOClient::cmdToggleShouts}},
     {"kick_other", {{ACLRole::NONE}, 0, &AOClient::cmdKickOther}},
     {"jukebox_skip", {{ACLRole::CM}, 0, &AOClient::cmdJukeboxSkip}},
-    {"playlistadd", {{ACLRole::JUKEBOX}, 1, &AOClient::cmdPlaylistAdd}},
+    {"playlistadd", {{ACLRole::NONE}, 1, &AOClient::cmdPlaylistAdd}},
     {"shuffle", {{ACLRole::JUKEBOX}, 0, &AOClient::cmdShuffle}},
     {"randomsong", {{ACLRole::JUKEBOX}, 0, &AOClient::cmdRandomSong}},
     {"play_ambience", {{ACLRole::NONE}, 1, &AOClient::cmdPlayAmbience}},

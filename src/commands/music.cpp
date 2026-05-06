@@ -266,6 +266,12 @@ void AOClient::cmdPlaylistAdd(int argc, QStringList argv)
 
     AreaData *l_area = server->getAreaById(areaId());
 
+    // Only area CMs (owners), VIPs, and mods may add songs to the playlist.
+    if (!l_area->owners().contains(clientId()) && !checkPermission(ACLRole::JUKEBOX)) {
+        sendServerMessage("You do not have permission to use that command.");
+        return;
+    }
+
     if (!l_area->isjukeboxEnabled()) {
         sendServerMessage("The jukebox is not enabled in this area.");
         return;
