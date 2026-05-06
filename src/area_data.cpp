@@ -720,6 +720,13 @@ void AreaData::toggleJukebox()
     }
 }
 
+void AreaData::clearJukeboxQueue()
+{
+    m_jukebox_queue.clear();
+    m_jukebox_durations.clear();
+    m_jukebox_timer->stop();
+}
+
 void AreaData::toggleWtceAllowed()
 {
     m_can_send_wtce = !m_can_send_wtce;

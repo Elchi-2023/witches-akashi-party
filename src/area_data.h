@@ -964,6 +964,14 @@ class AreaData : public QObject
     void toggleMedievalMode();
 
     /**
+     * @brief Clears the jukebox queue and stops its timer without disabling the jukebox.
+     *
+     * @details Called when a direct /play, /playonce, or /radio command interrupts
+     * an active queue so that the jukebox no longer overrides the manually chosen song.
+     */
+    void clearJukeboxQueue();
+
+    /**
      * @brief Adds a song to the Jukebox's queue.
      */
     QString addJukeboxSong(QString f_song);
