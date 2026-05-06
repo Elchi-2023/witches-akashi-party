@@ -2008,6 +2008,21 @@ class AOClient : public QObject
      */
     void cmdJukeboxSkip(int argc, QStringList argv);
 
+    /**
+     * @brief Adds a song to the jukebox queue. Works in protected areas for users with JUKEBOX permission.
+     */
+    void cmdPlaylistAdd(int argc, QStringList argv);
+
+    /**
+     * @brief Picks a random song from the area music list and adds it to the jukebox queue.
+     */
+    void cmdShuffle(int argc, QStringList argv);
+
+    /**
+     * @brief Picks a random song from the area music list and plays it immediately.
+     */
+    void cmdRandomSong(int argc, QStringList argv);
+
     ///@}
 
     /**
