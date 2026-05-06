@@ -586,6 +586,17 @@ bool AOClient::checkPermission(ACLRole::Permission f_permission) const
     return l_role.checkPermission(f_permission);
 }
 
+bool AOClient::hasJukeboxCommandPermission() const
+{
+    if (m_vip_authenticated || m_authenticated)
+        return true;
+    const auto l_area = server->getAreaById(areaId());
+    if (!l_area.isNull() && l_area->owners().contains(clientId()))
+        return true;
+    const ACLRole l_role = server->getACLRolesHandler()->getRoleById(m_acl_role_id);
+    return l_role.checkPermission(ACLRole::CM);
+}
+
 QString AOClient::getIpid() const
 {
     return m_ipid;

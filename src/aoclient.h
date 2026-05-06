@@ -2463,6 +2463,15 @@ class AOClient : public QObject
      * @return True if it contains '<' or '>' symbols, otherwise false.
      */
     bool checkTestimonySymbols(const QString &message);
+
+    /**
+     * @brief Returns true if the client has privilege to use jukebox bypass commands
+     *        (/shuffle, /playlistadd, /randomsong) regardless of whether the area
+     *        jukebox is enabled. VIPs, authenticated moderators, and CMs qualify.
+     *
+     * @return True if the client is a VIP, mod, or CM, false otherwise.
+     */
+    bool hasJukeboxCommandPermission() const;
     ///@}
 
     /**
