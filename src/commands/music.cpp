@@ -404,8 +404,10 @@ void AOClient::cmdRandomSong(int argc, QStringList argv)
     if (l_area.isNull())
         return;
 
-    if (!l_area->isjukeboxEnabled()) {
-        sendServerMessage("The jukebox is not enabled in this area.");
+    const ACLRole l_role = server->getACLRolesHandler()->getRoleById(m_acl_role_id);
+    const bool l_allowed = m_vip_authenticated || m_authenticated || l_area->owners().contains(clientId()) || l_role.checkPermission(ACLRole::CM);
+    if (!l_allowed) {
+        sendServerMessage("You do not have permission to use that command.");
         return;
     }
 
@@ -433,8 +435,10 @@ void AOClient::cmdShuffle(int argc, QStringList argv)
     if (l_area.isNull())
         return;
 
-    if (!l_area->isjukeboxEnabled()) {
-        sendServerMessage("The jukebox is not enabled in this area.");
+    const ACLRole l_role = server->getACLRolesHandler()->getRoleById(m_acl_role_id);
+    const bool l_allowed = m_vip_authenticated || m_authenticated || l_area->owners().contains(clientId()) || l_role.checkPermission(ACLRole::CM);
+    if (!l_allowed) {
+        sendServerMessage("You do not have permission to use that command.");
         return;
     }
 
@@ -467,8 +471,10 @@ void AOClient::cmdPlaylistAdd(int argc, QStringList argv)
     if (l_area.isNull())
         return;
 
-    if (!l_area->isjukeboxEnabled()) {
-        sendServerMessage("The jukebox is not enabled in this area.");
+    const ACLRole l_role = server->getACLRolesHandler()->getRoleById(m_acl_role_id);
+    const bool l_allowed = m_vip_authenticated || m_authenticated || l_area->owners().contains(clientId()) || l_role.checkPermission(ACLRole::CM);
+    if (!l_allowed) {
+        sendServerMessage("You do not have permission to use that command.");
         return;
     }
 
