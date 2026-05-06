@@ -2104,6 +2104,14 @@ class AOClient : public QObject
     QString getReprimand(bool f_positive = false);
 
     /**
+     * @brief Returns a list of playable song names from the area music list,
+     * filtering out category headers and non-audio entries.
+     *
+     * @return A QStringList containing only valid audio song entries.
+     */
+    QStringList getPlayableSongs() const;
+
+    /**
      * @brief Clears QVector of the current area.
      *
      * @details It clears both its content and trims it back to size 0

@@ -287,14 +287,7 @@ void AOClient::cmdShuffle(int argc, QStringList argv)
         return;
     }
 
-    QStringList l_songlist = m_music_manager->musiclist(areaId());
-    // Filter out category headers (they don't start with a known audio extension pattern)
-    QStringList l_songs;
-    for (const QString &entry : qAsConst(l_songlist)) {
-        if (entry.contains(".") && !entry.endsWith("/")) {
-            l_songs.append(entry);
-        }
-    }
+    QStringList l_songs = getPlayableSongs();
 
     if (l_songs.isEmpty()) {
         sendServerMessage("No songs available to shuffle.");
@@ -311,13 +304,7 @@ void AOClient::cmdRandomSong(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    QStringList l_songlist = m_music_manager->musiclist(areaId());
-    QStringList l_songs;
-    for (const QString &entry : qAsConst(l_songlist)) {
-        if (entry.contains(".") && !entry.endsWith("/")) {
-            l_songs.append(entry);
-        }
-    }
+    QStringList l_songs = getPlayableSongs();
 
     if (l_songs.isEmpty()) {
         sendServerMessage("No songs available.");
@@ -333,6 +320,7 @@ void AOClient::cmdRandomSong(int argc, QStringList argv)
         l_name = characterName();
     }
     l_area->changeMusic(l_name, l_song);
+    // Packet args: song name, char ID, showname, autoplay (1 = yes), loop (0 = no)
     AOPacket *music_change = PacketFactory::createPacket("MC", {l_song, QString::number(server->getCharID(character())), characterName(), "1", "0"});
     server->broadcast(music_change, areaId());
     sendServerMessage("Now playing a random song: " + l_song);
