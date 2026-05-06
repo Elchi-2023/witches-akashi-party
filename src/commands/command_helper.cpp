@@ -225,19 +225,3 @@ void AOClient::sendNotice(QString f_notice, bool f_global)
     else
         server->broadcast(l_packet, areaId());
 }
-
-QStringList AOClient::getPlayableSongs() const
-{
-    static const QStringList l_extensions = {".opus", ".ogg", ".mp3", ".wav"};
-    QStringList l_songs;
-    const QStringList l_all = m_music_manager->musiclist(areaId());
-    for (const QString &entry : l_all) {
-        for (const QString &ext : l_extensions) {
-            if (entry.endsWith(ext, Qt::CaseInsensitive)) {
-                l_songs.append(entry);
-                break;
-            }
-        }
-    }
-    return l_songs;
-}
