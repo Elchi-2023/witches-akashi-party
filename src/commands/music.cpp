@@ -126,7 +126,7 @@ void AOClient::cmdRadio(int argc, QStringList argv)
         bool Vaild_radioID;
         int Radioid = argv[0].toInt(&Vaild_radioID);
         if (Vaild_radioID && l_radio.contains(Radioid)){ /* > Vaild ID (or index) < */
-            const auto [Radio_name, Selected_Radio] = l_radio.value(Vaild_radioID);
+            const auto [Radio_name, Selected_Radio] = l_radio.value(Radioid);
 
             auto l_area = server->getAreaById(areaId());
             if (l_area.isNull())
