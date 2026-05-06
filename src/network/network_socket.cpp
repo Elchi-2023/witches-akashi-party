@@ -73,7 +73,7 @@ void NetworkSocket::handleMessage(QString f_data)
         l_all_packets = QStringList{l_all_packets.value(0)};
     }
 
-    for (const QString &l_single_packet : qAsConst(l_all_packets)) {
+    for (const QString &l_single_packet : std::as_const(l_all_packets)) {
         AOPacket *l_packet = PacketFactory::createPacket(l_single_packet);
         if (!l_packet) {
             qDebug() << "Unimplemented packet: " << l_single_packet;
