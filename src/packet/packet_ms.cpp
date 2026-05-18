@@ -450,13 +450,13 @@ AOPacket *PacketMS::validateIcPacket(AOClient &client) const
             l_front_back = l_pair_data[1].toInt();
         int l_other_charid = client.m_pairing_with;
         bool l_pairing = false;
-        
+
         /* heavy scans clients on current area */
         for (int _clientid : area->joinedIDs()){
             const auto Target_client = CurrentServer->getClientByID(_clientid);
             if (Target_client.isNull()) /* another smart pointer guards */
                 continue; /* Prevented */
-            
+
             /* Capture an target which paired with *this* client */
             if (!Target_client->isSpectator() && Target_client->m_pairing_with == client.m_char_id && l_other_charid != client.m_char_id && Target_client->m_char_id == client.m_pairing_with && Target_client->m_pos == client.m_pos) {
                 l_other_data = qMakePair(Target_client->m_flipping.toInt(), QStringList{Target_client->m_current_iniswap.isEmpty() ? Target_client->character() : Target_client->m_current_iniswap, Target_client->m_emote, Target_client->m_offset});
