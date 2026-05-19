@@ -173,6 +173,10 @@ void AOClient::cmdPlayAmbience(int argc, QStringList argv){
             sendServerMessage("Free ambience play is disabled in this area.");
         else{
             const QString l_song = argv.join(" ");
+            if ((l_song.startsWith("http://", Qt::CaseInsensitive) || l_song.startsWith("https://", Qt::CaseInsensitive)) && !m_music_manager->validateSong(l_song, ConfigManager::cdnList())) {
+                sendServerMessage("The song you tried to play is not from an approved CDN.");
+                return;
+            }
             l_area->changeAmbience(l_song);
             sendServerPacketArea(PacketFactory::createPacket("MC", {l_song, "-1", characterName(), "1", "1"}));
         }
