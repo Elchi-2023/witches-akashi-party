@@ -67,7 +67,9 @@ void ServerPublisher::publishServer()
         serverinfo["name"] = ConfigManager::serverName();
         serverinfo["description"] = ConfigManager::serverDescription();
 
-        m_manager->post(request, QJsonDocument(serverinfo).toJson());
+        const QByteArray body = QJsonDocument(serverinfo).toJson(QJsonDocument::Compact);
+        qInfo().noquote() << "Advertising to masterserver. URL:" << serverlist.toString() << "POST body:" << QString::fromUtf8(body);
+        m_manager->post(request, body);
     }
     else {
         qWarning() << "Failed to advertise server. Serverlist URL is not valid. URL:" << serverlist.toString();
