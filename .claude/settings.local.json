@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/arbok/Downloads/**)",
+      "Bash(git bundle:*)",
+      "Bash(git fetch:*)",
+      "Bash(git push:*)",
+      "Bash(gh repo:*)",
+      "Bash(git merge-tree:*)",
+      "Bash(git merge:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(git pull:*)"
+    ]
+  }
+}
