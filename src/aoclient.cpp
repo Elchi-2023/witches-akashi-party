@@ -178,6 +178,7 @@ const QMap<QString, AOClient::CommandInfo> AOClient::COMMANDS{
     {"curses", {{ACLRole::MUTE}, 1, &AOClient::cmdCurses}},
     {"uncurses", {{ACLRole::MUTE}, 1, &AOClient::cmdUnCurses}},
     {"userinfo", {{ACLRole::BAN}, 1, &AOClient::cmdUserInfo}},
+    {"lockdown", {{ACLRole::BAN}, 1, &AOClient::cmdLockdown}},
 };
 
 void AOClient::clientDisconnected()

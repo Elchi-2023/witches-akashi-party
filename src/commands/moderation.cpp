@@ -1060,3 +1060,29 @@ void AOClient::cmdKickOther(int argc, QStringList argv)
     }
     sendServerMessage("Kicked " + QString::number(l_kick_counter) + " multiclients from the server.");
 }
+
+void AOClient::cmdLockdown(int argc, QStringList argv)
+{
+    Q_UNUSED(argc);
+
+    const QString l_mode = argv[0].toLower();
+    if (l_mode == "on") {
+        if (server->isLockdownActive()) {
+            sendServerMessage("The server is already in lockdown.");
+            return;
+        }
+        server->setLockdownActive(true);
+        sendServerMessage("Server lockdown enabled. New users will be unable to join until lockdown is disabled.");
+    }
+    else if (l_mode == "off") {
+        if (!server->isLockdownActive()) {
+            sendServerMessage("The server is not in lockdown.");
+            return;
+        }
+        server->setLockdownActive(false);
+        sendServerMessage("Server lockdown disabled. New users may join again.");
+    }
+    else {
+        sendServerMessage("Invalid argument. Usage: /lockdown <on|off>");
+    }
+}

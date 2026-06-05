@@ -131,6 +131,26 @@ class DBManager : public QObject
     void addBan(BanInfo ban);
 
     /**
+     * @brief Records an IPID into the persistent known_ipids list, refreshing its last-seen time.
+     *
+     * @details Used by the server lockdown feature: any IPID that has connected while the server
+     * was not rejecting it is remembered long-term so the user may rejoin during a future lockdown.
+     * Only IPID is stored here; HDID/HWID is intentionally not considered.
+     *
+     * @param ipid The IPID to remember.
+     */
+    void addKnownIpid(QString ipid);
+
+    /**
+     * @brief Checks whether the given IPID is present in the persistent known_ipids list.
+     *
+     * @param ipid The IPID to look up.
+     *
+     * @return True if the IPID has been seen before, false otherwise.
+     */
+    bool isIpidKnown(QString ipid);
+
+    /**
      * @brief Sets the duration of a given ban to 0, effectively removing the ban the associated user.
      *
      * @param id The ID of the ban to invalidate.

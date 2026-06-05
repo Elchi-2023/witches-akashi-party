@@ -354,6 +354,29 @@ class Server : public QObject
      */
     PlayerStateObserver *getPlayerStateObserver();
 
+    /**
+     * @brief Returns whether the server is currently in lockdown.
+     *
+     * @details While lockdown is active, only clients whose IPID is already recorded in the
+     * persistent known_ipids list may join. Brand-new IPIDs are rejected, which prevents ban
+     * evaders from joining on a fresh IP. Because the list is stored long-term in the database,
+     * users seen on previous days/sessions are still recognised, minimising false positives.
+     *
+     * @return True if lockdown is active, false otherwise.
+     */
+    bool isLockdownActive() const;
+
+    /**
+     * @brief Enables or disables server lockdown.
+     *
+     * @details Enabling lockdown also records the IPIDs of all currently-connected clients into
+     * the persistent known list so that they may rejoin while lockdown is active. Only IPID is
+     * used for this; HDID/HWID is intentionally never considered.
+     *
+     * @param f_state True to enable lockdown, false to disable it.
+     */
+    void setLockdownActive(const bool &f_state);
+
   public slots:
     /**
      * @brief Convenience class to call a reload of available configuraiton elements.
@@ -521,6 +544,16 @@ class Server : public QObject
      * @brief Collection of all IPs that are banned.
      */
     QStringList m_ipban_list;
+
+    /**
+     * @brief Whether the server is currently in lockdown.
+     *
+     * @details While true, only clients whose IPID is already recorded in the database's
+     * known_ipids table may connect. The set of known IPIDs is persisted long-term by the
+     * DBManager so that previously-seen users keep being recognised across server restarts,
+     * minimising false positives. Only IPID is used; HDID/HWID is intentionally not considered.
+     */
+    bool m_lockdown_active = false;
 
     /**
      * @brief Timer until the next IC message can be sent.

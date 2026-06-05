@@ -1378,6 +1378,18 @@ class AOClient : public QObject
     void cmdReload(int argc, QStringList argv);
 
     /**
+     * @brief Toggles server lockdown, which blocks brand-new IPIDs from joining.
+     *
+     * @details The only argument is either `on` or `off`. While lockdown is on, only IPIDs that
+     * have connected before (stored long-term in the database) may join; brand-new IPIDs are
+     * rejected with a lockdown notice. This helps stop ban evaders connecting from a fresh IP.
+     * Only IPID is used; HDID/HWID is never considered.
+     *
+     * @iscommand
+     */
+    void cmdLockdown(int argc, QStringList argv);
+
+    /**
      * @brief Toggles immediate text processing in the current area.
      *
      * @details No arguments.

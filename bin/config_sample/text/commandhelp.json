@@ -948,5 +948,12 @@
       ],
       "usage":"/play_once <song>",
       "text":"Plays a song once in the area without looping. Accepts a local file name or an approved CDN URL. Clears the jukebox queue if one is active. Example: /play_once TH01_Boss.mp3 or /play_once https://cdn.example.com/song.mp3"
+   },
+   {
+      "names": [
+         "lockdown"
+      ],
+      "usage":"/lockdown <on|off>",
+      "text":"Toggles server lockdown. While on, only IPIDs that have connected before may join; brand-new IPIDs are blocked with a lockdown notice. Helps stop ban evaders joining from a fresh IP. Uses IPID only."
    }
 ]

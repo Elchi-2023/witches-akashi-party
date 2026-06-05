@@ -40,6 +40,8 @@ DBManager::DBManager() :
     create_ban_table.exec();
     QSqlQuery create_user_table("CREATE TABLE IF NOT EXISTS users ('ID' INTEGER, 'USERNAME' TEXT, 'SALT' TEXT, 'PASSWORD' TEXT, 'ACL' TEXT, PRIMARY KEY('ID' AUTOINCREMENT))");
     create_user_table.exec();
+    QSqlQuery create_known_ipids_table("CREATE TABLE IF NOT EXISTS known_ipids ('IPID' TEXT, 'LAST_SEEN' INTEGER, PRIMARY KEY('IPID'))");
+    create_known_ipids_table.exec();
     if (db_version != DB_VERSION)
         updateDB(db_version);
 }
@@ -178,6 +180,28 @@ void DBManager::addBan(BanInfo ban)
     query.addBindValue(ban.moderator);
     if (!query.exec())
         qDebug() << "SQL Error:" << query.lastError().text();
+}
+
+void DBManager::addKnownIpid(QString ipid)
+{
+    QSqlQuery query;
+    // INSERT OR REPLACE keeps a single row per IPID, refreshing LAST_SEEN on every visit.
+    query.prepare("INSERT OR REPLACE INTO known_ipids(IPID, LAST_SEEN) VALUES(?, ?)");
+    query.addBindValue(ipid);
+    query.addBindValue(QString::number(QDateTime::currentDateTime().toSecsSinceEpoch()));
+    if (!query.exec())
+        qDebug() << "SQL Error:" << query.lastError().text();
+}
+
+bool DBManager::isIpidKnown(QString ipid)
+{
+    QSqlQuery query;
+    query.prepare("SELECT EXISTS(SELECT 1 FROM known_ipids WHERE IPID = ?)");
+    query.addBindValue(ipid);
+    query.exec();
+    if (query.first())
+        return query.value(0).toInt() == 1;
+    return false;
 }
 
 bool DBManager::invalidateBan(int id)

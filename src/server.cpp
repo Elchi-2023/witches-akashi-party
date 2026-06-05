@@ -204,6 +204,22 @@ void Server::clientConnected()
         return;
     }
 
+    // Enforce server lockdown: while active, only IPIDs already recorded in the persistent
+    // known list may join. This blocks ban evaders connecting from a brand-new IP while still
+    // letting previously-seen users return, even across server restarts. HDID is never used here.
+    const QString l_ipid = client->getIpid();
+    if (m_lockdown_active && !db_manager->isIpidKnown(l_ipid)) {
+        AOPacket *l_lockdown_reason = PacketFactory::createPacket("BD", {"This server is in lockdown. Try again later."});
+        l_socket->write(l_lockdown_reason);
+        client->deleteLater();
+        l_socket->close(QWebSocketProtocol::CloseCodeNormal);
+        markIDFree(user_id);
+        l_socket->deleteLater();
+        return;
+    }
+    // Remember this IPID long-term so the user may rejoin during any future lockdown.
+    db_manager->addKnownIpid(l_ipid);
+
     m_clients.append(client);
     connect(l_socket, &NetworkSocket::clientDisconnected, this, [=, this] {
         if (client->hasJoined())
@@ -577,6 +593,26 @@ void Server::markIDFree(const int &f_user_id)
     m_player_state_observer.unregisterClient(m_clients_ids[f_user_id]);
     m_clients_ids.insert(f_user_id, nullptr);
     m_available_ids.push(f_user_id);
+}
+
+bool Server::isLockdownActive() const
+{
+    return m_lockdown_active;
+}
+
+void Server::setLockdownActive(const bool &f_state)
+{
+    m_lockdown_active = f_state;
+    if (f_state) {
+        // Record every currently-connected client so that they keep being recognised as
+        // "known" and may rejoin while lockdown is active. Only IPID is used here.
+        for (const auto &l_client : qAsConst(m_clients)) {
+            if (l_client.isNull())
+                continue;
+
+            db_manager->addKnownIpid(l_client->getIpid());
+        }
+    }
 }
 
 void Server::hookupAOClient(AOClient *client)
