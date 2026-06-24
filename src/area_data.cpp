@@ -22,6 +22,8 @@
 #include "config_manager.h"
 #include "music_manager.h"
 #include "packet/packet_factory.h"
+#include "packet/packet_ct.h"
+#include "packet/packet_mc.h"
 
 #include <QRegularExpression>
 
@@ -64,20 +66,28 @@ AreaData::AreaData(QString p_name, int p_index, MusicManager *p_music_manager = 
     m_playcmd = areas_ini->value("playcmd_enabled", "false").toBool();
     m_can_send_wtce = areas_ini->value("wtce_enabled", "true").toBool();
     m_can_use_shouts = areas_ini->value("shouts_enabled", "true").toBool();
+    m_can_use_voicechat = areas_ini->value("voice_enable", "true").toBool();
     areas_ini->endGroup();
     QTimer *timer1 = new QTimer();
+    timer1->setSingleShot(true);
     m_timers.append(timer1);
     QTimer *timer2 = new QTimer();
+    timer2->setSingleShot(true);
     m_timers.append(timer2);
     QTimer *timer3 = new QTimer();
+    timer3->setSingleShot(true);
     m_timers.append(timer3);
     QTimer *timer4 = new QTimer();
+    timer4->setSingleShot(true);
     m_timers.append(timer4);
     m_jukebox_timer = new QTimer();
     connect(m_jukebox_timer, &QTimer::timeout,
             this, &AreaData::switchJukeboxSong);
     m_message_floodguard_timer = new QTimer(this);
     connect(m_message_floodguard_timer, &QTimer::timeout, this, &AreaData::allowMessage);
+    RPS_timeout = new QTimer(this);
+    RPS_timeout->setInterval(120000);
+    RPS_timeout->setSingleShot(true);
 }
 
 const QMap<QString, AreaData::Status> AreaData::map_statuses = {
@@ -90,30 +100,41 @@ const QMap<QString, AreaData::Status> AreaData::map_statuses = {
     {"gaming", AreaData::Status::GAMING},
 };
 
-void AreaData::removeClient(int f_charId, int f_userId)
-{
-    --m_playerCount;
+void AreaData::addClient(const int f_userId, const int f_charId){
+    if (m_joined_ids.contains(f_userId))
+        return;
 
-    if (f_charId != -1) {
-        m_charactersTaken.removeAll(f_charId);
-    }
-    m_joined_ids.removeAll(f_userId);
-}
+    m_joined_ids.insert(f_userId, qMax(-1, f_charId));
+    m_playerCount = m_joined_ids.size();
 
-void AreaData::addClient(int f_charId, int f_userId)
-{
-    ++m_playerCount;
-
-    if (f_charId != -1) {
-        m_charactersTaken.append(f_charId);
-    }
-    m_joined_ids.append(f_userId);
     emit userJoinedArea(m_index, f_userId);
-    // Send out ambience as well. Use channel 1 for that
-    emit sendAreaPacketClient(PacketFactory::createPacket("MC", {m_currentAmbience, QString::number(-1), ConfigManager::serverName(), QString::number(1), QString::number(1)}), f_userId);
+    /* Send out ambience as well. Use channel 1 for that
+    * [notes] this doesn't goes well for webao..
+    */
+    emit sendAreaPacketClient(PacketMC::CreateMusic(m_currentAmbience, -1, ConfigManager::serverName(), true, 1), f_userId);
     // The name will never be shown as we are using a spectator ID. Still nice for people who network sniff.
     // We auto-loop this so you'll never sit in silence unless wanted.
-    emit sendAreaPacketClient(PacketFactory::createPacket("MC", {m_currentMusic, QString::number(-1), ConfigManager::serverName(), QString::number((m_currentMusic.toLower() != "~stop.mp3" || !m_currentMusic.isEmpty()) || m_music_loop)}), f_userId);
+    emit sendAreaPacketClient(PacketMC::CreateMusic(m_currentAmbience, -1, ConfigManager::serverName(), m_music_loop && QFileInfo(m_currentMusic).fileName().compare("~stop.mp3") != 0), f_userId);
+}
+
+void AreaData::removeClient(const int f_userId){
+    if (!m_joined_ids.contains(f_userId))
+        return;
+
+    m_joined_ids.remove(f_userId);
+    m_playerCount = m_joined_ids.size();
+
+    if (m_rps_client.first == f_userId){
+        m_rps_client = {-1, QString()}; // reset
+        emit sendAreaPacket(PacketCT::CreateMessageS(QString("The challenge client ID (%1) are went out, canncelled.").arg(f_userId), "[Rock-Paper-Scissors]"), m_index);
+        if (RPS_timeout->isActive())
+            RPS_timeout->stop();
+    }
+
+    if (RegisterVoice(f_userId, true)){
+        emit sendAreaPacket(PacketFactory::createPacket("VS_LEAVE", {QString::number(f_userId)}), m_index);
+        emit sendAreaPacket(PacketFactory::createPacket("VS_PEERS", GetRegisteredVoice(true)), m_index);
+    }
 }
 
 QList<int> AreaData::owners() const
@@ -132,7 +153,7 @@ bool AreaData::removeOwner(int f_clientId)
     m_owners.removeAll(f_clientId);
     m_invited.removeAll(f_clientId);
 
-    if (m_owners.isEmpty() && m_locked != AreaData::FREE) {
+    if (m_owners.isEmpty() && m_locked > AreaData::FREE) {
         m_locked = AreaData::FREE;
         return true;
     }
@@ -140,6 +161,11 @@ bool AreaData::removeOwner(int f_clientId)
     return false;
 }
 
+void AreaData::RemoveDClient(const int id){
+    removeOwner(id);
+    if (m_joined_ids.isEmpty() && m_locked > AreaData::FREE)
+        unlock();
+}
 bool AreaData::blankpostingAllowed() const
 {
     return m_blankpostingAllowed;
@@ -175,39 +201,36 @@ bool AreaData::isPlayEnabled() const
     return m_playcmd;
 }
 
-void AreaData::lock()
-{
-    m_locked = LockStatus::LOCKED;
+bool AreaData::lock(){
+    const bool islock = m_locked == LockStatus::LOCKED;
+    if (!islock)
+        m_locked = LockStatus::LOCKED;
+    return islock;
 }
 
-void AreaData::unlock()
-{
-    m_locked = LockStatus::FREE;
+bool AreaData::unlock(){
+    const bool isfree = m_locked == LockStatus::FREE;
+    if (!isfree)
+        m_locked = LockStatus::FREE;
+    return isfree;
 }
 
-void AreaData::spectatable()
-{
-    m_locked = LockStatus::SPECTATABLE;
+bool AreaData::spectatable(){
+    const bool isSpec = m_locked == LockStatus::SPECTATABLE;
+    if (!isSpec)
+        m_locked = LockStatus::SPECTATABLE;
+    return isSpec;
 }
 
-bool AreaData::invite(int f_clientId)
-{
-    if (m_invited.contains(f_clientId)) {
-        return false;
-    }
-
-    m_invited.append(f_clientId);
-    return true;
+bool AreaData::invite(int f_clientId){
+    const bool NotExist = !m_invited.contains(f_clientId);
+    if (NotExist)
+        m_invited.append(f_clientId);
+    return NotExist;
 }
 
-bool AreaData::uninvite(int f_clientId)
-{
-    if (!m_invited.contains(f_clientId)) {
-        return false;
-    }
-
-    m_invited.removeAll(f_clientId);
-    return true;
+bool AreaData::uninvite(int f_clientId){
+    return m_invited.removeAll(f_clientId) > 0;
 }
 
 int AreaData::playerCount() const
@@ -225,6 +248,11 @@ QString AreaData::name() const
     return m_name;
 }
 
+void AreaData::UpdateName(const QStringList &list){
+    if (m_index >= 0 && m_index <= list.size() -1 && m_name != list[m_index])
+        m_name = list[m_index];
+}
+
 int AreaData::index() const
 {
     return m_index;
@@ -232,28 +260,20 @@ int AreaData::index() const
 
 QList<int> AreaData::charactersTaken() const
 {
-    return m_charactersTaken;
+    return m_joined_ids.values();
 }
 
-bool AreaData::changeCharacter(int f_from, int f_to)
-{
-    if (m_charactersTaken.contains(f_to)) {
+QHash<int, int> AreaData::PlayerCharacterMap() const{
+    return m_joined_ids;
+}
+
+bool AreaData::changeCharacter(const int f_clientid, const int f_target_charid){
+    const int targetCID = qMax(-1, f_target_charid);
+    if (!m_joined_ids.contains(f_clientid) || (targetCID > -1 && m_joined_ids.values().contains(targetCID)))
         return false;
-    }
 
-    if (f_to != -1) {
-        if (f_from != -1) {
-            m_charactersTaken.removeAll(f_from);
-        }
-        m_charactersTaken.append(f_to);
-        return true;
-    }
-
-    if (f_to == -1 && f_from != -1) {
-        m_charactersTaken.removeAll(f_from);
-    }
-
-    return false;
+    m_joined_ids[f_clientid] = targetCID;
+    return true;
 }
 
 QList<AreaData::Evidence> AreaData::evidence() const
@@ -346,6 +366,11 @@ bool AreaData::isShoutAllowed() const
     return m_can_use_shouts;
 }
 
+bool AreaData::isVoiceChatAllowed() const
+{
+    return m_can_use_voicechat;
+}
+
 bool AreaData::isMedievalMode() const
 {
     return m_medieval_mode;
@@ -376,7 +401,7 @@ bool AreaData::removePairSync(const int self, const int other){
         return false;
 
     if (m_clients_pairing_sync.contains(self)){
-        if (other >= 0 && checkPairSync(other) && get_pair_sync_clientID(self))
+        if (other >= 0 && checkPairSync(other) && get_pair_sync_clientID(self) == self)
             m_clients_pairing_sync.remove(other);
         m_clients_pairing_sync.remove(self);
         return true;
@@ -386,10 +411,16 @@ bool AreaData::removePairSync(const int self, const int other){
 }
 
 bool AreaData::checkPairSync(const int client_id, const bool is_target){
-    if (is_target)
-        return m_clients_pairing_sync.values().contains(client_id);
+    return is_target ? m_clients_pairing_sync.values().contains(client_id) :  m_clients_pairing_sync.contains(client_id);
+}
+int AreaData::checkPairSync(const QPair<int, int> client_ids){
+    if (client_ids.first <= -1 && client_ids.second <= -1)
+        return -1;
 
-    return m_clients_pairing_sync.contains(client_id);
+    if (m_clients_pairing_sync.contains(client_ids.first))
+        return m_clients_pairing_sync.contains(client_ids.second) ? m_clients_pairing_sync[client_ids.second] == client_ids.first ? 1 : 2 : 0;
+
+    return -1;
 }
 
 QMap<int, int> AreaData::getPairSyncList(){
@@ -397,10 +428,7 @@ QMap<int, int> AreaData::getPairSyncList(){
 }
 
 int AreaData::get_pair_sync_clientID(const int client_id, const bool target){
-    if (target)
-        return m_clients_pairing_sync.value(client_id, -1);
-
-    return m_clients_pairing_sync.key(client_id, -1);
+    return target ? m_clients_pairing_sync.value(client_id, -1) : m_clients_pairing_sync.key(client_id, -1);
 }
 
 void AreaData::toggleMusic()
@@ -597,13 +625,14 @@ int AreaData::proHP() const
     return m_proHP;
 }
 
-void AreaData::changeHP(AreaData::Side f_side, int f_newHP)
-{
-    if (f_side == Side::DEFENCE) {
+void AreaData::changeHP(AreaData::Side f_side, int f_newHP){
+    switch (f_side){
+    case Side::DEFENCE:
         m_defHP = std::min(std::max(0, f_newHP), 10);
-    }
-    else if (f_side == Side::PROSECUTOR) {
+        break;
+    case Side::PROSECUTOR:
         m_proHP = std::min(std::max(0, f_newHP), 10);
+        break;
     }
 }
 
@@ -672,17 +701,11 @@ QString AreaData::background() const
     return m_background;
 }
 
-void AreaData::setBackground(const QString f_background)
-{
+void AreaData::setBackground(const QString f_background){
     m_background = f_background;
     QSettings *ambience_data = ConfigManager::ambience();
-    QString new_ambience = ambience_data->value(f_background + "/ambience").toString();
-    if (new_ambience != "") {
-        changeAmbience(new_ambience);
-    }
-    else {
-        changeAmbience(""); // DON'T use ~stop.mp3 it overrides some code we don't want overridden
-    }
+    const QString new_ambience = ambience_data->value(f_background + "/ambience").toString();
+    changeAmbience(new_ambience.isEmpty() ? "" : new_ambience);
 }
 
 QString AreaData::side() const
@@ -748,10 +771,9 @@ QString AreaData::addJukeboxSong(QString f_song)
         // Retrieve song information.
         QPair<QString, float> l_song = m_music_manager->songInformation(f_song, index());
 
-        if (l_song.second > 0) {
-            if (m_jukebox_queue.size() == 0) {
-
-                emit sendAreaPacket(PacketFactory::createPacket("MC", {l_song.first, QString::number(-1)}), index());
+        if (l_song.second >= 1) {
+            if (m_jukebox_queue.isEmpty()) {
+                emit sendAreaPacket(PacketMC::CreateMusic(l_song.first, -1, "[Jukebox]"), index());
                 m_jukebox_timer->start(l_song.second * 1000);
                 setCurrentMusic(f_song);
                 setMusicPlayedBy("Jukebox");
@@ -759,23 +781,23 @@ QString AreaData::addJukeboxSong(QString f_song)
             m_jukebox_queue.append(f_song);
             return "Song added to Jukebox.";
         }
-        else {
+        else{
+            qInfo() << QString("[I][AKASHI][Jukebox]: someone attempting an nill durations (%1) songs to jukebox queues.").arg(l_song.first);
             return "Unable to add song. Duration shorter than 1.";
         }
     }
     return "Unable to add song. Song already in Jukebox.";
 }
 
-QString AreaData::addJukeboxSong(QString f_song, float f_duration)
-{
+QString AreaData::addJukeboxSong(QString f_song, float f_duration){
     if (!m_jukebox_queue.contains(f_song)) {
         QPair<QString, float> l_song = m_music_manager->songInformation(f_song, index());
-        const float l_effective_duration = l_song.second > 0 ? l_song.second : f_duration;
+        const float l_effective_duration = l_song.second >= 1 ? l_song.second : f_duration;
         const QString l_real_name = l_song.first.isEmpty() ? f_song : l_song.first;
 
-        if (l_effective_duration > 0) {
-            if (m_jukebox_queue.size() == 0) {
-                emit sendAreaPacket(PacketFactory::createPacket("MC", {l_real_name, QString::number(-1)}), index());
+        if (l_song.second >= 1) {
+            if (m_jukebox_queue.isEmpty()) {
+                emit sendAreaPacket(PacketMC::CreateMusic(l_real_name, -1, "[Jukebox]"), index());
                 m_jukebox_timer->start(l_effective_duration * 1000);
                 setCurrentMusic(f_song);
                 setMusicPlayedBy("Jukebox");
@@ -784,27 +806,41 @@ QString AreaData::addJukeboxSong(QString f_song, float f_duration)
             m_jukebox_durations.insert(f_song, l_effective_duration);
             return "Song added to Jukebox.";
         }
-        else {
+        else{
+            qInfo() << QString("[I][AKASHI][Jukebox]: someone attempting an nill durations (%1) songs to jukebox queues.").arg(l_song.first);
             return "Unable to add song. Duration shorter than 1.";
         }
     }
     return "Unable to add song. Song already in Jukebox.";
 }
 
+bool AreaData::removeJukeboxSong(const int index){
+    if (index < 0 || index > m_jukebox_queue.size() -1)
+        return false;
+
+    m_jukebox_durations.remove(m_jukebox_queue.takeAt(index));
+    return true;
+}
+QVector<QString> AreaData::GetJukeBoxQueues(){
+    return m_jukebox_queue;
+}
+
 QVector<int> AreaData::joinedIDs() const
 {
+    return m_joined_ids.keys().toVector();
+}
+QHash<int, int> AreaData::PlayerJoinedMap() const{
     return m_joined_ids;
 }
 
-void AreaData::switchJukeboxSong()
-{
+void AreaData::switchJukeboxSong(){
     QString l_song_name;
     if (m_jukebox_queue.size() == 1) {
         l_song_name = m_jukebox_queue[0];
         QPair<QString, float> l_song = m_music_manager->songInformation(l_song_name, index());
         const QString l_real_name = l_song.first.isEmpty() ? l_song_name : l_song.first;
         const float l_duration = l_song.second > 0 ? l_song.second : m_jukebox_durations.value(l_song_name, 300.0f);
-        emit sendAreaPacket(PacketFactory::createPacket("MC", {l_real_name, "-1"}), m_index);
+        emit sendAreaPacket(PacketMC::CreateMusic(l_real_name, -1, "[Jukebox]"), m_index);
         m_jukebox_timer->start(l_duration * 1000);
     }
     else {
@@ -814,7 +850,7 @@ void AreaData::switchJukeboxSong()
         QPair<QString, float> l_song = m_music_manager->songInformation(l_song_name, index());
         const QString l_real_name = l_song.first.isEmpty() ? l_song_name : l_song.first;
         const float l_duration = l_song.second > 0 ? l_song.second : m_jukebox_durations.value(l_song_name, 300.0f);
-        emit sendAreaPacket(PacketFactory::createPacket("MC", {l_real_name, "-1"}), m_index);
+        emit sendAreaPacket(PacketMC::CreateMusic(l_real_name, -1, "[Jukebox]"), m_index);
         m_jukebox_timer->start(l_duration * 1000);
 
         m_jukebox_queue.remove(l_random_index);
@@ -846,7 +882,7 @@ int AreaData::getEvidenceIndexByVisibleIndex(int f_visibleIndex, const QString &
             if (match.hasMatch()) {
                 QStringList owners = match.captured(1).split(",");
                 if (!owners.contains("all", Qt::CaseSensitivity::CaseInsensitive) &&
-                    !owners.contains(f_clientPos, Qt::CaseSensitivity::CaseInsensitive)) {
+                        !owners.contains(f_clientPos, Qt::CaseSensitivity::CaseInsensitive)) {
                     continue; // This evidence is not visible to the client
                 }
             }
@@ -880,7 +916,7 @@ int AreaData::getVisibleIndexByEvidenceIndex(int f_evidenceIndex, const QString 
             if (match.hasMatch()) {
                 QStringList owners = match.captured(1).split(",");
                 if (!owners.contains("all", Qt::CaseSensitivity::CaseInsensitive) &&
-                    !owners.contains(f_clientPos, Qt::CaseSensitivity::CaseInsensitive)) {
+                        !owners.contains(f_clientPos, Qt::CaseSensitivity::CaseInsensitive)) {
                     continue; // This evidence is not visible to the client
                 }
             }
@@ -895,4 +931,68 @@ int AreaData::getVisibleIndexByEvidenceIndex(int f_evidenceIndex, const QString 
     }
 
     return 0; // Evidence not visible to this client
+}
+
+bool AreaData::SetRPSFighter(const int id, const QString choices){
+    if (m_rps_client.first == -1){
+        m_rps_client = {id, choices};
+        RPS_timeout->start();
+        return true;
+    }
+    else if (qMax(-1, id) == -1){
+        m_rps_client = {-1, QString()};
+        RPS_timeout->stop();
+    }
+    return false;
+}
+QPair<int, QString> AreaData::GetRPSFighter(){
+    return m_rps_client;
+}
+void AreaData::RPSTimeout(){
+    if (m_rps_client.first != -1){
+        m_rps_client = {-1, QString()}; // reset
+        emit sendAreaPacket(PacketCT::CreateMessageS("🥀 The game are expired 🥀", "[Rock-Paper-Scissors]"), m_index);
+    }
+}
+
+bool AreaData::RegisterVoice(const int ID, const bool remove){
+    if (ID <= -1)
+        return false;
+
+    if (remove)
+        return m_voice_peers.remove(ID) > 0;
+    else if (!m_voice_peers.contains(ID)){
+        m_voice_peers.insert(ID, false);
+        return true;
+    }
+    return false;
+}
+QStringList AreaData::GetRegisteredVoice(const bool peersonly){
+    const QList<int> targetids = peersonly ? m_voice_peers.keys(true) : m_voice_peers.keys();
+    QStringList idtostrings;
+    idtostrings.reserve(targetids.size());
+    std::transform(targetids.cbegin(), targetids.cend(), std::back_inserter(idtostrings), [](int id){
+        return QString::number(id);
+    });
+    return idtostrings;
+}
+QVector<int> AreaData::GetRegisteredVoiceID(const bool peeronly){
+    return QVector<int>::fromList(peeronly ? m_voice_peers.keys(true) : m_voice_peers.keys());
+}
+QHash<int, bool> AreaData::GetRegisteredVoiceMap(const bool peeronly){
+    if (peeronly){
+        const QList<int> peerKeys = m_voice_peers.keys(true);
+        QHash<int, bool> peers;
+        peers.reserve(peerKeys.size());
+        std::for_each(peerKeys.cbegin(), peerKeys.cend(), [&peers](int id){
+            peers.insert(id, true);
+        });
+        return peers;
+    }
+    return m_voice_peers;
+}
+void AreaData::SetVoicePeerState(const int c_id, const int toggle){
+    if (!m_voice_peers.contains(c_id) || m_voice_peers[c_id] == toggle)
+        return;
+    m_voice_peers[c_id] = toggle;
 }

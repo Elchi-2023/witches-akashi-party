@@ -81,11 +81,11 @@ void AOClient::cmdEvidence_Swap(int argc, QStringList argv){
     if (l_ev.isEmpty())
         sendServerMessage("No evidence in area.");
     else{
-        QPair<bool, bool> VaildID = {false, false};
-        const QPair<int, int> EvidenceID = {argv[0].toInt(&VaildID.first), argv[1].toInt(&VaildID.second)};
-        if (VaildID.first){ /* > first target vaild < */
+        QPair<bool, bool> validID = {false, false};
+        const QPair<int, int> EvidenceID = {argv[0].toInt(&validID.first), argv[1].toInt(&validID.second)};
+        if (validID.first){ /* > first target valid < */
             if (EvidenceID.first >= 0 && EvidenceID.first < l_ev.size()){ /* first target ID/Index are in ranges */
-                if (VaildID.second){ /* second target vaiid to be swaps */
+                if (validID.second){ /* second target vaiid to be swaps */
                     if (EvidenceID.second >= 0 && EvidenceID.second < l_ev.size() && EvidenceID.first != EvidenceID.second){ /* > same but make sure it doesn't same ID/Index < */
                         l_area->swapEvidence(EvidenceID.first, EvidenceID.second); /* > swapping process < */
                         sendEvidenceList(l_area);
@@ -100,7 +100,7 @@ void AOClient::cmdEvidence_Swap(int argc, QStringList argv){
             else
                 sendServerMessage("Unable to swap evidence. first evidence ID out of range/negative.");
         }
-        else /* otherwise.. invaild */
+        else /* otherwise.. Invalid */
             sendServerMessage("Invalid evidence ID.");
     }
 }
@@ -112,10 +112,12 @@ void AOClient::cmdTestify(int argc, QStringList argv){
     auto l_area = server->getAreaById(areaId());
     if (l_area.isNull())
         return;
-    if (l_area->testimonyRecording() == AreaData::TestimonyRecording::RECORDING) {
+
+    switch (l_area->testimonyRecording()){
+    case AreaData::TestimonyRecording::RECORDING:
         sendServerMessage("Testimony recording is already in progress. Please stop it with /pause before starting a new one.");
-    }
-    else {
+        break;
+    default:
         clearTestimony();
         l_area->setTestimonyRecording(AreaData::TestimonyRecording::RECORDING);
         sendServerMessage("Started testimony recording. The next IC message will be a title. Use /pause to stop recording.");
@@ -149,6 +151,7 @@ void AOClient::cmdTestimony(int argc, QStringList argv){
     auto l_area = server->getAreaById(areaId());
     if (l_area.isNull())
         return;
+
     switch (l_area->testimony().size()){
     case 0: case 1:
         sendServerMessage("Unable to display empty testimony.");
@@ -177,6 +180,7 @@ void AOClient::cmdDeleteStatement(int argc, QStringList argv)
     auto l_area = server->getAreaById(areaId());
     if (l_area.isNull())
         return;
+
     int l_c_statement = l_area->statement();
     if (l_area->testimony().size() - 1 == 0)
         sendServerMessage("Unable to delete statement. No statements saved in this area.");
@@ -203,6 +207,7 @@ void AOClient::cmdPauseTestimony(int argc, QStringList argv)
     auto l_area = server->getAreaById(areaId());
     if (l_area.isNull())
         return;
+
     l_area->setTestimonyRecording(AreaData::TestimonyRecording::STOPPED);
     sendServerPacketArea(PacketFactory::createPacket("RT", {"testimony1", "1"}));
     sendServerMessage("Testimony has been stopped. Use /examine to begin cross-examination.");

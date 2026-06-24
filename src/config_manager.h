@@ -60,7 +60,7 @@ class ConfigManager
     /**
      * @brief Returns the character list of the server..
      */
-    static QStringList charlist(const bool write = false);
+    static QStringList charlist(const bool write = false, const bool print_to_console = false);
 
     /**
      * @brief Returns the a QStringList of the available backgrounds..
@@ -71,6 +71,7 @@ class ConfigManager
      * @brief Returns a QStringlist of the available songs..
      */
     static MusicList musiclist();
+    static QPair<QStringList, MusicList> Musiclist();
 
     /**
      * @brief Returns a QStringlist of radio links..
@@ -350,6 +351,8 @@ class ConfigManager
 
     static QMap<QString, HolidaysDesc> *m_holidayList;
 
+    static QStringList CustomReminder();
+
     /**
      * @brief Returns the server regex filter list.
      */
@@ -420,6 +423,20 @@ class ConfigManager
      * @brief Reload the server configuration.
      */
     static void reloadSettings();
+
+    enum VoiceParameter{
+        ENABLE = 0,
+        PTT,
+        MAXPEERSAREA,
+        MAXBYTES,
+        /* > hardcoded type here < */
+        VCODEC,
+        VHZ, // yeah.. i did using (auda/tena)city terms..
+        VFRAME_MS
+    };
+
+    static QVariant GetVoiceParameter(VoiceParameter type = VoiceParameter::ENABLE);
+    static QVariantList GetVoiceParamters();
 
   private:
     /**
@@ -493,11 +510,6 @@ class ConfigManager
      * @brief Contains an ordered list for the musiclist.
      */
     static QStringList *m_ordered_list;
-
-    /**
-     * @brief Contains the radiolist with names and url.
-     */
-    static QMap<int, QPair<QString, QString>> *m_radioList;
 
     /**
      * @brief QHash containing the help information for all commands registered to the server.

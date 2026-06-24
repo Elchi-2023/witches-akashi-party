@@ -21,99 +21,112 @@
 #include "config_manager.h"
 #include "music_manager.h"
 #include "packet/packet_factory.h"
+#include "packet/packet_mc.h"
 #include "server.h"
-
-#include <algorithm>
-#include <random>
 
 // This file is for commands under the music category in aoclient.h
 // Be sure to register the command in the header before adding it here!
 
-void AOClient::cmdPlay(int argc, QStringList argv)
-{
+void AOClient::cmdPlay(int argc, QStringList argv){
     Q_UNUSED(argc);
-    QString l_song = argv.join(" ");
-    if (m_is_dj_blocked) {
-        sendServerMessage("You are blocked from changing the music.");
-        return;
-    }
-    if (l_song == "sin.mp3") {
-        m_socket->close();
-        return;
-    }
+
+    const QString l_song = argv.join(" ");
     auto l_area = server->getAreaById(areaId());
-    if (l_area.isNull())
+    if (l_area.isNull() || l_song.trimmed().isEmpty())
         return;
 
-    const ACLRole l_role = server->getACLRolesHandler()->getRoleById(m_acl_role_id);
-    if (m_vip_authenticated || m_authenticated){ /* bypassed for vip and mods, no matter if area not free play or has cms on it*/
-        l_area->clearJukeboxQueue();
-        l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), l_song, true);
-        AOPacket *music_change = PacketFactory::createPacket("MC", {l_song, QString::number(server->getCharID(character())), characterName(), "1", "0"});
-        server->broadcast(music_change, areaId());
-        return;
-    }
-    else if (!l_area->owners().contains(clientId()) && !l_area->isPlayEnabled() && !l_role.checkPermission(ACLRole::CM)) { // Make sure we have permission to play music
-        sendServerMessage("Free music play is disabled in this area.");
-        return;
-    }
-    else{
-        switch (m_music_manager->ValidataSong(QUrl::fromUserInput(l_song, "", QUrl::UserInputResolutionOption::AssumeLocalFile), ConfigManager::cdnList())){
-        case -1:
-            sendServerMessage("Invaild URL.");
-            break;
-        case -2:
-            sendServerMessage("That link/URL wasn't Allowed.");
-            break;
-        default:
+    if (l_song == "sin.mp3") /* stonedDiscord troll(s) if someone tried play sin.mp3 :\ */
+        m_socket->close(QWebSocketProtocol::CloseCode::CloseCodeAbnormalDisconnection); // better close code i had.. :)
+    else if (isAccessBlocked(BlockType::DJ)){
+        if (m_authenticated_type == AuthenticateType::ROOT){ // let [root] bypass it.. why not.
             l_area->clearJukeboxQueue();
             l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), l_song, true);
-            server->broadcast(PacketFactory::createPacket("MC", {l_song, QString::number(server->getCharID(character())), characterName(), "1", "0"}), areaId());
-            break;
+            sendServerPacketArea(PacketMC::CreateMusic(l_song, server->getCharID(character()), characterName(), true));
         }
+        else
+            sendServerMessage("You are blocked from changing the music.");
     }
-}
-
-void AOClient::cmdPlayOnce(int argc, QStringList argv){
-    Q_UNUSED(argc)
-
-    const QString Song = argv.join(" ");
-    if (Song.trimmed().isEmpty())
-        return;
-    else if (m_is_dj_blocked)
-        sendServerMessage("You are blocked from changing the music.");
-    else if (Song == "sin.mp3")
-        m_socket->close();
-    else{
-        auto l_area = server->getAreaById(areaId());
-        if (l_area.isNull())
-            return;
-
-        const ACLRole current_role = server->getACLRolesHandler()->getRoleById(m_acl_role_id);
-        if (m_vip_authenticated || m_authenticated){ /* bypassed for vip and mods, no matter if area not free play or has cms on it*/
-            l_area->clearJukeboxQueue();
-            l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), Song, false);
-            AOPacket *music_change = PacketFactory::createPacket("MC", {Song, QString::number(server->getCharID(character())), characterName(), "0", "0"});
-            server->broadcast(music_change, areaId());
+    else if (l_area->isPlayEnabled()){
+        if (isAuthenticated()){
+            l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), l_song, true);
+            sendServerPacketArea(PacketMC::CreateMusic(l_song, server->getCharID(character()), characterName(), true));
         }
-        else if (!l_area->owners().contains(clientId()) && !l_area->isPlayEnabled() && !current_role.checkPermission(ACLRole::CM)) // Make sure we have permission to play music
-            sendServerMessage("Free music play is disabled in this area.");
-        else{
-            switch (m_music_manager->ValidataSong(QUrl::fromUserInput(Song, "", QUrl::UserInputResolutionOption::AssumeLocalFile), ConfigManager::cdnList())){
+        else if (l_area->owners().contains(clientId())){
+            switch (m_music_manager->ValidataSong(QUrl::fromUserInput(l_song, "", QUrl::UserInputResolutionOption::AssumeLocalFile), ConfigManager::cdnList())){
             case -1:
-                sendServerMessage("Invaild URL.");
+                sendServerMessage("Invalid URL.");
                 break;
             case -2:
-                sendServerMessage("That link/URL wasn't Allowed.");
+                sendServerMessage(QString("That link/URL are not allowed, please follows the an allowed link/URL from:\n%1").arg(ConfigManager::cdnList().join('\n')));
                 break;
             default:
                 l_area->clearJukeboxQueue();
-                l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), Song, false);
-                server->broadcast(PacketFactory::createPacket("MC", {Song, QString::number(server->getCharID(character())), characterName(), "0", "0"}), areaId());
+                l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), l_song, true);
+                sendServerPacketArea(PacketMC::CreateMusic(l_song, server->getCharID(character()), characterName(), true));
                 break;
             }
         }
+        else
+            sendServerMessage("You must become CMs for using this command.");
     }
+    else if (isAuthenticated()){ // same but they can bypassed if [free-music-play] disabled..
+        l_area->clearJukeboxQueue();
+        l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), l_song, true);
+        sendServerPacketArea(PacketMC::CreateMusic(l_song, server->getCharID(character()), characterName(), true));
+    }
+    else
+        sendServerMessage("Free music play is disabled in this area.");
+}
+
+void AOClient::cmdPlayOnce(int argc, QStringList argv){
+    Q_UNUSED(argc);
+
+    const QString l_song = argv.join(" ");
+    auto l_area = server->getAreaById(areaId());
+    if (l_area.isNull() || l_song.trimmed().isEmpty())
+        return;
+
+    if (l_song == "sin.mp3") /* stonedDiscord troll(s) if someone tried play sin.mp3 :\ */
+        m_socket->close(QWebSocketProtocol::CloseCode::CloseCodeAbnormalDisconnection); // better close code i had.. :)
+    else if (isAccessBlocked(BlockType::DJ)){
+        if (m_authenticated_type == AuthenticateType::ROOT){ // let [root] bypass it.. why not.
+            l_area->clearJukeboxQueue();
+            l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), l_song, false);
+            sendServerPacketArea(PacketMC::CreateMusic(l_song, server->getCharID(character()), characterName(), false));
+        }
+        else
+            sendServerMessage("You are blocked from changing the music.");
+    }
+    else if (l_area->isPlayEnabled()){
+        if (isAuthenticated()){
+            l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), l_song, false);
+            sendServerPacketArea(PacketMC::CreateMusic(l_song, server->getCharID(character()), characterName(), false));
+        }
+        else if (l_area->owners().contains(clientId())){
+            switch (m_music_manager->ValidataSong(QUrl::fromUserInput(l_song, "", QUrl::UserInputResolutionOption::AssumeLocalFile), ConfigManager::cdnList())){
+            case -1:
+                sendServerMessage("Invalid URL.");
+                break;
+            case -2:
+                sendServerMessage(QString("That link/URL are not allowed, please follows the an allowed CDN:\n%1").arg(ConfigManager::cdnList().join('\n')));
+                break;
+            default:
+                l_area->clearJukeboxQueue();
+                l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), l_song, false);
+                sendServerPacketArea(PacketMC::CreateMusic(l_song, server->getCharID(character()), characterName(), false));
+                break;
+            }
+        }
+        else
+            sendServerMessage("You must become CMs for using this command.");
+    }
+    else if (isAuthenticated()){ // same but they can bypassed if [free-music-play] disabled..
+        l_area->clearJukeboxQueue();
+        l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), l_song, false);
+        sendServerPacketArea(PacketMC::CreateMusic(l_song, server->getCharID(character()), characterName(), false));
+    }
+    else
+        sendServerMessage("Free music play is disabled in this area.");
 }
 
 void AOClient::cmdRadio(int argc, QStringList argv)
@@ -130,39 +143,43 @@ void AOClient::cmdRadio(int argc, QStringList argv)
         sendServerMessage(l_radio_list.isEmpty() ? "The radio aren't available." : "\n=== [Radio] ===\n" + l_radio_list.join('\n') + "\n=========");
     }
     else{
-        bool Vaild_radioID;
-        int Radioid = argv[0].toInt(&Vaild_radioID);
-        if (Vaild_radioID && l_radio.contains(Radioid)){ /* > Vaild ID (or index) < */
-            const auto [Radio_name, Selected_Radio] = l_radio.value(Radioid);
+        bool valid_radioID;
+        int Radioid = argv[0].toInt(&valid_radioID);
+        if (valid_radioID && l_radio.contains(Radioid)){ /* > valid ID (or index) < */
+            const auto s_radio = l_radio.value(Radioid);
 
             auto l_area = server->getAreaById(areaId());
             if (l_area.isNull())
                 return;
-            const ACLRole current_role = server->getACLRolesHandler()->getRoleById(m_acl_role_id);
-            if (m_vip_authenticated || m_authenticated){
-                sendServerMessage("Streaming radio: " + Radio_name + ".");
-                l_area->clearJukeboxQueue();
-                l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), Selected_Radio, false);
-                server->broadcast(PacketFactory::createPacket("MC", {Selected_Radio, QString::number(server->getCharID(character())), characterName(), "0", "0"}), areaId());
+
+            if (l_area->isPlayEnabled()){ // if the area are [free music play] enabled..
+                if (l_area->owners().contains(clientId()) || isAuthenticated()){ /* > [CM] or [VIP / Moderator] < */
+                    sendServerMessage("Streaming radio: " + s_radio.first + ".");
+                    l_area->clearJukeboxQueue();
+                    l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), s_radio.second, false);
+                    sendServerPacketArea(PacketMC::CreateMusic(s_radio.second, -1, "[Radio]", "0"));
+                }
+                else
+                    sendServerMessage("You must become CMs for using this command.");
             }
-            else if (!l_area->owners().contains(clientId()) && !l_area->isPlayEnabled() && !current_role.checkPermission(ACLRole::CM)) // Make sure we have permission to play music
-                sendServerMessage("Can't Streaming radio cause this area aren't [Free music play] enabled.");
-            else{
-                sendServerMessage("Streaming radio: " + Radio_name + ".");
+            else if (checkPermission(ACLRole::CM)){ // if user in CMs or if.. [VIP / Moderator] has "CM" perms..
+                sendServerMessage("Streaming radio (" + s_radio.first + ") in disabled [free-music-play] area.");
                 l_area->clearJukeboxQueue();
-                l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), Selected_Radio, false);
-                server->broadcast(PacketFactory::createPacket("MC", {Selected_Radio, QString::number(server->getCharID(character())), characterName(), "0", "0"}), areaId());
+                l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), s_radio.second, false);
+                sendServerPacketArea(PacketMC::CreateMusic(s_radio.second, -1, "[Radio]", "0"));
             }
+            else
+                sendServerMessage("Can't Streaming radio in this area causes [Free music play] disabled.");
         }
         else /* otherwise, throw an error */
-            sendServerMessage("Invaild input!");
+            sendServerMessage("Invalid input!");
     }
 }
 
 void AOClient::cmdPlayAmbience(int argc, QStringList argv){
     Q_UNUSED(argc)
 
-    if (m_is_dj_blocked)
+    if (isAccessBlocked(BlockType::DJ))
         sendServerMessage("You are blocked from changing the ambience.");
     else{
         auto l_area = server->getAreaById(areaId());
@@ -173,12 +190,18 @@ void AOClient::cmdPlayAmbience(int argc, QStringList argv){
             sendServerMessage("Free ambience play is disabled in this area.");
         else{
             const QString l_song = argv.join(" ");
-            if ((l_song.startsWith("http://", Qt::CaseInsensitive) || l_song.startsWith("https://", Qt::CaseInsensitive)) && !m_music_manager->validateSong(l_song, ConfigManager::cdnList())) {
-                sendServerMessage("The song you tried to play is not from an approved CDN.");
-                return;
+            switch (m_music_manager->ValidataSong(QUrl::fromUserInput(l_song, "", QUrl::UserInputResolutionOption::AssumeLocalFile), ConfigManager::cdnList())){
+            case -1:
+                sendServerMessage("Invalid URL.");
+                break;
+            case -2:
+                sendServerMessage(QString("That link/URL are not allowed, please follows the an allowed CDN:\n%1").arg(ConfigManager::cdnList().join('\n')));
+                break;
+            default:
+                l_area->changeAmbience(l_song);
+                sendServerPacketArea(PacketMC::CreateMusic(l_song, -1, characterName(), true, 1));
+                break;
             }
-            l_area->changeAmbience(l_song);
-            sendServerPacketArea(PacketFactory::createPacket("MC", {l_song, "-1", characterName(), "1", "1"}));
         }
     }
 }
@@ -208,7 +231,7 @@ void AOClient::cmdGetMusic(int argc, QStringList argv){
 
     if (!l_area->currentMusic().isEmpty() || !l_area->currentMusic().contains("~stop.mp3")){ // dummy track for stopping music
         sendServerMessage("Playing the current song is " + l_area->currentMusic() + " played by " + l_area->musicPlayerBy());
-        sendPacket("MC", {l_area->currentMusic(), "-1", characterName(), QString::number(l_area->currentMusicLoop()), "0"});
+        sendPacket(PacketMC::CreateMusic(l_area->currentMusic(), -1, "", l_area->currentMusicLoop()));
     }
     else
         sendServerMessage("There is no music playing.");
@@ -217,27 +240,28 @@ void AOClient::cmdGetMusic(int argc, QStringList argv){
 void AOClient::cmdBlockDj(int argc, QStringList argv){
     Q_UNUSED(argc);
 
-    bool VaildID = false;
-    int l_uid = argv[0].toInt(&VaildID);
-    if (VaildID){
+    bool validID = false;
+    int l_uid = argv[0].toInt(&validID);
+    if (validID){
         auto Target = server->getClientByID(l_uid);
 
         if (Target.isNull())
             sendServerMessage("No client with that ID found.");
         else if (Target == this){ /* self */
-            if (m_is_dj_blocked)
+            if (isAccessBlocked(BlockType::DJ))
                 sendServerMessage("You are already been DJ blocked (or blocked by yourself).");
             else{
                 sendServerMessage("Are you sure to block yourself of DJ permissions?..\nWell, here you go!");
-                m_is_dj_blocked = true;
+                SetAccessBlock(BlockType::DJ, true);
             }
         }
         else{
-            if (Target->m_is_dj_blocked)
+            if (Target->isAccessBlocked(BlockType::DJ))
                 sendServerMessage("That player is already DJ blocked!");
             else {
                 sendServerMessage("DJ blocked player.");
                 Target->sendServerMessage("You were blocked from changing the music by a moderator. " + getReprimand());
+                Target->SetAccessBlock(BlockType::DJ, true);
             }
         }
     }
@@ -248,26 +272,26 @@ void AOClient::cmdBlockDj(int argc, QStringList argv){
 void AOClient::cmdUnBlockDj(int argc, QStringList argv){
     Q_UNUSED(argc);
 
-    bool VaildID = false;
-    int l_uid = argv[0].toInt(&VaildID);
-    if (VaildID){
+    bool validID = false;
+    int l_uid = argv[0].toInt(&validID);
+    if (validID){
         auto Target = server->getClientByID(l_uid);
 
         if (Target.isNull())
             sendServerMessage("No client with that ID found.");
         else if (Target == this){ /* self */
-            if (m_is_dj_blocked){
+            if (isAccessBlocked(BlockType::DJ)){
                 sendServerMessage("Your DJ permissions now restored.");
-                m_is_dj_blocked = false;
+                SetAccessBlock(BlockType::DJ, false);
             }
             else
                 sendServerMessage("You are not been DJ blocked.");
         }
         else{
-            if (Target->m_is_dj_blocked){
+            if (Target->isAccessBlocked(BlockType::DJ)){
                 sendServerMessage("DJ permissions restored to player.");
                 Target->sendServerMessage("A moderator restored your music permissions. " + getReprimand(true));
-                Target->m_is_dj_blocked = false;
+                Target->SetAccessBlock(BlockType::DJ, false);
             }
             else
                 sendServerMessage("That player is not DJ blocked!");
@@ -303,8 +327,7 @@ void AOClient::cmdToggleJukebox(int argc, QStringList argv)
     sendServerMessageArea("The jukebox in this area has been " + QString(l_area->isjukeboxEnabled() ? "enabled." : "disabled."));
 }
 
-void AOClient::cmdAddMusic(int argc, QStringList argv)
-{
+void AOClient::cmdAddSong(int argc, QStringList argv){
     Q_UNUSED(argc);
 
     // This needs some explanation.
@@ -317,17 +340,17 @@ void AOClient::cmdAddMusic(int argc, QStringList argv)
     bool l_success = false;
     switch (l_argv.size()){
     case 1: /* > Song < */
-        l_success = m_music_manager->addCustomSong(l_argv.value(0), l_argv.value(0), 0, areaId());
+        l_success = m_music_manager->RegisterCustomMusic({l_argv.value(0), l_argv.value(0)}, 0, areaId());
         break;
     case 2: /* > Song, true song name < */
-        l_success = m_music_manager->addCustomSong(l_argv.value(0), l_argv.value(1), 0, areaId());
+        l_success = m_music_manager->RegisterCustomMusic({l_argv.value(0), l_argv.value(1)}, 0, areaId());
         break;
     case 3: /* > Song, true song name, duration(s) < */
-        {
-            bool ok;
-            const int l_song_duration = l_argv.value(2).toInt(&ok);
-            l_success = m_music_manager->addCustomSong(l_argv.value(0), l_argv.value(1), ok ? l_song_duration : 0, areaId());
-        }
+    {
+        bool ok;
+        const int l_song_duration = l_argv.value(2).toInt(&ok);
+        l_success = m_music_manager->RegisterCustomMusic({l_argv.value(0), l_argv.value(1)}, ok ? l_song_duration : 0, areaId());
+    }
         break;
     case 4: default:
         sendServerMessage("Too many arguments. Addition of song has failed.");
@@ -337,37 +360,26 @@ void AOClient::cmdAddMusic(int argc, QStringList argv)
     sendServerMessage("The addition of the song has " + QString(l_success ? "succeeded." : "failed."));
 }
 
-void AOClient::cmdAddMusicCategory(int argc, QStringList argv)
-{
+void AOClient::cmdAddCategory(int argc, QStringList argv){
     Q_UNUSED(argc);
-    bool l_success = m_music_manager->addCustomCategory(argv.join(" "), areaId());
-    QString l_message = l_success ? "succeeded." : "failed.";
-    sendServerMessage("The addition of the category has " + l_message);
+    sendServerMessage("The addition of the category has " + QString(m_music_manager->RegisterCustomCMusic(argv.join(" "), areaId()) ? "succeeded." : "failed."));
 }
 
-void AOClient::cmdRemoveCustomMusic(int argc, QStringList argv)
-{
+void AOClient::cmdRemoveCategorySong(int argc, QStringList argv){
     Q_UNUSED(argc);
-    bool l_success = m_music_manager->removeCustomMusic(argv.join(" "), areaId());
-    QString l_message = l_success ? "succeeded." : "failed.";
-    sendServerMessage("The removal of the entry has " + l_message);
+    sendServerMessage("The removal of the entry has " + QString(m_music_manager->RegisterCustomCMusic(argv.join(" "), areaId(), true) ? "succeeded." : "failed."));
 }
 
-void AOClient::cmdToggleCustomMusic(int argc, QStringList argv)
-{
+void AOClient::cmdToggleRootlist(int argc, QStringList argv){
     Q_UNUSED(argc);
     Q_UNUSED(argv);
-    bool l_status = m_music_manager->toggleCustomMusicEnabled(areaId());
-    QString l_message = (l_status) ? "enabled." : "disabled.";
-    sendServerMessage("Global musiclist has been " + l_message);
+    sendServerMessage("Global musiclist has been " + QString(m_music_manager->toggleRootMusicEnabled(areaId()) ? "enabled." : "disabled."));
 }
 
-void AOClient::cmdClearCustomMusic(int argc, QStringList argv)
-{
+void AOClient::cmdClearCustom(int argc, QStringList argv){
     Q_UNUSED(argc);
     Q_UNUSED(argv);
-    m_music_manager->clearCustomMusicList(areaId());
-    sendServerMessage("Custom songs have been cleared.");
+    sendServerMessage(m_music_manager->UnregisterCustomMusic(areaId()) ? "Custom songs have been cleared." : "Custom songs already been cleanup.");
 }
 
 void AOClient::cmdJukeboxSkip(int argc, QStringList argv)
@@ -375,7 +387,7 @@ void AOClient::cmdJukeboxSkip(int argc, QStringList argv)
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    const QString l_name = "[" + QString::number(clientId()) + "] " + QString(characterName().isEmpty() ? character().isEmpty() ? "Spectator" : character() : characterName());
+    const QString l_name = "[" + QString::number(clientId()) + "] " + QString(characterName().isEmpty() ? character().isEmpty() ? "[Spectator]" : character() : characterName());
     auto l_area = server->getAreaById(areaId());
     if (l_area.isNull())
         return;
@@ -383,147 +395,155 @@ void AOClient::cmdJukeboxSkip(int argc, QStringList argv)
     if (l_area->isjukeboxEnabled()){
         switch (l_area->getJukeboxQueueSize()){
         case 0:
-            sendServerMessage("Unable to skip song. Jukebox is currently empty.");
+            sendServerMessage("Unable to skip song. Jukebox is currently empty.", "[Jukebox]");
             break;
         default:
             l_area->switchJukeboxSong();
-            sendServerMessageArea(l_name + " has forced a skip. Playing the next available song.");
+            sendServerMessageArea(l_name + " has forced a skip. Playing the next available song.", "[Jukebox]");
         }
     }
     else
         sendServerMessage("Unable to skip song. The jukebox is not running.");
 }
+void AOClient::cmdRandomSong(int argc, QStringList argv){
+    Q_UNUSED(argc)
+    Q_UNUSED(argv)
 
-// Returns only the actual playable songs from the root music list,
-// filtering out category headers (which have no file extension).
-static QStringList playableSongs(MusicManager *musicManager)
-{
-    QStringList l_songs;
-    const QStringList l_all = musicManager->rootMusiclist();
-    for (const QString &entry : qAsConst(l_all)) {
-        if (entry.contains('.'))
-            l_songs.append(entry);
-    }
-    return l_songs;
-}
-
-void AOClient::cmdRandomSong(int argc, QStringList argv)
-{
-    Q_UNUSED(argc);
-    Q_UNUSED(argv);
-
-    if (m_is_dj_blocked) {
+    if (isAccessBlocked(BlockType::DJ))
         sendServerMessage("You are blocked from changing the music.");
-        return;
-    }
+    else{
+        auto l_area = server->getAreaById(areaId());
+        if (l_area.isNull())
+            return;
 
+        if (!checkPermission(ACLRole::CM))
+            sendServerMessage("You do not have permission to use that command.");
+        else{
+            const QStringList GetMusic = m_music_manager->rootMusiclist().filter(".");
+            sendServerMessage(GetMusic.isEmpty() ? "No songs available in the music list." : l_area->addJukeboxSong(GetMusic[genRand(0, GetMusic.size() -1)]), "[Jukebox]");
+        }
+    }
+}
+void AOClient::cmdJukeboxShuffle(int argc, QStringList argv){
+    Q_UNUSED(argc)
+    Q_UNUSED(argv)
+
+    if (isAccessBlocked(BlockType::DJ))
+        sendServerMessage("You are blocked from changing the music.");
+    else{
+        auto l_area = server->getAreaById(areaId());
+        if (l_area.isNull())
+            return;
+
+        if (!checkPermission(ACLRole::CM))
+            sendServerMessage("You do not have permission to use that command.");
+        else{
+            QStringList GetMusic = m_music_manager->rootMusiclist().filter(".");
+            if (GetMusic.isEmpty())
+                sendServerMessage("No songs available in the music list.", "[Jukebox]");
+            else{
+                l_area->clearJukeboxQueue();
+                std::random_device rng;
+                std::mt19937 urng(rng());
+                std::shuffle(GetMusic.begin(), GetMusic.end(), rng);
+                for (const QString &song : qAsConst(GetMusic))
+                    l_area->addJukeboxSong(song);
+                sendServerMessage(QString("Shuffle complete. %1 song(s) queued in the jukebox.").arg(GetMusic.size()), "[Jukebox]");
+            }
+        }
+    }
+}
+void AOClient::cmdJukeboxAdd(int argc, QStringList argv){
+    Q_UNUSED(argc)
+    if (isAccessBlocked(BlockType::DJ))
+        sendServerMessage("You are blocked from changing the music.");
+    else{
+        auto l_area = server->getAreaById(areaId());
+        if (l_area.isNull())
+            return;
+
+        if (!checkPermission(ACLRole::CM))
+            sendServerMessage("You do not have permission to use that command.");
+        else{
+            QStringList l_results;
+            for (const QString &song : qAsConst(argv)){
+                if (song.trimmed().isEmpty())
+                    continue;
+                const QString l_song = song.trimmed();
+
+                switch (m_music_manager->ValidataSong(QUrl::fromUserInput(l_song, "", QUrl::UserInputResolutionOption::AssumeLocalFile), ConfigManager::cdnList())){
+                case -1:
+                    l_results << l_song + ": Invalid URL";
+                    break;
+                case 1: // Valid remote URL — use the fallback duration since we can't know its length.
+                    l_results << l_song + ": " + l_area->addJukeboxSong(l_song, 300.0f);
+                    break;
+                case 2:
+                    l_results << l_song + ": That URL is not from an allowed CDN.";
+                    break;
+                default:
+                    l_results << l_song + ": " + l_area->addJukeboxSong(l_song);
+                    break;
+                }
+            }
+
+            sendServerMessage(l_results.isEmpty() ? "No songs provided." : l_results.join('\n'), "[Jukebox]");
+        }
+    }
+}
+void AOClient::cmdJukeboxRemove(int argc, QStringList argv){
+    Q_UNUSED(argc)
+    if (isAccessBlocked(BlockType::DJ))
+        sendServerMessage("You are blocked from changing the music.");
+    else{
+        auto l_area = server->getAreaById(areaId());
+        if (l_area.isNull())
+            return;
+
+        if (!checkPermission(ACLRole::CM))
+            sendServerMessage("You do not have permission to use that command.");
+        else if (l_area->GetJukeBoxQueues().isEmpty())
+            sendServerMessage("No songs queues provided.", "[Jukebox]");
+        else{
+            bool index_ok;
+            const int index = argv[0].toInt(&index_ok);
+            auto JQueues = l_area->GetJukeBoxQueues();
+            sendServerMessage(index_ok && l_area->removeJukeboxSong(index) ? QString("You are remove (%1 : %2) from the Queue.").arg(QString::number(index), JQueues[index]) : "Invalid Index or that index not exist in Queue!", "[Jukebox]");
+        }
+    }
+}
+void AOClient::cmdJukeboxQueues(int argc, QStringList argv){
+    Q_UNUSED(argc)
     auto l_area = server->getAreaById(areaId());
     if (l_area.isNull())
         return;
 
-    if (!hasJukeboxCommandPermission()) {
-        sendServerMessage("You do not have permission to use that command.");
-        return;
-    }
+    if (l_area->isjukeboxEnabled()){
+        auto JQueues = l_area->GetJukeBoxQueues();
+        bool ok = false;
+        const int page = argv.isEmpty() ? 1 : qMax(1, argv[0].toInt(&ok));
 
-    const QStringList l_songs = playableSongs(m_music_manager);
-    if (l_songs.isEmpty()) {
-        sendServerMessage("No songs available in the music list.");
-        return;
-    }
-
-    const int l_index = static_cast<int>(QRandomGenerator::system()->bounded(static_cast<quint32>(l_songs.size())));
-    sendServerMessage(l_area->addJukeboxSong(l_songs.at(l_index)));
-}
-
-void AOClient::cmdShuffle(int argc, QStringList argv)
-{
-    Q_UNUSED(argc);
-    Q_UNUSED(argv);
-
-    if (m_is_dj_blocked) {
-        sendServerMessage("You are blocked from changing the music.");
-        return;
-    }
-
-    auto l_area = server->getAreaById(areaId());
-    if (l_area.isNull())
-        return;
-
-    if (!hasJukeboxCommandPermission()) {
-        sendServerMessage("You do not have permission to use that command.");
-        return;
-    }
-
-    QStringList l_songs = playableSongs(m_music_manager);
-    if (l_songs.isEmpty()) {
-        sendServerMessage("No songs available to shuffle.");
-        return;
-    }
-
-    // Clear the existing queue so shuffle replaces it rather than appending.
-    l_area->clearJukeboxQueue();
-
-    // Shuffle using a seeded Mersenne Twister for good randomness
-    std::mt19937 rng(QRandomGenerator::system()->generate());
-    std::shuffle(l_songs.begin(), l_songs.end(), rng);
-
-    for (const QString &song : qAsConst(l_songs))
-        l_area->addJukeboxSong(song);
-
-    sendServerMessage(QString("Shuffle complete. %1 song(s) queued in the jukebox.").arg(l_songs.size()));
-}
-
-void AOClient::cmdPlaylistAdd(int argc, QStringList argv)
-{
-    Q_UNUSED(argc);
-
-    if (m_is_dj_blocked) {
-        sendServerMessage("You are blocked from changing the music.");
-        return;
-    }
-
-    auto l_area = server->getAreaById(areaId());
-    if (l_area.isNull())
-        return;
-
-    if (!hasJukeboxCommandPermission()) {
-        sendServerMessage("You do not have permission to use that command.");
-        return;
-    }
-
-    // Default fallback duration for custom URLs (5 minutes in seconds).
-    static constexpr float URL_FALLBACK_DURATION = 300.0f;
-
-    QStringList l_results;
-    for (const QString &song : qAsConst(argv)) {
-        const QString l_song = song.trimmed();
-        if (l_song.isEmpty())
-            continue;
-
-        // Determine whether this entry is a remote URL or a local song name.
-        const int l_validation = m_music_manager->ValidataSong(
-            QUrl::fromUserInput(l_song, "", QUrl::UserInputResolutionOption::AssumeLocalFile),
-            ConfigManager::cdnList());
-
-        if (l_validation == -1) {
-            l_results.append(l_song + ": Invalid URL.");
+        const int totalPages = (JQueues.size() + 9) / 10;
+        if (JQueues.isEmpty())
+            sendServerMessage("No songs queues provided.", "[Jukebox]");
+        else if (!ok){
+            QStringList l_results;
+            for (int Index = 0; Index < JQueues.size(); ++Index)
+                l_results << QString("[%1]: %2").arg(QString::number(Index), JQueues[Index]);
+            sendServerMessage("\n=== [Queue] ====\n" + l_results.join('\n') + "\n===============");
         }
-        else if (l_validation == -2) {
-            l_results.append(l_song + ": That URL is not from an allowed CDN.");
-        }
-        else if (l_validation == 1) {
-            // Valid remote URL — use the fallback duration since we can't know its length.
-            l_results.append(l_song + ": " + l_area->addJukeboxSong(l_song, URL_FALLBACK_DURATION));
-        }
+        else if (page > totalPages)
+            sendServerMessage("Page number is out of range.");
         else {
-            // Local song name — look it up in the music list normally.
-            l_results.append(l_song + ": " + l_area->addJukeboxSong(l_song));
+            QString message = "\n=== [Queue] ====\n";
+            const int startIndex = (page - 1) * 10;
+            const int endIndex = qMin(startIndex + 10, JQueues.size());
+            for (int i = startIndex; i < endIndex; ++i)
+                message += QString("[%1] %2\n").arg(i + 1).arg(JQueues.at(i));
+            message += QString("=== [Page %1 / %2] ===").arg(page).arg(totalPages);
+            sendServerMessage(message, "[Jukebox]");
         }
     }
-
-    if (l_results.isEmpty())
-        sendServerMessage("No songs provided.");
     else
-        sendServerMessage(l_results.join('\n'));
+        sendServerMessage("No songs queues provided.", "[Jukebox]");
 }

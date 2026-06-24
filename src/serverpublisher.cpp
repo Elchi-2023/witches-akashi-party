@@ -22,8 +22,8 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QTimer>
+#include <QPointer>
 
-const int HTTP_OK = 200;
 const int WS_REVERSE_PROXY = 80;
 const int TIMEOUT = 1000 * 60 * 1;
 
@@ -43,75 +43,82 @@ ServerPublisher::ServerPublisher(int port, int *player_count, QObject *parent) :
     publishServer();
 }
 
-void ServerPublisher::publishServer()
-{
-    if (!ConfigManager::publishServerEnabled()) {
-        return;
-    }
+void ServerPublisher::publishServer(){
+    if (ConfigManager::publishServerEnabled()){
+        QUrl serverlist(ConfigManager::serverlistURL());
+        if (serverlist.isValid()){
+            QNetworkRequest request(serverlist);
+            request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
+#if QT_VERSION_MAJOR < 6 // using this compiler <check-if> instead..
+            request.setAttribute(QNetworkRequest::Attribute::Http2AllowedAttribute, false);
+#endif
 
-    QUrl serverlist(ConfigManager::serverlistURL());
-    if (serverlist.isValid()) {
-        QNetworkRequest request(serverlist);
-        request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-        request.setAttribute(QNetworkRequest::Http2AllowedAttribute, false);
+            QJsonObject serverinfo;
+            if (!ConfigManager::serverDomainName().trimmed().isEmpty())
+                serverinfo["ip"] = ConfigManager::serverDomainName();
+            if (ConfigManager::securePort() > -1)
+                serverinfo["wss_port"] = ConfigManager::securePort();
 
-        QJsonObject serverinfo;
-        if (!ConfigManager::serverDomainName().trimmed().isEmpty()) {
-            serverinfo["ip"] = ConfigManager::serverDomainName();
+            serverinfo["port"] = 27106;
+            serverinfo["ws_port"] = ConfigManager::advertiseWSProxy() ? WS_REVERSE_PROXY : m_port;
+            serverinfo["players"] = *m_players;
+            serverinfo["name"] = ConfigManager::serverName();
+            serverinfo["description"] = ConfigManager::serverDescription();
+
+            m_manager->post(request, QJsonDocument(serverinfo).toJson());
         }
-        if (ConfigManager::securePort() != -1) {
-            serverinfo["wss_port"] = ConfigManager::securePort();
-        }
-        serverinfo["port"] = 27106;
-        serverinfo["ws_port"] = ConfigManager::advertiseWSProxy() ? WS_REVERSE_PROXY : m_port;
-        serverinfo["players"] = *m_players;
-        serverinfo["name"] = ConfigManager::serverName();
-        serverinfo["description"] = ConfigManager::serverDescription();
-
-        m_manager->post(request, QJsonDocument(serverinfo).toJson());
-    }
-    else {
-        qWarning() << "Failed to advertise server. Serverlist URL is not valid. URL:" << serverlist.toString();
+        else
+            qWarning() << "[W][AKASHI][SERVER-PUBLISHER]: Failed to advertise server. Serverlist URL is not valid. URL:" << serverlist.toString();
     }
 }
 
-void ServerPublisher::finished(QNetworkReply *f_reply)
-{
-    QNetworkReply *reply(f_reply);
-    reply->deleteLater();
-    QString remote_url = reply->url().toString();
+void ServerPublisher::finished(QNetworkReply *f_reply){
+    const QScopedPointer<QNetworkReply, QScopedPointerDeleteLater> reply(f_reply);
+    if (reply.isNull()) // safely first..
+        qWarning() << "[W][AKASHI][PUBLISHER]: The qnetworkreply object is null, cannot progress the advertises (otherwise segfaults).";
+    else{
+        switch (reply->error()){
+        default: // [ERROR] types..
+            qWarning() << "[W][AKASHI][PUBLISHER]:Unable to connect to serverlist due to the following error:" << reply->errorString();
+            qWarning() << "[W][AKASHI][PUBLISHER]:Remote URL:" << reply->url().toString();
+            break;
+        case QNetworkReply::NetworkError::NoError:
+            switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt()){ // status code..
+            case 200: // [HTTP_OK]..
+                qInfo() << "[I][AKASHI][SERVER-PUBLISHER]: Sucessfully advertised server to serverlist.";
+                break;
+            default:
+                QJsonParseError error;
+                const QByteArray Data = reply->readAll();
+                const QJsonDocument document = QJsonDocument::fromJson(Data, &error);
 
-    if (reply->error() != QNetworkReply::NoError) {
-        qWarning() << "Unable to connect to serverlist due to the following error:" << reply->errorString();
-        qWarning() << "Remote URL:" << remote_url;
-        return;
-    }
+                switch (error.error){
+                case QJsonParseError::ParseError::NoError:
+                    if (document.isObject()){
+                        const QJsonObject body = document.object();
+                        if (body.contains("errors")){
+                            QStringList error_records;
+                            for (const auto &ref : body["errors"].toArray()){
+                                if (ref.isObject()){
+                                    const QJsonObject error_obj = ref.toObject();
+                                    error_records << QString("[%1]: %2").arg(error_obj["type"].toString(), error_obj["message"].toString());
+                                }
+                            }
 
-    QByteArray data = reply->isReadable() ? reply->readAll() : QByteArray();
-    const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-    if (status != HTTP_OK) {
-        QJsonParseError error;
-        QJsonDocument document = QJsonDocument::fromJson(data, &error);
-
-        if (error.error != QJsonParseError::NoError || !document.isObject()) {
-            qWarning() << "Received malformed response from masterserver. Error:" << error.errorString();
-            qWarning() << "HTTP status code:" << status;
-            qWarning() << "Parse error offset:" << error.offset;
-            qWarning() << "Response body size:" << data.size() << "bytes";
-            qWarning().noquote() << "Raw response body:" << QString::fromUtf8(data);
-            return;
-        }
-
-        QJsonObject body = document.object();
-        if (body.contains("errors")) {
-            qWarning() << "Failed to advertise to the serverlist due to the following errors:";
-            const QJsonArray errors = body["errors"].toArray();
-            for (const auto &ref : errors) {
-                QJsonObject error = ref.toObject();
-                qWarning().noquote() << "Error:" << error["type"].toString() << ". Message:" << error["message"].toString();
+                            error_records.isEmpty() ? qWarning() << "[W][AKASHI][SERVER-PUBLISHER]: Failed to advertise to the serverlist due to the unknowns errors." : qWarning().noquote() << "[W][AKASHI][SERVER-PUBLISHER]: Failed to advertise to the serverlist due to the following errors:\n" << error_records.join('\n');
+                        }
+                        else
+                            qWarning() << "[W][AKASHI][SERVER-PUBLISHER]: Sucessfully(?) advertised server to serverlist.";
+                    }
+                    else
+                        qWarning().noquote() << QString("[W][AKASHI][SERVER-PUBLISHER]: Received malformed response from MS ([%1] %2 of offset(%3)): %4").arg(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toString(), error.errorString(), QString::number(error.offset), Data);
+                    break;
+                default:
+                    qWarning().noquote() << QString("[W][AKASHI][SERVER-PUBLISHER]: Received malformed response from MS ([%1] %2 of offset(%3)): %4").arg(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toString(), error.errorString(), QString::number(error.offset), Data);
+                    break;
+                }
             }
-            return;
+            break;
         }
     }
-    qInfo() << "Sucessfully advertised server to serverlist.";
 }

@@ -51,11 +51,23 @@ class NetworkSocket : public QObject
     QHostAddress peerAddress();
 
     /**
+      * @brief Returns the useragent of the remote socket
+      */
+    QString GetUseragent(){return m_useragent;}
+
+    /**
      * @brief Closes the socket by request of the child AOClient object or the server.
      *
      * @param The close code to the send to the client.
      */
     void close(QWebSocketProtocol::CloseCode f_code = QWebSocketProtocol::CloseCodeNormal);
+    /**
+     * @brief Closes the socket by request of the child AOClient object or the server.
+     *
+     * @param The close code to the send to the client.
+     * @param The reason of the close code to the send to the client.
+     */
+    void close(QWebSocketProtocol::CloseCode f_code, const QString &reason);
 
     /**
      * @brief Writes data to the network socket.
@@ -93,6 +105,11 @@ class NetworkSocket : public QObject
      * @details In the case of the WebSocket we also check if this has been proxy forwarded.
      */
     QHostAddress m_socket_ip;
+
+    /**
+     * @brief Remote <USERAGENT> of client
+     */
+    QString m_useragent;
 };
 
 #endif

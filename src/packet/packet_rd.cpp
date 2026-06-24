@@ -18,51 +18,41 @@ PacketInfo PacketRD::getPacketInfo() const
     return info;
 }
 
-void PacketRD::handlePacket(AreaData *area, AOClient &client) const
-{
-    if (client.m_hwid == "") {
-        // No early connecting!
-        client.m_socket->close();
-        return;
-    }
+void PacketRD::handlePacket(AreaData *area, AOClient &client) const{
+    if (client.m_hwid.isEmpty()) // No early connecting!
+        client.m_socket->close(QWebSocketProtocol::CloseCodeAbnormalDisconnection);
+    else if (!client.m_joined){
+        QPointer current_server(client.getServer());
+        client.m_joined = true;
+        current_server->updateCharsTaken(area);
+        client.sendEvidenceList(area);
+        client.sendPacket("HP", {"1", QString::number(area->defHP())});
+        client.sendPacket("HP", {"2", QString::number(area->proHP())});
+        client.sendPacket("FA", client.getServer()->getAreaNames());
+        // Here lies OPPASS, the genius of FanatSors who send the modpass to everyone in plain text.
+        client.sendPacket("DONE");
+        client.sendPacket("BN", {area->background(), area->side()});
 
-    if (client.m_joined) {
-        return;
-    }
+        static const QString Motd = QString(ConfigManager::motd()).replace('\n', "\r\n");
+        if (!Motd.isEmpty())
+            client.sendServerMessage("=== MOTD ===\r\n" + Motd + "\r\n=============");
+        static const QVariantList VCParams = ConfigManager::GetVoiceParamters();
+        client.sendPacket("VS_CAPS", {QString::number(VCParams[ConfigManager::VoiceParameter::ENABLE].toBool()), QString::number(VCParams[ConfigManager::VoiceParameter::PTT].toBool()), VCParams[ConfigManager::VoiceParameter::MAXPEERSAREA].toString(), VCParams[ConfigManager::VoiceParameter::VCODEC].toString(), VCParams[ConfigManager::VoiceParameter::VHZ].toString(), VCParams[ConfigManager::VoiceParameter::VFRAME_MS].toString(), VCParams[ConfigManager::VoiceParameter::MAXBYTES].toString()});
 
-    client.m_joined = true;
-    client.getServer()->updateCharsTaken(area);
-    client.sendEvidenceList(area);
-    client.sendPacket("HP", {"1", QString::number(area->defHP())});
-    client.sendPacket("HP", {"2", QString::number(area->proHP())});
-    client.sendPacket("FA", client.getServer()->getAreaNames());
-    // Here lies OPPASS, the genius of FanatSors who send the modpass to everyone in plain text.
-    client.sendPacket("DONE");
-    client.sendPacket("BN", {area->background(), area->side()});
-
-    client.sendServerMessage("=== MOTD ===\r\n" + ConfigManager::motd() + "\r\n=============");
-
-    client.fullArup(); // Give client all the area data
-    if (client.getServer()->timer->isActive()) {
-        client.sendPacket("TI", {"0", "2"});
-        client.sendPacket("TI", {"0", "0", QString::number(QTime(0, 0).msecsTo(QTime(0, 0).addMSecs(client.getServer()->timer->remainingTime())))});
-    }
-    else {
-        client.sendPacket("TI", {"0", "3"});
-    }
-    const QList<QTimer *> l_timers = area->timers();
-    for (QTimer *l_timer : l_timers) {
-        int l_timer_id = area->timers().indexOf(l_timer) + 1;
-        if (l_timer->isActive()) {
-            client.sendPacket("TI", {QString::number(l_timer_id), "2"});
-            client.sendPacket("TI", {QString::number(l_timer_id), "0", QString::number(QTime(0, 0).msecsTo(QTime(0, 0).addMSecs(l_timer->remainingTime())))});
+        client.fullArup(); // Give client all the area data
+        const QVector<QTimer *> GetTimer(QVector<QTimer *>({client.getServer()->timer}) << area->timers().toVector()); // i know.. this kinda odd but worth i guess..
+        for (auto timer : GetTimer){
+            const int timer_id = GetTimer.indexOf(timer);
+            if (timer->isActive()){
+                client.sendPacket("TI", {QString::number(timer_id), "2"});
+                client.sendPacket("TI", {QString::number(timer_id), "3", QString::number(timer->remainingTimeAsDuration().count())});
+            }
+            else
+                client.sendPacket("TI", {QString::number(timer_id), "3"});
         }
-        else {
-            client.sendPacket("TI", {QString::number(l_timer_id), "3"});
-        }
+
+        emit client.joined();
+        area->addClient(client.clientId());
+        client.arup(client.ARUPType::PLAYER_COUNT, true); // Tell everyone there is a new player
     }
-    emit client.joined();
-    area->addClient(-1, client.clientId());
-    client.getServer()->getPlayerStateObserver()->registerClient(&client);
-    client.arup(client.ARUPType::PLAYER_COUNT, true); // Tell everyone there is a new player
 }

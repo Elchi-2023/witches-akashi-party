@@ -36,11 +36,25 @@ QStringList MusicManager::rootMusiclist()
 bool MusicManager::registerArea(int f_area_id)
 {
     if (m_custom_lists->contains(f_area_id)) {
+        if (!m_global_enabled.contains(f_area_id))
+            m_global_enabled.insert(f_area_id, true);
         // This area is already registered. We can't add it.
         return false;
     }
     m_custom_lists->insert(f_area_id, {});
     m_global_enabled.insert(f_area_id, true);
+    return true;
+}
+
+bool MusicManager::unregisterArea(const int f_area_id){
+    if (!m_custom_lists->contains(f_area_id)){
+        if (m_global_enabled.contains(f_area_id))
+            m_global_enabled.remove(f_area_id);
+        return false;
+    }
+
+    m_custom_lists->remove(f_area_id);
+    m_global_enabled.remove(f_area_id);
     return true;
 }
 
@@ -70,7 +84,6 @@ bool MusicManager::validateSong(QString f_song_name, QStringList f_approved_cdns
     }
 
     bool l_suffix_found = false;
-    ;
     for (const QString &suffix : qAsConst(l_extensions)) {
         if (f_song_name.endsWith(suffix)) {
             l_suffix_found = true;
@@ -95,99 +108,89 @@ int MusicManager::ValidataSong(const QUrl Url, const QStringList Approved_cdns){
     return 1;
 }
 
-bool MusicManager::addCustomSong(QString f_song_name, QString f_real_name, int f_duration, int f_area_id)
-{
-    // Validate if simple name.
-    QString l_song_name = f_song_name;
-    if (f_song_name.split(".").size() == 1) {
-        l_song_name = l_song_name + ".opus";
-    }
-
-    QString l_real_name = f_real_name;
-    if (f_real_name.split(".").size() == 1) {
-        l_real_name = l_real_name + ".opus";
-    }
-
-    if (!(validateSong(l_song_name, m_cdns) && validateSong(l_real_name, m_cdns))) {
+bool MusicManager::RegisterCustomMusic(const QPair<QString, QString> &songdata, const int duration, const int areaId){
+    QFileInfo song(songdata.first);
+    if (!validateSong(song.filePath() + (song.suffix().isEmpty() ? ".opus" : ""), m_cdns))
         return false;
-    }
+    const QString SongName = song.filePath() + (song.suffix().isEmpty() ? ".opus" : "");
+
+    QFileInfo RSong(songdata.second);
+    if (!validateSong(RSong.filePath() + (RSong.suffix().isEmpty() ? ".opus" : ""), m_cdns))
+        return false;
+    const QString Realname = RSong.filePath() + (RSong.suffix().isEmpty() ? ".opus" : "");
 
     // Avoid conflicts by checking if it exists.
-    if (m_root_list.contains(l_song_name) && m_global_enabled[f_area_id]) {
-        return false;
-    }
-
-    if (m_custom_lists->value(f_area_id).contains(f_song_name)) {
-        return false;
-    }
-
-    if (m_customs_ordered.value(f_area_id).contains(l_song_name)) {
-        return false;
-    }
+    const bool isExists = (m_root_list.contains(SongName) && m_global_enabled[areaId]) || m_custom_lists->value(areaId).contains(SongName) || m_customs_ordered.value(areaId).contains(SongName);
 
     // There should be a way to directly insert into the QMap. Too bad!
-    MusicList l_custom_list = m_custom_lists->value(f_area_id);
-    l_custom_list.insert(l_song_name, {l_real_name, f_duration});
-    m_custom_lists->insert(f_area_id, l_custom_list);
-    m_customs_ordered.insert(f_area_id, (QStringList{m_customs_ordered.value(f_area_id)} << l_song_name));
-    emit sendAreaFMPacket(PacketFactory::createPacket("FM", musiclist(f_area_id)), f_area_id);
-    return true;
+    if (!isExists){
+        MusicList l_custom_list = m_custom_lists->value(areaId);
+        l_custom_list.insert(SongName, {Realname, duration});
+        m_custom_lists->insert(areaId, l_custom_list);
+        m_customs_ordered.insert(areaId, (QStringList{m_customs_ordered.value(areaId)} << SongName));
+        emit sendAreaFMPacket(PacketFactory::createPacket("FM", musiclist(areaId)), areaId);
+    }
+    return !isExists;
 }
-
-bool MusicManager::addCustomCategory(QString f_category_name, int f_area_id)
-{
-    if (f_category_name.split(".").size() > 1) {
-        return false;
+bool MusicManager::UnregisterCustomMusic(const int areaId){
+    bool removed = false;
+    if (!m_custom_lists->value(areaId, {}).isEmpty()){
+        m_custom_lists->insert(areaId, {});
+        removed = true;
     }
 
-    QString l_category_name = f_category_name;
-    if (!f_category_name.startsWith("==")) {
-        l_category_name = "==" + l_category_name + "==";
+    if (!m_customs_ordered.value(areaId, {}).isEmpty()){
+        m_customs_ordered.insert(areaId, {});
+        removed = true;
     }
 
-    // Avoid conflicts by checking if it exists.
-    if (m_root_list.contains(l_category_name) && m_global_enabled.value(f_area_id)) {
-        return false;
-    }
-
-    if (m_custom_lists->value(f_area_id).contains(l_category_name)) {
-        return false;
-    }
-
-    QMap<QString, QPair<QString, int>> l_custom_list = m_custom_lists->value(f_area_id);
-    l_custom_list.insert(l_category_name, {l_category_name, 0});
-    m_custom_lists->insert(f_area_id, l_custom_list);
-    m_customs_ordered.insert(f_area_id, (QStringList{m_customs_ordered.value(f_area_id)} << l_category_name));
-    emit sendAreaFMPacket(PacketFactory::createPacket("FM", musiclist(f_area_id)), f_area_id);
-    return true;
+    return removed;
 }
-
-bool MusicManager::removeCustomMusic(QString f_songcategory_name, int f_area_id)
-{
-    if (!m_root_list.contains(f_songcategory_name)) {
-        MusicList l_custom_list = m_custom_lists->value(f_area_id);
-        if (l_custom_list.contains(f_songcategory_name)) {
-            l_custom_list.remove(f_songcategory_name);
-            m_custom_lists->insert(f_area_id, l_custom_list);
+bool MusicManager::RegisterCustomCMusic(const QString &category, const int areaId, const bool remove){
+    if (remove && !m_root_list.contains(category)) {
+        MusicList l_custom_list = m_custom_lists->value(areaId);
+        if (l_custom_list.contains(category)) {
+            l_custom_list.remove(category);
+            m_custom_lists->insert(areaId, l_custom_list);
 
             // Updating the list alias too.
-            QStringList l_customs_ordered = m_customs_ordered.value(f_area_id);
-            l_customs_ordered.removeAll(f_songcategory_name);
-            m_customs_ordered.insert(f_area_id, l_customs_ordered);
+            QStringList l_customs_ordered = m_customs_ordered.value(areaId);
+            l_customs_ordered.removeAll(category);
+            m_customs_ordered.insert(areaId, l_customs_ordered);
 
-            emit sendAreaFMPacket(PacketFactory::createPacket("FM", musiclist(f_area_id)), f_area_id);
+            emit sendAreaFMPacket(PacketFactory::createPacket("FM", musiclist(areaId)), areaId);
             return true;
         } // Fallthrough
+    }
+    else if (!remove && QFileInfo(category).completeSuffix().isEmpty()){
+        QString name(category);
+        if (!category.startsWith("==") && !category.endsWith("=="))
+            name = "== " + category + " ==";
+        else if (!category.startsWith("==") && category.endsWith("=="))
+            name = "== " + category;
+        else if (category.startsWith("==") && !category.endsWith("=="))
+            name = category + " ==";
+
+        // Avoid conflicts by checking if it exists.
+        const bool isExist = (m_root_list.contains(name) && m_global_enabled.value(areaId)) || m_custom_lists->value(areaId).contains(name);
+
+        if (!isExist){
+            QMap<QString, QPair<QString, int>> l_custom_list = m_custom_lists->value(areaId);
+            l_custom_list.insert(name, {name, 0});
+            m_custom_lists->insert(areaId, l_custom_list);
+            m_customs_ordered.insert(areaId, (QStringList{m_customs_ordered.value(areaId)} << name));
+            emit sendAreaFMPacket(PacketFactory::createPacket("FM", musiclist(areaId)), areaId);
+        }
+        return !isExist;
+
     }
     return false;
 }
 
-bool MusicManager::toggleCustomMusicEnabled(int f_area_id)
+bool MusicManager::toggleRootMusicEnabled(int f_area_id)
 {
-    m_global_enabled.insert(f_area_id, !m_global_enabled.value(f_area_id));
-    if (m_global_enabled.value(f_area_id)) {
+    if (m_global_enabled.insert(f_area_id, !m_global_enabled.value(f_area_id)).value())
         sanitiseCustomMusicList(f_area_id);
-    }
     emit sendAreaFMPacket(PacketFactory::createPacket("FM", musiclist(f_area_id)), f_area_id);
     return m_global_enabled.value(f_area_id);
 }
@@ -196,51 +199,30 @@ void MusicManager::sanitiseCustomMusicList(int f_area_id)
 {
     MusicList l_sanitised_list;
     QStringList l_sanitised_ordered = m_customs_ordered.value(f_area_id);
-    for (auto iterator = m_custom_lists->value(f_area_id).keyBegin(),
-              end = m_custom_lists->value(f_area_id).keyEnd();
-         iterator != end; ++iterator) {
-        QString l_key = iterator.operator*();
-        if (!m_root_list.contains(l_key)) {
-            l_sanitised_list.insert(l_key, m_custom_lists->value(f_area_id).value(l_key));
-        }
-        else {
-            l_sanitised_ordered.removeAll(l_key);
-        }
+    for (auto iterator = m_custom_lists->value(f_area_id).keyBegin(), end = m_custom_lists->value(f_area_id).keyEnd(); iterator != end; ++iterator) {
+        const QString l_key = iterator.operator*();
+        m_root_list.contains(l_key) ? (void)l_sanitised_list.insert(l_key, m_custom_lists->value(f_area_id).value(l_key)) : (void)l_sanitised_ordered.removeAll(l_key);
     }
     m_custom_lists->insert(f_area_id, l_sanitised_list);
     m_customs_ordered.insert(f_area_id, l_sanitised_ordered);
 }
 
-void MusicManager::clearCustomMusicList(int f_area_id)
-{
-    m_custom_lists->remove(f_area_id);
-    m_custom_lists->insert(f_area_id, {});
-    m_customs_ordered.remove(f_area_id);
-    m_customs_ordered.insert(f_area_id, {});
-
-    emit sendAreaFMPacket(PacketFactory::createPacket("FM", musiclist(f_area_id)), f_area_id);
-}
-
 QPair<QString, int> MusicManager::songInformation(QString f_song_name, int f_area_id)
 {
-    if (m_root_list.contains(f_song_name)) {
-        return m_root_list.value(f_song_name);
-    }
-    return m_custom_lists->value(f_area_id).value(f_song_name);
+    return m_root_list.contains(f_song_name) ? m_root_list.value(f_song_name) : m_custom_lists->value(f_area_id).value(f_song_name);
 }
 
-bool MusicManager::isCustom(int f_area_id, QString f_song_name)
+bool MusicManager::isCustomMusic(int f_area_id, QString f_song_name)
 {
-    if (m_customs_ordered.value(f_area_id).contains(f_song_name, Qt::CaseInsensitive)) {
-        return true;
-    }
-    return false;
+    return m_customs_ordered.value(f_area_id).contains(f_song_name, Qt::CaseInsensitive);
 }
 
-void MusicManager::reloadRequest()
-{
-    m_root_list = ConfigManager::musiclist();
-    m_root_ordered = ConfigManager::ordered_songs();
+void MusicManager::reloadRequest(){
+    auto getreload_root = ConfigManager::Musiclist();
+    if (m_root_ordered != getreload_root.first || m_root_list != getreload_root.second){
+       m_root_ordered = getreload_root.first;
+       m_root_list = getreload_root.second;
+    }
     m_cdns = ConfigManager::cdnList();
 }
 

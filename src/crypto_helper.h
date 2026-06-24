@@ -23,6 +23,7 @@
 #if QT_VERSION > QT_VERSION_CHECK(5, 10, 0)
 #include <QRandomGenerator>
 #endif
+#include <QDebug>
 
 /**
  * @brief Simple header library for basic cryptographic functionality
@@ -46,7 +47,7 @@ class CryptoHelper
      * @param password HMAC data
      * @return QByteArray HMAC result
      */
-    static QByteArray hmac(QByteArray salt, QByteArray password)
+    static QByteArray hmac(const QByteArray &salt, const QByteArray &password)
     {
         QMessageAuthenticationCode hmac(QCryptographicHash::Sha256);
         hmac.setKey(salt);
@@ -77,17 +78,17 @@ class CryptoHelper
      * @param password Password value
      * @return QString PBKDF2 result, hex encoded
      */
-    static QString pbkdf2(QByteArray salt, QString password)
+    static QString pbkdf2(const QByteArray& salt, const QString& password)
     {
-        QByteArray bigendian_one("\x00\x00\x00\x01", 4);
+        const QByteArray passwordUtf8 = password.toUtf8();
+
         QByteArray last_block = salt;
-        last_block.append(bigendian_one);
+        last_block.append("\x00\x00\x00\x01", 4);
 
         QByteArray result(pbkdf2_output_len, '\0');
-
-        for (unsigned int i = 0; i < pbkdf2_cost; i++) {
-            last_block = hmac(password.toUtf8(), last_block);
-            for (unsigned int n = 0; n < pbkdf2_output_len; n++)
+        for (quint32 i = 0; i < pbkdf2_cost; ++i){
+            last_block = hmac(passwordUtf8, last_block);
+            for (int n = 0; n < pbkdf2_output_len; ++n)
                 result[n] = result[n] ^ last_block[n];
         }
 

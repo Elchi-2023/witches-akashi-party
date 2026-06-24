@@ -72,6 +72,7 @@ class DBManager : public QObject
         long long duration; //!< The duration of the ban, in seconds.
         int id;             //!< The unique ID of the ban.
         QString moderator;  //!< The moderator who issued the ban.
+        int m_type;         //!< The user type of the moderator who issued the ban.
     };
 
     /**
@@ -83,7 +84,7 @@ class DBManager : public QObject
      * * First, a `bool` that is true if the query could return at least one such record.
      * * Then, a `QString` that is the reason for the ban.
      */
-    QPair<bool, BanInfo> isIPBanned(QString ipid);
+    QPair<bool, BanInfo> isIPBanned(const QString &ipid);
 
     /**
      * @brief Checks if there is a record in the Bans table with the given hardware ID.
@@ -94,7 +95,7 @@ class DBManager : public QObject
      * * First, a `bool` that is true if the query could return at least one such record.
      * * Then, a `QString` that is the reason for the ban.
      */
-    QPair<bool, BanInfo> isHDIDBanned(QString hdid);
+    QPair<bool, BanInfo> isHDIDBanned(const QString &hdid);
 
     /**
      * @brief Gets the ID number of a given ban.
@@ -109,12 +110,12 @@ class DBManager : public QObject
     /**
      * @overload
      */
-    int getBanID(QString hdid);
+    int getBanID(const QString &hdid);
 
     /**
      * @overload
      */
-    int getBanIDByIPID(QString ipid);
+    int getBanIDByIPID(const QString &ipid);
 
     /**
      * @brief Gets the last five bans made on the server.
@@ -128,27 +129,7 @@ class DBManager : public QObject
      *
      * @param ban The details of the ban.
      */
-    void addBan(BanInfo ban);
-
-    /**
-     * @brief Records an IPID into the persistent known_ipids list, refreshing its last-seen time.
-     *
-     * @details Used by the server lockdown feature: any IPID that has connected while the server
-     * was not rejecting it is remembered long-term so the user may rejoin during a future lockdown.
-     * Only IPID is stored here; HDID/HWID is intentionally not considered.
-     *
-     * @param ipid The IPID to remember.
-     */
-    void addKnownIpid(QString ipid);
-
-    /**
-     * @brief Checks whether the given IPID is present in the persistent known_ipids list.
-     *
-     * @param ipid The IPID to look up.
-     *
-     * @return True if the IPID has been seen before, false otherwise.
-     */
-    bool isIpidKnown(QString ipid);
+    void addBan(const BanInfo &ban);
 
     /**
      * @brief Sets the duration of a given ban to 0, effectively removing the ban the associated user.
@@ -162,17 +143,16 @@ class DBManager : public QObject
     /**
      * @brief Creates an authorised user.
      *
-     * @param username The username clients can use to log in with.
-     * @param salt The salt to obfuscate the password with.
-     * @param password The user's password.
-     * @param acl The ACL role identifier.
+     * @param The username clients can use to log in with.
+     * @param The salt to obfuscate the password with and password The user's password.
+     * @param The usertype identifier.
      *
      * @return False if the user already exists, true if the user was successfully created.
      *
      * @see AOClient#cmdLogin and AOClient#cmdLogout for the username and password's contexts.
      * @see ACLRolesHandler for details regarding ACL roles and ACL role identifiers.
      */
-    bool createUser(QString username, QByteArray salt, QString password, QString acl);
+    bool CreateUser(const QString &username, const QPair<QByteArray, QString> &password, const int u_type);
 
     /**
      * @brief Deletes an authorised user from the database.
@@ -181,7 +161,7 @@ class DBManager : public QObject
      *
      * @return False if the user didn't even exist, true if the user was successfully deleted.
      */
-    bool deleteUser(QString username);
+    bool deleteUser(const QString &username);
 
     /**
      * @brief Gets the ACL role of a given user.
@@ -192,7 +172,16 @@ class DBManager : public QObject
      *
      * @see ACLRolesHandler for details about ACL roles.
      */
-    QString getACL(QString f_username);
+    QString getACL(const QString &f_username);
+
+    /**
+     * @brief Gets the usertype of a given user.
+     *
+     * @param username The authorised user's name.
+     *
+     * @return The valid type(0: "[VIP], 1: "[Moderator]", 2: "[ROOT]"), otherwise -1.
+     */
+    int getUserType(const QString &f_username);
 
     /**
      * @brief Authenticates a given user.
@@ -203,7 +192,7 @@ class DBManager : public QObject
      * @return True if the salted version of the inputted password matches the one stored in the user's record,
      * false if the user does not exist in the records, of if the passwords don't match.
      */
-    bool authenticate(QString username, QString password);
+    bool authenticate(const QString& username, const QString& password);
 
     /**
      * @brief Updates the ACL role identifier of a given user.
@@ -216,7 +205,8 @@ class DBManager : public QObject
      *
      * @return True if the modification was successful, false if the user does not exist in the records.
      */
-    bool updateACL(QString username, QString acl);
+    bool updateACL(const QString &username, const QString &acl);
+    bool updateUser(const QString &username, const QString &change);
 
     /**
      * @brief Returns a list of the recorded users' usernames, ordered by ID.
@@ -232,7 +222,7 @@ class DBManager : public QObject
      *
      * @param id A Ban ID, IPID, or HDID to search for
      */
-    QList<BanInfo> getBanInfo(QString lookup_type, QString id);
+    QList<BanInfo> getBanInfo(const QString &lookup_type, const QString &id);
 
     /**
      * @brief Updates a ban.
@@ -245,7 +235,7 @@ class DBManager : public QObject
      *
      * @return True if the modification was successful.
      */
-    bool updateBan(int ban_id, QString field, QVariant updated_info);
+    bool updateBan(int ban_id, const QString &field, const QVariant &updated_info);
 
     /**
      * @brief Updates the password of the given user.
@@ -256,18 +246,18 @@ class DBManager : public QObject
      *
      * @return True if the password change was successful.
      */
-    bool updatePassword(QString username, QString password);
+    bool updatePassword(const QString &username, const QString &password);
 
   private:
     /**
      * @brief The name of the database connection driver.
      */
-    const QString DRIVER;
+    QString DRIVER;
 
     /**
      * @note Unused.
      */
-    const QString CONN_NAME;
+    QString CONN_NAME;
 
     /**
      * @note Unused.

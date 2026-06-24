@@ -19,6 +19,8 @@
 
 #include "config_manager.h"
 
+#include <QStringList>
+
 Discord::Discord(QObject *parent) :
     QObject(parent)
 {
@@ -27,10 +29,10 @@ Discord::Discord(QObject *parent) :
             this, &Discord::onReplyFinished);
 }
 
-void Discord::onModcallWebhookRequested(const QStringList &f_name, const QString &f_area, const QString &f_reason, const QQueue<QString> &f_buffer)
+void Discord::onModcallWebhookRequested(const QPair<QString, QString> &f_name, const QPair<QString, QString> &r_name, const QString &f_reason, const QQueue<QString> &f_buffer)
 {
     m_request.setUrl(QUrl(ConfigManager::discordModcallWebhookUrl()));
-    QJsonDocument l_json = constructModcallJson(f_name, f_area, f_reason);
+    QJsonDocument l_json = constructModcallJson(f_name, r_name, f_reason);
     postJsonWebhook(l_json);
 
     if (ConfigManager::discordModcallWebhookSendFile() && !f_buffer.isEmpty()) {
@@ -39,47 +41,54 @@ void Discord::onModcallWebhookRequested(const QStringList &f_name, const QString
     }
 }
 
-void Discord::onBanWebhookRequested(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID, const int &f_count)
+void Discord::onBanWebhookRequested(const QString &f_ipid, const QPair<int, QString> &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID, const int &f_count)
 {
     m_request.setUrl(QUrl(ConfigManager::discordBanWebhookUrl()));
     QJsonDocument l_json = constructBanJson(f_ipid, f_moderator, f_duration, f_reason, f_banID, f_count);
     postJsonWebhook(l_json);
 }
-void Discord::onUnbanWebhookRequested(const QString &f_ipid, const QStringList &f_moderator, const int &f_banID, const int &f_ban_duration, const QDateTime &f_date, const QStringList &f_reason){
+void Discord::onUnbanWebhookRequested(const QString &f_ipid, const QPair<QPair<int, QString>, QPair<int, QString> > &f_moderator, const int &f_banID, const int &f_ban_duration, const QDateTime &f_date, const QStringList &f_reason){
     m_request.setUrl(QUrl(ConfigManager::discordBanWebhookUrl()));
     postJsonWebhook(constructUnbanJson(f_ipid, f_moderator, f_banID, f_ban_duration, f_date, f_reason));
 }
 
-QJsonDocument Discord::constructModcallJson(const QStringList &f_name, const QString &f_area, const QString &f_reason) const
+QJsonDocument Discord::constructModcallJson(const QPair<QString, QString> &f_name, const QPair<QString, QString> &r_name, const QString &f_reason) const
 {
     QJsonArray fields;
 
     // Field 1: Who the caller
     QJsonObject field1;
     field1["name"] = "Who the caller";
-    field1["value"] = f_name[0];
+    field1["value"] = f_name.first;
     field1["inline"] = true;
     fields.append(field1);
 
     // Field 2: On Area
     QJsonObject field2;
     field2["name"] = "In Area";
-    field2["value"] = f_area;
+    field2["value"] = f_name.second;
     field2["inline"] = true;
     fields.append(field2);
 
-    // Field 3: Reason
-    QJsonObject field3;
-    field3["name"] = "Reason";
-    field3["value"] = f_reason;
-    fields.append(field3);
-
-    if (f_name.size() >= 2){ /* Field 4: Regarding */
-        QJsonObject field4;
-        field4["name"] = "Regarding";
-        field4["value"] = f_name[1] == f_name[0] ? "[the caller itself]" : f_name[1];
-        fields.append(field4);
+    if (!r_name.first.isEmpty()){ /* Field 3: Regarding */
+        QJsonObject field3;
+        field3["name"] = "Regarding";
+        field3["value"] = r_name.first == f_name.first ? "[the caller itself]" : f_name.first;
+        field3["inline"] = true;
+        fields.append(field3);
+        if (!r_name.second.isEmpty()){
+            QJsonObject field3_ex;
+            field3_ex["name"] = "In Area (Regarding)";
+            field3_ex["value"] = r_name.second;
+            field3_ex["inline"] = true;
+            fields.append(field3_ex);
+        }
     }
+    // Field 4: Reason
+    QJsonObject field4;
+    field4["name"] = "Reason";
+    field4["value"] = f_reason;
+    fields.append(field4);
 
     // Create the embed object
     QJsonObject embed;
@@ -100,7 +109,7 @@ QJsonDocument Discord::constructModcallJson(const QStringList &f_name, const QSt
     return QJsonDocument(root);
 }
 
-QJsonDocument Discord::constructBanJson(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID, const int &f_counts){
+QJsonDocument Discord::constructBanJson(const QString &f_ipid, const QPair<int, QString> &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID, const int &f_counts){
     QJsonArray fields;
 
     fields.append(QJsonObject{
@@ -117,9 +126,16 @@ QJsonDocument Discord::constructBanJson(const QString &f_ipid, const QString &f_
 
     fields.append(QJsonObject{
                       {"name", "Issued by"},
-                      {"value", f_moderator},
+                      {"value", f_moderator.second},
                       {"inline", true}
                   });
+
+    if (f_moderator.first >= 0)
+        fields.append(QJsonObject{
+                          {"name", "Moderator Type"},
+                          {"value", QStringList({"Mini (VIP)", "Normal", "[ROOT]"})[f_moderator.first]},
+                          {"inline", true}
+                      });
 
     fields.append(QJsonObject{
                       {"name", "Until"},
@@ -152,7 +168,7 @@ QJsonDocument Discord::constructBanJson(const QString &f_ipid, const QString &f_
     return QJsonDocument(Root);
 }
 
-QJsonDocument Discord::constructUnbanJson(const QString &f_ipid, const QStringList &f_moderator, const int &f_banID, const int &f_ban_duration, const QDateTime &f_date, const QStringList &f_reason){
+QJsonDocument Discord::constructUnbanJson(const QString &f_ipid, const QPair<QPair<int, QString>, QPair<int, QString> > &f_moderator, const int &f_banID, const int &f_ban_duration, const QDateTime &f_date, const QStringList &f_reason){
     // --- fields array ---
     QJsonArray fields;
 
@@ -170,14 +186,27 @@ QJsonDocument Discord::constructUnbanJson(const QString &f_ipid, const QStringLi
 
     fields.append(QJsonObject{
                       {"name", "Banned by"},
-                      {"value", f_moderator[0]},
+                      {"value", f_moderator.first.second},
                       {"inline", true}
                   });
+    if (f_moderator.first.first >= 0)
+        fields.append(QJsonObject{
+                          {"name", "[Banned by] Type"},
+                          {"value", QStringList({"Mini (VIP)", "Normal", "[ROOT]"})[f_moderator.first.first]},
+                          {"inline", true}
+                      });
     fields.append(QJsonObject{
                       {"name", "Revoked by"},
-                      {"value", f_moderator[1]},
+                      {"value", f_moderator.second.second},
                       {"inline", true}
                   });
+    if (f_moderator.second.first >= 0)
+        fields.append(QJsonObject{
+                          {"name", "[Revoked by] Type"},
+                          {"value", QStringList({"Mini (VIP)", "Normal", "[ROOT]"})[f_moderator.second.first]},
+                          {"inline", true}
+                      });
+
     fields.append(QJsonObject{
                       {"name", "Ban Date"},
                       {"value", f_ban_duration >= 0 ? QString("<t:%1:R>").arg(f_date.addSecs(f_ban_duration).toSecsSinceEpoch()) : "Undefined / Permanently"},
@@ -188,6 +217,7 @@ QJsonDocument Discord::constructUnbanJson(const QString &f_ipid, const QStringLi
                       {"value", QString("<t:%1:R>").arg(QDateTime::currentDateTime().toSecsSinceEpoch())},
                       {"inline", true}
                   });
+
     if (!f_reason.isEmpty()){
         fields.append(QJsonObject{{"name", "The Ban Reason"},{"value", f_reason[0].isEmpty() ? "No Reason Provided" : f_reason[0]}, {"inline", true}});
         if (f_reason.size() > 1)
@@ -246,14 +276,10 @@ void Discord::postMultipartWebhook(QHttpMultiPart &f_multipart)
     f_multipart.setParent(l_reply);
 }
 
-void Discord::onReplyFinished(QNetworkReply *f_reply)
-{
-    auto l_data = f_reply->readAll();
-    f_reply->deleteLater();
+void Discord::onReplyFinished(QNetworkReply *f_reply){
+    const QScopedPointer<QNetworkReply, QScopedPointerDeleteLater> reply(f_reply);
 #ifdef DISCORD_DEBUG
-    QDebug() << l_data;
-#else
-    Q_UNUSED(l_data);
+    QDebug() << reply->readAll();
 #endif
 }
 

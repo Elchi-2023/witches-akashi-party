@@ -66,6 +66,14 @@ class MusicManager : public QObject
      * @return Returns false if registering the area fails.
      */
     bool registerArea(int f_area_id);
+    /**
+     * @brief Unregisters an area from the music manager.
+     *
+     * @param f_area_id ID of the area being removed.
+     *
+     * @return Returns true if the area had custom lists and was removed, false otherwise.
+     */
+    bool unregisterArea(const int f_area_id);
 
     /**
      * @brief Validates the song candidate to be played. If validation fails, false is returned.
@@ -80,37 +88,31 @@ class MusicManager : public QObject
     int ValidataSong(const QUrl Url, const QStringList Approved_cdns);
 
     /**
-     * @brief Attempts to add the new song to the custom musiclist.
-     *
-     * @param f_song_name Friendly name shown in the clients musiclist.
-     *
-     * @param f_real_name Real name/url of the file.
-     *
-     * @param f_duration Playtime of the musicfile in seconds.
-     *
-     * @param f_area_id Area id of the clients current area.
-     *
+     * @brief Registering an the new song to the custom musiclist.
+     * @param songdata The song data of between [friendly name shown in the clients musiclist & real name/url of the file].
+     * @param duration Playtime of the musicfile in seconds.
+     * @param areaId Area id of the clients current area.
      * @return Returns true on success, false on fail.
      */
-    bool addCustomSong(QString f_song_name, QString f_real_name, int f_duration, int f_area_id);
-
+    bool RegisterCustomMusic(const QPair<QString, QString> &songdata, const int duration, const int areaId);
     /**
-     * @brief Attempts to add the new category to the custom musiclist.
-     *
-     * @param f_category_name Category name candidate.
-     *
-     * @return Returns true on saccess, false on fail.
+     * @brief Unregistering the entries of the custom musiclist.
+     * @param areaId Id of the area custom list.
+     * @return true if the entries are removed, false if it already removed.
      */
-    bool addCustomCategory(QString f_category_name, int f_area_id);
-
+    bool UnregisterCustomMusic(const int areaId);
     /**
-     * @brief Removes either a song or a category from the custom list.
+     * @brief Registers or removes a custom music category for a given area.
      *
-     * @param Name of the category or song to remove
+     * @param category The category name to add or remove.
+     * @param areaId The area to modify.
+     * @param remove True to remove the category, false to add it.
      *
-     * @return True on success, false on failure.
+     * @return true on success, false on failure (duplicate, invalid name, or root list removal attempt).
+     *
+     * @note Emits sendAreaFMPacket on success.
      */
-    bool removeCustomMusic(QString f_songcategory_name, int f_area_id);
+    bool RegisterCustomCMusic(const QString &category, const int areaId, const bool remove = false);
 
     /**
      * @brief Toggles wether the root list is included for this area.
@@ -118,7 +120,7 @@ class MusicManager : public QObject
      *
      * @return Current state of the music list.
      */
-    bool toggleCustomMusicEnabled(int f_area_id);
+    bool toggleRootMusicEnabled(int f_area_id);
 
     /**
      * @brief Removes conflicting songnames from the custom list.
@@ -126,12 +128,6 @@ class MusicManager : public QObject
      * @param f_area_id Id of the area this is invoked in.
      */
     void sanitiseCustomMusicList(int f_area_id);
-
-    /**
-     * @brief Removes all entries from the custom list.
-     * @param f_area_id Id of the area custom list.
-     */
-    void clearCustomMusicList(int f_area_id);
 
     /**
      * @brief Returns song information necessary for the operation of the jukebox.
@@ -146,7 +142,7 @@ class MusicManager : public QObject
      *
      * @return Returns true if the song exists as a custom song.
      */
-    bool isCustom(int f_area_id, QString f_song_name);
+    bool isCustomMusic(int f_area_id, QString f_song_name);
 
   public slots:
 

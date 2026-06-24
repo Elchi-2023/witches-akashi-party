@@ -21,30 +21,24 @@ PacketInfo PacketEE::getPacketInfo() const
 
 void PacketEE::handlePacket(AreaData *area, AOClient &client) const
 {
-    if (!client.checkEvidenceAccess(area))
-        return;
+    if (client.checkEvidenceAccess(area)){
+        bool isIndex;
+        const int EviIndex = m_content[0].toInt(&isIndex);
 
-    int l_evi_id = m_content[0].toInt();
-    if (l_evi_id >= area->evidence().length() || l_evi_id < 0)
-        return;
+        if (isIndex && EviIndex >= 0 && EviIndex < area->evidence().size()){ /* capture valid index */
+            AreaData::Evidence evidence{
+                .name = m_content[1],
+                .description = m_content[2],
+                .image = m_content[3],
+            };
+            static const QRegularExpression ownerRegex("<owner=(.*?)>");
 
-    QString description = m_content[2];
-
-    // Automatically add <owner=all> for evidence in HIDDEN_CM mode areas
-    if (area->eviMod() == AreaData::EvidenceMod::HIDDEN_CM) {
-        // Check if owner tag already exists in description
-        static const QRegularExpression ownerRegex("<owner=(.*?)>");
-        if (!ownerRegex.match(description).hasMatch()) {
-            // Add <owner=all> at the beginning if no owner tag exists
-            description = "<owner=all>\n" + description;
+            /* Automatically add <owner=all> for evidence in HIDDEN_CM mode areas
+             * Check if owner tag already exists in description */
+            if (area->eviMod() == AreaData::EvidenceMod::HIDDEN_CM && !ownerRegex.match(evidence.description).hasMatch())
+                evidence.description = "<owner=all>\n" + evidence.description;
+            area->replaceEvidence(EviIndex, evidence);
+            client.sendEvidenceList(area);
         }
     }
-
-    AreaData::Evidence evidence;
-    evidence.name = m_content[1];
-    evidence.description = description;
-    evidence.image = m_content[3];
-
-    area->replaceEvidence(l_evi_id, evidence);
-    client.sendEvidenceList(area);
 }

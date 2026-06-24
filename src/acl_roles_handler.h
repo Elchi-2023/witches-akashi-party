@@ -34,7 +34,6 @@ class ACLRole
         IGNORE_BGLIST = 1 << 15,
         SEND_NOTICE = 1 << 16,
         JUKEBOX = 1 << 17,
-        PLAY = 1 << 18,
         SUPER = 0xffffffff,
     };
     Q_DECLARE_FLAGS(Permissions, Permission);

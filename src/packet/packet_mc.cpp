@@ -3,6 +3,7 @@
 #include "packet/packet_factory.h"
 #include "server.h"
 
+#include <QFileInfo>
 #include <QDebug>
 
 PacketMC::PacketMC(QStringList &contents) :
@@ -19,85 +20,57 @@ PacketInfo PacketMC::getPacketInfo() const
     return info;
 }
 
-void PacketMC::handlePacket(AreaData *area, AOClient &client) const
-{
-    // Due to historical reasons, this
-    // packet has two functions:
-    // Change area, and set music.
+void PacketMC::handlePacket(AreaData *area, AOClient &client) const{
+    /* ==== [Devs notes] ====
+     * Due to historical reasons, this
+     * packet has two functions:
+     * Change area, and set music.
+     * ====================== */
 
     // First, we check if the provided
     // argument is a valid song
     const QString l_argument = m_content[0];
     const QPointer<Server> CurrentServer(client.getServer());
-    
-    if (QPointer<AreaData>(area).isNull() || CurrentServer.isNull())
+    bool charid_ok;
+    const int charid = m_content[1].toInt(&charid_ok);
+
+    if (QPointer<AreaData>(area).isNull() || CurrentServer.isNull() || !charid_ok || charid != client.m_char_id)
         return; /* safely first */
     
-    if (CurrentServer->getMusicList().contains(l_argument) || client.m_music_manager->isCustom(client.areaId(), l_argument) || l_argument == "~stop.mp3") { // ~stop.mp3 is a dummy track used by 2.9+
-        // We have a song here
+     /* > We have a song here < */
+    if (CurrentServer->getMusicList().contains(l_argument) || client.m_music_manager->isCustomMusic(client.areaId(), l_argument) || l_argument == "~stop.mp3"){ // ~stop.mp3 is a dummy track used by 2.9+
 
-        if (client.m_is_spectator) {
+        if (client.isSpectator())
             client.sendServerMessage("Spectators are blocked from changing the music.");
-            return;
-        }
-
-        if (area->lockStatus() == AreaData::LockStatus::SPECTATABLE && !area->invited().contains(client.clientId()) && !client.checkPermission(ACLRole::BYPASS_LOCKS)) {
-            client.sendServerMessage("Spectators are blocked from changing the music.");
-            return;
-        }
-
-        if (client.m_is_dj_blocked) {
+        else if (client.isAccessBlocked(AOClient::BlockType::DJ))
             client.sendServerMessage("You are blocked from changing the music.");
-            return;
-        }
-        if (!area->isMusicAllowed() && !client.checkPermission(ACLRole::CM)) {
+        else if (!area->isMusicAllowed() && !client.checkPermission(ACLRole::CM))
             client.sendServerMessage("Music is disabled in this area.");
-            return;
-        }
-        QString l_effects;
-        if (m_content.length() >= 4)
-            l_effects = m_content[3];
-        else
-            l_effects = "0";
-        QString l_final_song;
+        else{
+            QPair<QFileInfo, int> l_song = qMakePair(QFileInfo(l_argument), m_content.length() >= 4 ? m_content[3].toInt() : 0); // <song> & <effects (client only)>
 
-        // As categories can be used to stop music we need to check if it has a dot for the extension. If not, we assume its a category.
-        if (!l_argument.contains("."))
-            l_final_song = "~stop.mp3";
-        else
-            l_final_song = l_argument;
+            if (area->isjukeboxEnabled()) // Jukebox intercepts the direct playing of messages.
+                client.sendServerMessage(area->addJukeboxSong(l_song.first.filePath()));
+            else{
+                if (l_song.first.suffix().isEmpty() || l_song.first.filePath() == "~stop.mp3") /* As categories can be used to stop music we need to check if it has a suffix for the extension. If not, we assume its a category. */
+                    CurrentServer->broadcast(PacketMC::CreateMusic("~stop.mp3", charid, client.characterName(), true, 0, l_song.second));
+                else{ // We might have an aliased song. We check for its real songname and send it to the clients.
+                    l_song.first = QFileInfo(client.m_music_manager->songInformation(l_song.first.filePath(), client.areaId()).first);
+                    CurrentServer->broadcast(PacketMC::CreateMusic(l_song.first.filePath(), charid, client.characterName(), true, 0, l_song.second));
+                }
 
-        // Jukebox intercepts the direct playing of messages.
-        if (area->isjukeboxEnabled()) {
-            QString l_jukebox_reply = area->addJukeboxSong(l_final_song);
-            client.sendServerMessage(l_jukebox_reply);
-            return;
-        }
-
-        if (l_final_song != "~stop.mp3") {
-            // We might have an aliased song. We check for its real songname and send it to the clients.
-            QPair<QString, float> l_song = client.m_music_manager->songInformation(l_final_song, client.areaId());
-            l_final_song = l_song.first;
-        }
-        AOPacket *l_music_change = PacketFactory::createPacket("MC", {l_final_song, m_content[1], client.characterName(), QString::number(l_final_song != "~stop.mp3"), "0", l_effects});
-        CurrentServer->broadcast(l_music_change, client.areaId());
-
-        // Since we can't ensure a user has their showname set, we check if its empty to prevent
-        //"played by ." in /currentmusic.
-        if (client.characterName().isEmpty()) {
-            area->changeMusic(client.character(), l_final_song, l_final_song != "~stop.mp3");
-            return;
-        }
-        area->changeMusic(client.characterName(), l_final_song, l_final_song != "~stop.mp3");
-        return;
-    }
-
-    for (auto Area : CurrentServer->getAreas()){
-        if (!Area.isNull() && Area->name() == l_argument){
-            client.changeArea(Area->index());
-            break;
+                /* Since we can't ensure a user has their showname set, we check if its empty to prevent "played by ." in /currentmusic. */
+                area->changeMusic(client.characterName().isEmpty() ? client.character() : client.characterName(), l_song.first.filePath(), !l_song.first.suffix().isEmpty() && l_song.first.filePath() != "~stop.mp3");
+                Q_EMIT client.logMusic((client.character() + " " + client.characterName()), client.name(), {client.clientId(), client.m_ipid}, area->name(), l_argument);
+            }
         }
     }
-    
-    emit client.logMusic((client.character() + " " + client.characterName()), client.name(), {client.clientId(), client.m_ipid}, area->name(), l_argument);
+    else if (CurrentServer->getAreaNames().contains(l_argument)){ /* > otherwise.. assumed argument is area < */
+        client.changeArea(CurrentServer->getAreaNames().indexOf(l_argument));
+        Q_EMIT client.logMusic((client.character() + " " + client.characterName()), client.name(), {client.clientId(), client.m_ipid}, area->name(), l_argument);
+    }
+}
+
+AOPacket *PacketMC::CreateMusic(const QString &Song, const int c_id, const QString &showname, const bool isLoop, const int channels, const int effect){
+    return PacketFactory::createPacket("MC", {Song, QString::number(c_id), showname, QString::number(isLoop), QString::number(channels), QString::number(effect)});
 }

@@ -25,6 +25,7 @@
 #include <QRegularExpression>
 #include <QTimer>
 #include <QtGlobal>
+#include <QDeadlineTimer>
 
 #include "acl_roles_handler.h"
 #include "network/aopacket.h"
@@ -43,8 +44,8 @@ class AOPacket;
 class AOClient : public QObject
 {
     Q_OBJECT
-      
-  public:
+
+public:
     /**
      * @brief Describes a command's details.
      */
@@ -52,6 +53,7 @@ class AOClient : public QObject
     {
         QVector<ACLRole::Permission> acl_permissions; //!< The permissions necessary to be able to run the command. @see ACLRole::Permission.
         int minArgs;                                  //!< The minimum mandatory arguments needed for the command to function.
+        QString category;                             //!< The category for the command.
         void (AOClient::*action)(int, QStringList);
     };
 
@@ -124,11 +126,31 @@ class AOClient : public QObject
      * @return True if loggged-in, false otherwise.
      */
     bool isAuthenticated() const;
+    /**
+     * @brief Returns true if the client has logged-in as a moderator.
+     * @return True if logged-in, false otherwise.
+     */
+    bool isMAuthenticated() const;
+    /**
+     * @brief Returns true if the client has logged-in as a VIP.
+     * @return True if logged-in, false otherwise.
+     */
+    bool isVAuthenticated() const;
 
     /**
      * @brief Calculates the client's IPID based on a hashed version of its IP.
      */
-    void calculateIpid();
+    QString calculateIpid();
+    /**
+     * @brief Calculates the IPID's based on a hashed version of its IP
+     */
+    static QString calculateIpid(const QHostAddress r_ip);
+    /**
+     * @brief Calculates the HASHID's based on a hashed version its IPID&HDID.
+     * @param the client pointer.
+     * @return return hashed 12 length (sha256) ipid&hdid, otherwise empty.
+     */
+    static QByteArray calcutateHashid(const QPointer<AOClient> &client);
 
     /**
      * @brief Getter for the pointer to the server.
@@ -139,7 +161,7 @@ class AOClient : public QObject
      *
      * @see #server
      */
-    Server *getServer();
+    QPointer<Server> getServer();
 
     int clientId() const;
 
@@ -230,24 +252,30 @@ class AOClient : public QObject
     bool m_first_person = false;
 
     /**
-     * @brief If true, the client may not use in-character chat.
+     * @brief This enum is used to specify a type of blocks.
      */
-    bool m_is_muted = false;
-
+    enum BlockType : unsigned int{
+        UNBLOCKED = 0,
+        IC = 1 << 0, // in-character chat.
+        OOC = 1 << 1, // out-of-character chat.
+        DJ = 1 << 2, // music perms.
+        WTCE = 1 << 3, // judge controls.
+        VOICE = 1 << 4 // voice chat.
+    };
+    Q_DECLARE_FLAGS(BlockTypes, BlockType)
+    Q_ENUM(BlockType)
     /**
-     * @brief If true, the client may not use out-of-character chat.
+     * @brief Checks if a given type is set.
+     * @param the flag to set.
+     * @return It's blocked, free otherwise.
      */
-    bool m_is_ooc_muted = false;
-
+    bool isAccessBlocked(const AOClient::BlockType type) const;
     /**
-     * @brief If true, the client may not use the music list.
+     * @brief Sets the block type to given block type flags.
+     * @param the flag to set.
+     * @param it will set flag (counted as blocked) if true, unflag/blocked otherwise.
      */
-    bool m_is_dj_blocked = false;
-
-    /**
-     * @brief If true, the client may not use the judge controls.
-     */
-    bool m_is_wtce_blocked = false;
+    void SetAccessBlock(const AOClient::BlockType type, const bool toggle = false);
 
     /**
      * @brief Represents the client's client software, and its version.
@@ -260,14 +288,26 @@ class AOClient : public QObject
         int release = -1;
         int major = -1;
         int minor = -1;
-        bool is_webao = false;
+        enum ClientType{
+            NORMAL, // AO2 (or any)
+            WEBAO, // as the name is.
+            WEBAOPHONE, // i don't know actually since useragent can be "fake"..
+            NDS, // AO-NDS (note: nds doesn't support emojis)..
+            XP, // AO2XP
+            DRO // placehole (if we have plans to support it)
+        };
+        ClientType type = ClientType::NORMAL;
+
+        bool is_webao(){
+            return type == ClientType::WEBAO || type == ClientType::WEBAOPHONE;
+        }
 
         QString get_string_version() const{
             return QStringList({QString::number(release), QString::number(major), QString::number(minor)}).join('.');
         }
 
         bool operator==(const ClientVersion &c) const{
-            return release == c.release && major == c.major && minor == c.minor && is_webao == c.is_webao;
+            return release == c.release && major == c.major && minor == c.minor && type == c.type;
         }
         bool operator!=(const ClientVersion &c) const{
             return !(*this == c);
@@ -287,34 +327,31 @@ class AOClient : public QObject
     QList<bool> m_casing_preferences = {false, false, false, false, false};
 
     /**
-     * @brief If true, the client's in-character messages will have their word order randomised.
+     * @brief This enum is used to specify curse of a type.
      */
-    bool m_is_shaken = false;
-
+    enum CurseType : unsigned int{
+        SHAKE = 1 << 0, // the client's messages will have their word order randomised.
+        DISEMVOWEL = 1 << 1, // the client's messages will have their vowels (English alphabet only) removed.
+        GIMP = 1 << 2, // the client's messages will be overwritten by a randomly picked predetermined message.
+        MEDIEVAL = 1 << 3, // the client's messages will be run through a chat parser to make them into Ye Olde English.
+        UWUIFY = 1 << 4, // the client's messages will into (UwU)-speak.
+        PIGIFY = 1 << 5, // the client's messages will into (PIGLY)-speak.
+        CCURSE = 1 << 10, // the client is restricted to only changing into certain characters.
+        FULL = SHAKE | DISEMVOWEL | GIMP | MEDIEVAL | UWUIFY | PIGIFY // anything (beside CCURSE)..
+    };
+    Q_DECLARE_FLAGS(CurseTypes, CurseType)
+    Q_ENUM(CurseType)
     /**
-     * @brief If true, the client's in-character messages will have their vowels (English alphabet only) removed.
+     * @brief Checks if a given type is set
+     * @return true if the type has set, false otherwise.
      */
-    bool m_is_disemvoweled = false;
-
+    bool isCursed(const AOClient::CurseType type) const;
     /**
-     * @brief If true, the client's in-character messages will be overwritten by a randomly picked predetermined message.
+     * @brief Sets the curse type to given curse type flags.
+     * @param the flag to set.
+     * @param it will set the flag if true, unsets otherwise.
      */
-    bool m_is_gimped = false;
-
-    /**
-     * @brief If true, the client's in-character messages will be run through a chat parser to make them into Ye Olde English.
-     */
-    bool m_is_medieval = false;
-
-    /**
-     * @brief If true, the client's in-character messages will be transformed into UwU-speak.
-     */
-    bool m_is_uwu = false;
-
-    /**
-     * @brief If true, the client's in-character messages will be translated into Pig Latin.
-     */
-    bool m_is_pig = false;
+    void SetCursed(const AOClient::CurseType type, const bool toggle = false);
 
     /**
      * @brief I was asked to make something configurable for all holidays, so here we go! It has a chance to change a person's message and name
@@ -340,14 +377,18 @@ class AOClient : public QObject
     bool m_advert_enabled = true;
 
     /**
-     * @brief If true, the client is restricted to only changing into certain characters.
-     */
-    bool m_is_charcursed = false;
-
-    /**
      * @brief Timer for tracking user interaction. Automatically restarted whenever a user interacts (i.e. sends any packet besides CH)
      */
     QTimer *m_afk_timer;
+
+    /**
+     * @brief Get voice-chat blocked timer.
+     */
+    QTimer *GetVCBlockTimer();
+    /**
+     * @brief Get voice-chat blocked reason.
+     */
+    QString GetVCBlockReason() const;
 
     /**
      * @brief The list of char IDs a charcursed player is allowed to switch to.
@@ -363,11 +404,6 @@ class AOClient : public QObject
      * @brief If true, the client's next OOC message will be interpreted as a moderator login.
      */
     bool m_is_logging_in = false;
-
-    /**
-     * @brief If true, the client is a spectator and his IC interactions will be limtied.
-     */
-    bool m_is_spectator = true;
 
     /**
     * @brief The disconnnect reason type.
@@ -431,16 +467,9 @@ class AOClient : public QObject
     /**
      * @brief Returns if the client is a spectator.
      *
-     * @return True if the client is a spectator, false otherwise.
+     * @return True if the client is a spectator (by char_id -1), false otherwise.
      */
     bool isSpectator() const;
-
-    /**
-     * @brief Sets the spectator state for the client.
-     *
-     * @param f_spectator
-     */
-    void setSpectator(bool f_spectator);
 
     /**
      * @brief Sends or announces an ARUP update.
@@ -453,22 +482,33 @@ class AOClient : public QObject
     void arup(ARUPType type, bool broadcast);
 
     /**
-     * @brief Sends all four types of ARUP to the client.
-     */
-    void fullArup();
-    /**
      * @brief Sends an out-of-character message originating from the server to the client.
      *
      * @param message The text of the message to send.
+     *
+     * @param custom name beside server name.
      */
-    void sendServerMessage(QString message);
+    void sendServerMessage(QString message, const QString cname = QString());
 
     /**
      * @brief Like with AOClient::sendServerMessage(), but to every client in the client's area.
      *
      * @param message The text of the message to send.
      */
-    void sendServerMessageArea(QString message);
+    void sendServerMessageArea(QString message, const QString CName = QString());
+
+    /**
+      * @brief Same functions like with AOClient::sendServerMessageArea().. but for separately client type.
+      *
+      * @param the message for not the target client type.
+      *
+      * @param the message for the target client type.
+      *
+      * @param the target client type.
+      *
+      * @param custom name (if persent), otherwise using server-name.
+      */
+    void sendServerMessageArea(const QString Message, const QString TMessage, const ClientVersion::ClientType Ttype, const QString CName);
 
     /**
      * @brief Like with AOClient::sendServerMessage(), but to every client in the server.
@@ -508,7 +548,7 @@ class AOClient : public QObject
      *
      * @see https://en.wikipedia.org/wiki/Zalgo_text
      */
-    QString dezalgo(QString p_text);
+    static QString dezalgo(QString p_text);
 
     /**
      * @brief Checks if the client can modify the evidence in the area.
@@ -544,11 +584,9 @@ class AOClient : public QObject
     /**
      * @brief Handles an incoming command, checking for authorisation and minimum argument count.
      *
-     * @param command The incoming command.
-     * @param argc The amount of arguments the command was called with. Equivalent to `argv.size()`.
-     * @param argv The arguments the command was called with.
+     * @param <first()> the incoming command and <second()> the arguments the command was called with.
      */
-    void handleCommand(QString command, int argc, QStringList argv);
+    void handleCommand(const QPair<QString, QStringList> &command);
 
     /**
      * @brief A helper function for decoding AO encoding from a QString.
@@ -583,7 +621,7 @@ class AOClient : public QObject
      *
      * @return A randomly generated integer within the bounds given.
      */
-    int genRand(int min, int max);
+    static int genRand(int min, int max);
 
     /**
      * @brief A helper function to add recorded packets to an area's judgelog.
@@ -622,14 +660,15 @@ class AOClient : public QObject
     ///@{
 
     /**
-     * @brief If true, the client is a logged-in moderator.
-     */
-    bool m_authenticated = false;
-
-    /**
-     * @brief If true, the client is a logged-in VIP.
-     */
-    bool m_vip_authenticated = false;
+      * @brief the client Authenticate type.
+      */
+    enum AuthenticateType{
+        NONE = -1,
+        VIP,
+        MODERATOR,
+        ROOT
+    };
+    AuthenticateType m_authenticated_type = AuthenticateType::NONE;
 
     /**
      * @brief The ACL role identifier, used to determine what ACL role the client is linked to.
@@ -715,7 +754,118 @@ class AOClient : public QObject
      */
     const int SPECTATOR_ID = -1;
 
-  public slots:
+    /**
+     * @brief Parses a human‑readable duration string and returns the equivalent number of seconds or milliseconds.
+     * @details The input string follows the format `XXyXXmoXXwXXdXXhXXmXXs`, where each unit is optional
+     *          but must appear in the specified order. The function calculates the corresponding date/time
+     *          by adding the parsed values to the current date, then computes the difference between the
+     *          resulting moment and now.
+     *
+     *          If `toMS` is `true`, the return value is in milliseconds (suitable for QTimer intervals);
+     *          otherwise it is in seconds. Returns `-1` if the input is empty or the regular expression
+     *          fails to match.
+     *
+     * @param input The duration string to parse (e.g. `"1h30m"`, `"2w"`, `"perma"` yields `-2` externally).
+     * @param toMS If `true`, the result is expressed in milliseconds; otherwise seconds.
+     * @return The number of seconds or milliseconds from now until the computed deadline, or `-1` on error.
+     */
+    static long long CalendarParse(const QString &input, const bool toMS = false);
+    /**
+     * @brief Parses a duration string and returns the target date/time.
+     */
+    static QDateTime CalendarParseTo(const QString &input);
+
+    /**
+     * @brief Converts a duration in seconds into a human‑readable string.
+     * @details Produces either a compact colon‑separated representation (e.g. `"1:30"`) or a verbose
+     *          form (e.g. `"1 Hour 30 Minutes 0 sec"`) depending on the `verbosity` flag.
+     *          The compact form drops the lowest‑order unit that is non‑zero, while the verbose form
+     *          lists every unit down to seconds, even if they are zero.
+     *
+     *          For durations ≤ 0 seconds, "Expired" is returned in compact mode and "0 sec" in verbose mode.
+     *
+     * @param input The duration in seconds (from `std::chrono::seconds`).
+     * @param verbosity If `true`, the output uses verbose wording; otherwise compact.
+     * @return A formatted duration string.
+     */
+    static QString EpochToString(const std::chrono::seconds input, const bool verbosity = false);
+
+    /**
+     * @brief Converts a duration in milliseconds into a human‑readable string.
+     * @details Behaves identically to the seconds overload, but accepts a millisecond precision
+     *          value. In verbose mode, milliseconds are always included; in compact mode, they
+     *          appear only when the value is less than one second.
+     *
+     * @param minput The duration in milliseconds (from `std::chrono::milliseconds`).
+     * @param verbosity If `true`, the output uses verbose wording; otherwise compact.
+     * @return A formatted duration string.
+     */
+    static QString EpochToString(const std::chrono::milliseconds minput, const bool verbosity = false);
+
+    /* > Message curse < */
+    /**
+     * @brief Randomly shuffles the non‑alphanumeric token boundaries of a message.
+     * @details Splits the message on non‑alphanumeric characters, shuffles the resulting
+     *          parts randomly, and rejoins them with a single space. The original punctuation
+     *          and structure are lost, but the words themselves remain intact.
+     * @param Message The original text.
+     * @return The scrambled message.
+     */
+    static QString MessageShaked(const QString Message);
+
+    /**
+     * @brief Removes all vowel characters from a message.
+     * @details Strips every occurrence of a defined set of vowel characters, covering
+     *          English, accented Latin, Cyrillic, Greek, and Arabic scripts. The operation
+     *          is case‑insensitive.
+     * @param Message The original text.
+     * @return The disemvoweled text.
+     */
+    static QString MessageDisemvowel(const QString Message);
+
+    /**
+     * @brief Replaces the message with a random entry from the configured gimp list.
+     * @details If the gimp list is empty the original message is returned unchanged.
+     *          Otherwise a random replacement string is selected and returned,
+     *          effectively hiding the user’s actual input.
+     * @param Message The original text (ignored if replacement occurs).
+     * @return The replacement string, or the original message if no replacements exist.
+     */
+    static QString MessageToGimped(const QString Message);
+
+    /**
+     * @brief Converts the message into “Medieval” (pseudo‑Old English) style.
+     * @details Uses an internal MedievalParser engine to transform modern English phrases
+     *          into a humorous, archaic‑sounding equivalent.
+     * @param Message The original text.
+     * @return The degrootified medieval text.
+     */
+    static QString MessageToMediveal(const QString Message);
+
+    /**
+     * @brief Converts the message into “UwU” speak.
+     * @details Applies a series of typical UwU–style substitutions: ‘r’ and ‘l’ become ‘w’,
+     *          ‘th’ becomes ‘d’, various ‘n’+vowel combinations become ‘ny’+vowel,
+     *          and “ove” becomes “uv”. The replacements respect case (upper/lower).
+     * @param Message The original text.
+     * @return The UwU‑ified message.
+     */
+    static QString MessageToUwU(const QString Message);
+
+    /**
+     * @brief Converts the message into “Pig Latin”.
+     * @details For each word, if it starts with a vowel, “way” is appended; otherwise
+     *          the leading consonants are moved to the end and “ay” is added. End‑of‑word
+     *          punctuation is preserved, and the original capitalisation of each word is
+     *          restored.
+     * @param Message The original text.
+     * @return The Pig Latin message.
+     */
+    static QString MessageToPigify(const QString Message);
+
+    static QString NameWId(const QPointer<AOClient> client);
+
+public slots:
     /**
      * @brief Handles an incoming packet, checking for authorisation and minimum argument count.
      *
@@ -724,9 +874,20 @@ class AOClient : public QObject
     void handlePacket(AOPacket *packet);
 
     /**
+     * @brief Sends all four types of ARUP to the client.
+     */
+    void fullArup();
+
+    /**
      * @brief A slot for when the client disconnects from the server.
      */
     void clientDisconnected();
+
+    /**
+     * @brief This func triggered by <server> to closed client(s) m_socket.
+     * @param The reason of close via [KK] packet if persents.
+     */
+    void ForcedDisconnected(const QString &reason = QString());
 
     /**
      * @brief A slot for sending a packet to the client.
@@ -738,32 +899,72 @@ class AOClient : public QObject
     /**
      * @overload
      */
+    void sendPacket(QSharedPointer<AOPacket> packet);
+
+    /**
+     * @overload
+     */
     void sendPacket(QString header, QStringList contents);
 
     /**
      * @overload
      */
     void sendPacket(QString header);
+    /**
+     * @overload sendPacket
+     */
+    void sendPacket(AOPacket *packet, const AOClient::AuthenticateType AuthType);
+    /**
+     * @overload sendPacket
+     */
+    void sendPacket(AOPacket *packet, const AOClient::AuthenticateType AuthType, const int areaID);
+
+    /**
+     * @brief A slot from an <vs_frame> packet to client.
+     * @param The client_id from.
+     * @param The frame of byte(s).
+     * @param Target area.
+     */
+    void sendAudioFrame(const int c_from, const QByteArray &frame_byte, const int area_id);
+    /**
+     * @brief A slot from an <vs_speak> packet to client.
+     * @param The client_id from.
+     * @param The state of <vc_speak>.
+     * @param Target area.
+     */
+    void sendAudioState(const int c_from, const bool state, const int area_id);
+    /**
+     * @brief A slot from an <vs_join> nor <vs_leave> packet to client.
+     * @param The client_id from.
+     * @param The boolean of if client are leave or not.
+     * @param Target area.
+     */
+    void sendAudioJoinLeave(const int c_from, const bool isleave, const int area_id);
 
     /**
      * @brief A slot for when the client's AFK timer runs out.
      */
     void onAfkTimeout();
 
-  signals:
+signals:
     /**
      * @brief This signal is emitted when the client has completed the participation handshake.
      */
     void joined();
 
     /* ==== playerstateobserver === */
-    void nameChanged(const QString &);
-    void characterChanged(const QString &);
-    void characterNameChanged(const QString &);
-    void areaIdChanged(int);
+    /**
+     * @brief Update this client to player-observer.
+     */
+    void UpdateState(const int type);
+    /**
+     * @brief Requesting the player-observer to update every client state to this client (Moderator).
+     */
     void ModeratorObserver();
 
-  private:
+private:
+
+    QMultiHash<QString, QPair<QString, CommandInfo>> category_command;
     /**
      * @brief The user ID of the client.
      */
@@ -848,6 +1049,16 @@ class AOClient : public QObject
      * @pre AOClient::cmdChangeAuth()
      */
     void cmdSetRootPass(int argc, QStringList argv);
+    /**
+     * @brief Set/changes the root user's name.
+     *
+     * @details Accepts a single argument that will be the **root user's name**.
+     *
+     * @iscommand
+     *
+     * @pre AOClient::cmdChangeAuth()
+     */
+    void cmdChangeRootName(int argc, QStringList argv);
 
     /**
      * @brief Adds a user to the moderators in `"advanced"` authorisation type.
@@ -1262,18 +1473,20 @@ class AOClient : public QObject
     /**
      * @brief Kicks a client from the server, forcibly severing its connection to the server.
      *
-     * @details The first argument is the **target's IPID**, while the remaining arguments are the **reason**
+     * @details The first argument is the **target's IPID/ID**, while the remaining arguments are the **reason**
      * the client was kicked. Both arguments are mandatory.
      *
-     * This command kicks all clients having the given IPID, thus a multiclienting user will have all
+     * This command kicks all clients having the given IPID/ID, thus a multiclienting user will have all
      * their clients be kicked from the server.
+     *
+     * But this command can single kick if adding the "*" before **target's IPID/ID**.
      *
      * @iscommand
      */
     void cmdKick(int argc, QStringList argv);
 
     /**
-     * @brief Mutes a client.
+     * @brief [IC / OOC] Mutes a client.
      *
      * @details The only argument is the **target client's user ID**.
      *
@@ -1284,7 +1497,7 @@ class AOClient : public QObject
     void cmdMute(int argc, QStringList argv);
 
     /**
-     * @brief Removes the muted status from a client.
+     * @brief Removes the [IC / OOC] muted status from a client.
      *
      * @details The only argument is the **target client's user ID**.
      *
@@ -1293,28 +1506,6 @@ class AOClient : public QObject
      * @see #is_muted
      */
     void cmdUnMute(int argc, QStringList argv);
-
-    /**
-     * @brief OOC-mutes a client.
-     *
-     * @details The only argument is the **target client's user ID**.
-     *
-     * @iscommand
-     *
-     * @see #is_ooc_muted
-     */
-    void cmdOocMute(int argc, QStringList argv);
-
-    /**
-     * @brief Removes the OOC-muted status from a client.
-     *
-     * @details The only argument is the **target client's user ID**.
-     *
-     * @iscommand
-     *
-     * @see #is_ooc_muted
-     */
-    void cmdOocUnMute(int argc, QStringList argv);
 
     /**
      * @brief WTCE-blocks a client.
@@ -1378,18 +1569,6 @@ class AOClient : public QObject
     void cmdReload(int argc, QStringList argv);
 
     /**
-     * @brief Toggles server lockdown, which blocks brand-new IPIDs from joining.
-     *
-     * @details The only argument is either `on` or `off`. While lockdown is on, only IPIDs that
-     * have connected before (stored long-term in the database) may join; brand-new IPIDs are
-     * rejected with a lockdown notice. This helps stop ban evaders connecting from a fresh IP.
-     * Only IPID is used; HDID/HWID is never considered.
-     *
-     * @iscommand
-     */
-    void cmdLockdown(int argc, QStringList argv);
-
-    /**
      * @brief Toggles immediate text processing in the current area.
      *
      * @details No arguments.
@@ -1416,20 +1595,6 @@ class AOClient : public QObject
      *
      */
     void cmdPermitSaving(int argc, QStringList argv);
-
-    /**
-     * @brief Kicks a client from the server, forcibly severing its connection to the server.
-     *
-     * @details The first argument is the **target's UID**, while the remaining arguments are the **reason**
-     * the client was kicked. Both arguments are mandatory.
-     *
-     * Unlike cmdKick, this command will only kick a single client, thus a multiclienting user will not have all their clients kicked.
-     *
-     * @iscommand
-     *
-     * @see #cmdKick
-     */
-    void cmdKickUid(int argc, QStringList argv);
 
     /**
      * @brief Updates a ban in the database, changing either its reason or duration.
@@ -1486,6 +1651,23 @@ class AOClient : public QObject
      * @iscommand
      */
     void cmdKickOther(int argc, QStringList argv);
+
+    /**
+     * @brief The server lockdown emergency.
+     *
+     * @details this command is only emergency situation.
+     *
+     * @iscommand
+     */
+    void cmdlockdown(int argc, QStringList argv);
+    /**
+     * @brief The list of whitelist <hashid> client of server lockdown.
+     *
+     * @details this command is only shown the <hashid> client list while emergency lockdown situation, otherwise it shown nothing.
+     *
+     * @iscommand
+     */
+    void cmdlockdownlist(int argc, QStringList argv);
 
     ///@}
 
@@ -1657,7 +1839,7 @@ class AOClient : public QObject
      */
     void cmdUnHoliday(int argc, QStringList argv);
 
-        /**
+    /**
      * @brief Pairs with someone.
      *
      * @details Usage: /pair ID.
@@ -1826,7 +2008,7 @@ class AOClient : public QObject
      */
     void cmdLM(int argc, QStringList argv);
 
-        /**
+    /**
      * @brief this commands gives **target id** an curses.
      *
      * @details The only argument is the **the target's ID** and **type** if there is.
@@ -1843,120 +2025,6 @@ class AOClient : public QObject
      * @iscommand
      */
     void cmdUnCurses(int argc, QStringList argv);
-
-    /**
-     * @brief Identify a target client (moderator only)
-     * @details This useful for staff want Identify someone..
-     */
-    void cmdUserInfo(int argc, QStringList argv);
-
-    /**
-     * @brief Replaces a target client's in-character messages with strings randomly selected from gimp.txt.
-     *
-     * @details The only argument is the **the target's ID** whom the client wants to gimp.
-     *
-     * @iscommand
-     */
-    void cmdGimp(int argc, QStringList argv);
-
-    /**
-     * @brief Allows a gimped client to speak normally.
-     *
-     * @details The only argument is **the target's ID** whom the client wants to ungimp.
-     *
-     * @iscommand
-     */
-    void cmdUnGimp(int argc, QStringList argv);
-
-    /**
-     * @brief Removes all vowels from a target client's in-character messages.
-     *
-     * @details The only argument is **the target's ID** whom the client wants to disemvowel.
-     *
-     * @iscommand
-     */
-    void cmdDisemvowel(int argc, QStringList argv);
-
-    /**
-     * @brief Allows a disemvoweled client to speak normally.
-     *
-     * @details The only argument is **the target's ID** whom the client wants to undisemvowel.
-     *
-     * @iscommand
-     */
-    void cmdUnDisemvowel(int argc, QStringList argv);
-
-    /**
-     * @brief Scrambles the words of a target client's in-character messages.
-     *
-     * @details The only argument is **the target's ID** whom the client wants to shake.
-     *
-     * @iscommand
-     */
-    void cmdShake(int argc, QStringList argv);
-
-    /**
-     * @brief Allows a shaken client to speak normally.
-     *
-     * @details The only argument is **the target's ID** whom the client wants to unshake.
-     *
-     * @iscommand
-     */
-    void cmdUnShake(int argc, QStringList argv);
-
-    /**
-     * @brief Runs all messages from ye target client through a chat parser to cause them to speak Ye Olde English.
-     *
-     * @details The only argument is **the target's ID** whom the client wants to shake.
-     *
-     * @iscommand
-     */
-    void cmdMedieval(int argc, QStringList argv);
-
-    /**
-     * @brief Allows ye olde client to speaketh normally.
-     *
-     * @details The only argument is **the target's ID** whom the client wants to unmedieval.
-     *
-     * @iscommand
-     */
-    void cmdUnMedieval(int argc, QStringList argv);
-
-    /**
-     * @brief Transforms a target client's in-character messages into UwU-speak.
-     *
-     * @details The only argument is **the target's ID** whom the client wants to uwu-ify.
-     *
-     * @iscommand
-     */
-    void cmdUwu(int argc, QStringList argv);
-
-    /**
-     * @brief Allows a UwU-fied client to speak normally.
-     *
-     * @details The only argument is **the target's ID** whom the client wants to un-uwu.
-     *
-     * @iscommand
-     */
-    void cmdUnUwu(int argc, QStringList argv);
-
-    /**
-     * @brief Translates a target client's in-character messages into Pig Latin.
-     *
-     * @details The only argument is **the target's ID** whom the client wants to pig-latin-ify.
-     *
-     * @iscommand
-     */
-    void cmdPig(int argc, QStringList argv);
-
-    /**
-     * @brief Allows a Pig Latin-speaking client to speak normally.
-     *
-     * @details The only argument is **the target's ID** whom the client wants to un-pig.
-     *
-     * @iscommand
-     */
-    void cmdUnPig(int argc, QStringList argv);
 
     /**
      * @brief Toggles whether a client will recieve @ref cmdPM private messages or not.
@@ -2302,48 +2370,89 @@ class AOClient : public QObject
     /**
      * @brief Adds a song to the custom list.
      */
-    void cmdAddMusic(int argc, QStringList argv);
+    void cmdAddSong(int argc, QStringList argv);
 
     /**
      * @brief Adds a category to the areas custom music list.
      */
-    void cmdAddMusicCategory(int argc, QStringList argv);
+    void cmdAddCategory(int argc, QStringList argv);
 
     /**
      * @brief Removes any matching song or category from the custom area.
      */
-    void cmdRemoveCustomMusic(int argc, QStringList argv);
+    void cmdRemoveCategorySong(int argc, QStringList argv);
 
     /**
      * @brief Toggles the prepending behaviour of the servers root musiclist.
      */
-    void cmdToggleCustomMusic(int argc, QStringList argv);
+    void cmdToggleRootlist(int argc, QStringList argv);
 
     /**
      * @brief Clears the entire custom list of this area.
      */
-    void cmdClearCustomMusic(int argc, QStringList argv);
+    void cmdClearCustom(int argc, QStringList argv);
 
     /**
-     * @brief Skips the current song in the Jukebox and plays the next available one.
+     * @brief Forces the jukebox to skip the currently playing song and start the next queued track.
+     * @details If the jukebox is enabled and at least one song is in the queue, the current
+     *          song is abandoned and the next entry is played immediately. A message is broadcast
+     *          to the area identifying who initiated the skip. If the queue is empty or the
+     *          jukebox is disabled, an error message is returned.
+     *
+     * @iscommand
      */
     void cmdJukeboxSkip(int argc, QStringList argv);
 
     /**
-    /**
-     * @brief Plays a single random song from the server music list via the jukebox.
+     * @brief Picks a random song from the root music list and plays it immediately via the jukebox.
+     * @details Requires CM permission and must not be DJ‑blocked. The function selects one song
+     *          at random from the global music list and adds it to the jukebox (clearing any
+     *          previous queue if needed). This is equivalent to the `/randomsong` alias.
+     *
+     * @iscommand
      */
     void cmdRandomSong(int argc, QStringList argv);
 
     /**
-     * @brief Fills the jukebox queue with all available songs in a random order.
+     * @brief Shuffles all available songs and fills the jukebox queue with them in random order.
+     * @details Requires CM permission and must not be DJ‑blocked. The existing queue is cleared,
+     *          all songs from the root music list are randomly reordered, and each is enqueued.
+     *          A confirmation message with the total number of songs is sent.
+     *
+     * @iscommand
      */
-    void cmdShuffle(int argc, QStringList argv);
+    void cmdJukeboxShuffle(int argc, QStringList argv);
 
     /**
-     * @brief Adds one or more named songs to the jukebox queue.
+     * @brief Adds one or more songs to the jukebox queue.
+     * @details Each argument is a song name or URL. Remote URLs are validated against the
+     *          configured CDN whitelist; invalid or unapproved URLs are rejected with an
+     *          appropriate message. Requires CM permission and must not be DJ‑blocked.
+     *          The result for each song (success or failure) is reported back.
+     *
+     * @iscommand
      */
-    void cmdPlaylistAdd(int argc, QStringList argv);
+    void cmdJukeboxAdd(int argc, QStringList argv);
+
+    /**
+     * @brief Removes a song from the jukebox queue by its index.
+     * @details The first argument is the zero‑based index of the song to remove. Requires
+     *          CM permission and must not be DJ‑blocked. If the index is invalid or the
+     *          queue is empty, an error is returned.
+     *
+     * @iscommand
+     */
+    void cmdJukeboxRemove(int argc, QStringList argv);
+
+    /**
+     * @brief Lists all songs currently in the jukebox queue.
+     * @details If the jukebox is enabled, a numbered list of queued songs is sent.
+     *          An empty queue produces an appropriate message. No special permissions
+     *          are needed.
+     *
+     * @iscommand
+     */
+    void cmdJukeboxQueues(int argc, QStringList argv);
 
     ///@}
 
@@ -2364,6 +2473,21 @@ class AOClient : public QObject
      * @iscommand
      */
     void cmdDefault(int argc, QStringList argv);
+
+    /* > voice-chat command < */
+
+    /**
+     * @brief voice-chat block/mute client vc.
+     */
+    void cmdVBlock(int argc, QStringList argv);
+    /**
+     * @brief voice-chat ublock client vc.
+     */
+    void cmdVUBlock(int argc, QStringList argv);
+    /**
+     * @brief voice-chat kick client from vc.
+     */
+    void cmdVKick(int argc, QStringList argv);
 
     /**
      * @brief Returns a textual representation of the time left in an area's Timer.
@@ -2396,42 +2520,26 @@ class AOClient : public QObject
      *
      * @param dice The number of dice to be rolled
      *
-     * @param p_roll Bool to determine of a roll is private or not.
-     *
      * @param roll_modifier Option parameter to add or subtract from each
      * rolled value
+     *
+     * @param p_roll Bool to determine of a roll is private or not.
+     *
      */
-    void diceThrower(int sides, int dice, bool p_roll, int roll_modifier = 0);
+    void diceThrower(const int sides, const int dice, const int roll_modifier = 0, const bool p_roll = false);
 
     /**
-     * @brief Interprets an expression of time into amount of seconds.
+     * @brief Returns a random reprimand or praise phrase from the server configuration.
+     * @details Depending on the `f_positive` flag, the function selects a random entry
+     *          from either the `reprimandsList` (negative) or the `praiseList` (positive).
+     *          If the relevant list is empty, an empty string is returned.
+     *          Used primarily by moderation commands to append a colourful remark
+     *          to notifications sent to the affected client.
      *
-     * @param input A string in the format of `"XXyXXwXXdXXhXXmXXs"`, where every `XX` is some integer.
-     * There is no limit on the length of the integers, the `XX` text is just a placeholder, and is not intended to
-     * indicate a limit of two digits maximum.
-     *
-     * The string gets interpreted as follows:
-     * * `XXy` is parsed into `XX` amount of years,
-     * * `XXw` is parsed into `XX` amount of weeks,
-     * * `XXd` is parsed into `XX` amount of days,
-     * * `XXh` is parsed into `XX` amount of hours,
-     * * `XXm` is parsed into `XX` amount of minutes, and
-     * * `XXs` is parsed into `XX` amount of seconds.
-     *
-     * Any of these may be left out, but the order must be kept (i.e., `"10s5y"` is a malformed text).
-     *
-     * @return The parsed text, converted into their respective durations, summed up, then converted into seconds.
+     * @param f_positive If `true`, a praise is returned; otherwise a reprimand.
+     * @return A random phrase, or an empty string if none are configured.
      */
-    long long parseTime(QString input);
-    QString getReprimand(bool f_positive = false);
-
-    /**
-     * @brief Returns a list of playable song names from the area music list,
-     * filtering out category headers and non-audio entries.
-     *
-     * @return A QStringList containing only valid audio song entries.
-     */
-    QStringList getPlayableSongs() const;
+    static QString getReprimand(bool f_positive = false);
 
     /**
      * @brief Clears QVector of the current area.
@@ -2475,15 +2583,6 @@ class AOClient : public QObject
      * @return True if it contains '<' or '>' symbols, otherwise false.
      */
     bool checkTestimonySymbols(const QString &message);
-
-    /**
-     * @brief Returns true if the client has privilege to use jukebox bypass commands
-     *        (/shuffle, /playlistadd, /randomsong) regardless of whether the area
-     *        jukebox is enabled. VIPs, authenticated moderators, and CMs qualify.
-     *
-     * @return True if the client is a VIP, mod, or CM, false otherwise.
-     */
-    bool hasJukeboxCommandPermission() const;
     ///@}
 
     /**
@@ -2505,22 +2604,30 @@ class AOClient : public QObject
     int packet_count;
 
     /**
-     * @brief choice for rock paper scissor.
-     */
-    QString rps_choice;
-
-    /**
-     * @brief check if an RPS game is already in progress.
-     */
-    bool rps_waiting = false;
-
-    /**
      * @brief The timer for the global reminder delay, just a silly reminder to rest and drink.
      *
      */
     QTimer *m_global_reminder_timer;
 
-  signals:
+    /**
+     * @brief The Curses flags of the type.
+     */
+    AOClient::CurseTypes m_curses;
+    /**
+     * @brief The client-blocks flags of the type.
+     */
+    AOClient::BlockTypes m_client_block;
+
+    /**
+     * @brief The timer for voice-chat blocked.
+     */
+    QTimer *m_vcblock_left;
+    /**
+     * @brief The reason of voice-chat blocked.
+     */
+    QString m_vcblock_reason;
+
+signals:
 
     /**
      * @brief Signal connected to universal logger. Sends IC chat usage to the logger.
@@ -2538,7 +2645,7 @@ class AOClient : public QObject
      * @brief Signal connected to universal logger. Sends music usage to the logger.
      */
     void logMusic(const QString &f_charName, const QString &f_oocName, const QPair<int, QString> &f_ids,
-                const QString &f_areaName, const QString &f_track);
+                  const QString &f_areaName, const QString &f_track);
 
     /**
      * @brief Signal connected to universal logger. Sends login attempt to the logger.
@@ -2571,7 +2678,7 @@ class AOClient : public QObject
     /**
      * @brief Signals the server that the client has disconnected and marks its userID as free again.
      */
-    void clientSuccessfullyDisconnected(const int &f_user_id);
+    void clientSuccessfullyDisconnected(AOClient *f_client);
 
 };
 

@@ -18,47 +18,20 @@ PacketInfo PacketTT::getPacketInfo() const{
 
 void PacketTT::handlePacket(AreaData *area, AOClient &client) const{
     Q_UNUSED(area);
-    if (!client.m_joined) /* Don't let outsider be mess this */
+    if (!client.m_joined || client.isSpectator()) /* Don't let outsider be mess this or don't let spectator mess this either */
         return;
 
-    AOPacket *validated_packet = validateTTPacket(client);
-    if (validated_packet->getPacketInfo().header == "INVALID")
+    bool isIntVaild;
+    Q_UNUSED(m_content[0].toInt(&isIntVaild));
+
+    if (!isIntVaild || m_content[1].trimmed().isEmpty() || m_content[2].trimmed().isEmpty()) /* arg checker moment */
         return;
 
-    client.getServer()->broadcast(validated_packet, client.areaId());
-    /*
-     * area->startMessageFloodguard(ConfigManager::messageFloodguard());
-     * client.getServer()->startMessageFloodguard(ConfigManager::globalMessageFloodguard());}
-     *
-     * i don't thinks that should needs, unless if be needs.
-    */
-}
-
-bool PacketTT::validatePacket() const{
-    return true;
-}
-
-AOPacket *PacketTT::validateTTPacket(AOClient &client) const{
-    AOPacket *l_invalid = PacketFactory::createPacket("INVALID", {});
-    QStringList l_args;
-
-    if (client.m_is_spectator) /* don't let spectator mess this either */
-        return l_invalid;
-
-    QList<QVariant> l_incoming_args;
-    for (const QString &l_arg : m_content)
-        l_incoming_args.append(QVariant(l_arg)); /* get all packet args */
-
-    /* args checker moment */
-    bool validType;
-    l_args << QString::number(l_incoming_args[0].toInt(&validType)) << l_incoming_args[1].toString() << l_incoming_args[2].toString();
-    if (!validType || l_args[1].trimmed().isEmpty() || l_args[2].trimmed().isEmpty())
-        return l_invalid;
-
-    if (l_args[1].toLower() != client.character().toLower()) /* kfo behaviors */
-        client.m_current_iniswap = l_args[1];
+    /* > kfo behaviors < */
+    if (m_content[1].compare(client.character()) != 0)
+        client.m_current_iniswap = m_content[1];
     else if (!client.m_current_iniswap.isEmpty())
         client.m_current_iniswap.clear();
 
-    return PacketFactory::createPacket("TT", l_args);
+    client.getServer()->broadcast(PacketFactory::createPacket("TT", m_content), client.areaId());
 }

@@ -36,17 +36,19 @@ int main(int argc, char *argv[])
     QCoreApplication::setApplicationName("akashi");
     QCoreApplication::setApplicationVersion("jackfruit (1.9)");
     std::atexit(cleanup);
+    qInfo() << "[AKASHI]: Starting software..";
+    qInfo() << "[AKASHI]: Verifying server configs..";
 
     // Verify server configuration is sound.
     if (!ConfigManager::verifyServerConfig()) {
-        qCritical() << "config.ini is invalid!";
-        qCritical() << "Exiting server due to configuration issue.";
+        qCritical() << "[E][AKASHI]: configs is invalid!";
+        qCritical() << "[C][AKASHI]: Exiting server due to configuration issue.";
         exit(EXIT_FAILURE);
         QCoreApplication::quit();
     }
     else {
-        server = new Server(ConfigManager::serverPort(), &app);
-        server->start();
+        qInfo() << "[AKASHI]: Verifed and software progressing..";
+        (server = new Server(ConfigManager::serverPort(), &app))->start();
     }
 
     return app.exec();

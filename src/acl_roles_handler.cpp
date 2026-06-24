@@ -35,7 +35,7 @@ const QHash<ACLRole::Permission, QString> ACLRole::PERMISSION_CAPTIONS{
     },
     {
         ACLRole::Permission::CM,
-        "gamemaster",
+        "cm",
     },
     {
         ACLRole::Permission::GLOBAL_TIMER,
@@ -63,7 +63,7 @@ const QHash<ACLRole::Permission, QString> ACLRole::PERMISSION_CAPTIONS{
     },
     {
         ACLRole::Permission::UNCM,
-        "remove_gamemaster",
+        "uncm",
     },
     {
         ACLRole::Permission::SAVETEST,
@@ -88,10 +88,6 @@ const QHash<ACLRole::Permission, QString> ACLRole::PERMISSION_CAPTIONS{
     {
         ACLRole::Permission::JUKEBOX,
         "jukebox",
-    },
-    {
-        ACLRole::Permission::PLAY,
-        "play",
     },
     {
         ACLRole::Permission::SUPER,

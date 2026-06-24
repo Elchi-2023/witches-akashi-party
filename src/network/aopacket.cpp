@@ -41,6 +41,7 @@
 #include "packet/packet_setcase.h"
 #include "packet/packet_tt.h"
 #include "packet/packet_zz.h"
+#include "packet/packet_voice.h"
 
 AOPacket::AOPacket(QStringList p_contents) :
     m_content(p_contents),
@@ -141,4 +142,9 @@ void AOPacket::registerPackets()
     PacketFactory::registerClass<PacketTT>("TT");
     PacketFactory::registerClass<PacketPR>("PR");
     PacketFactory::registerClass<PacketPU>("PU");
+    /* > Voice-chat packet < */
+    PacketFactory::registerClass<PacketVoice::Join>("VS_JOIN");
+    PacketFactory::registerClass<PacketVoice::Leave>("VS_LEAVE");
+    PacketFactory::registerClass<PacketVoice::AudioFrame>("VS_FRAME");
+    PacketFactory::registerClass<PacketVoice::SpeakState>("VS_SPEAK");
 }

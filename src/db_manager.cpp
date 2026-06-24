@@ -22,31 +22,53 @@ DBManager::DBManager() :
 {
     const QString db_filename = "config/akashi.db";
     QFileInfo db_info(db_filename);
-    if (!db_info.exists()) {
+    if (db_info.exists() && (!db_info.isReadable() || !db_info.isWritable())) // We should only check if a file is readable/writeable when it actually exists.
+        qCritical() << tr("Database Error: Missing permissions. Check if \"%1\" is writable.").arg(db_filename);
+    else if (!db_info.exists())
         qWarning().noquote() << tr("Database Info: Database not found. Attempting to create new database.");
-    }
-    else {
-        // We should only check if a file is readable/writeable when it actually exists.
-        if (!db_info.isReadable() || !db_info.isWritable())
-            qCritical() << tr("Database Error: Missing permissions. Check if \"%1\" is writable.").arg(db_filename);
-    }
 
     db = QSqlDatabase::addDatabase(DRIVER);
-    db.setDatabaseName("config/akashi.db");
+    db.setDatabaseName(db_filename);
     if (!db.open())
-        qCritical() << "Database Error:" << db.lastError();
+        qCritical() << "[DBManager]: Database Error:" << db.lastError();
     db_version = checkVersion();
-    QSqlQuery create_ban_table("CREATE TABLE IF NOT EXISTS bans ('ID' INTEGER, 'IPID' TEXT, 'HDID' TEXT, 'IP' TEXT, 'TIME' INTEGER, 'REASON' TEXT, 'DURATION' INTEGER, 'MODERATOR' TEXT, PRIMARY KEY('ID' AUTOINCREMENT))");
-    create_ban_table.exec();
-    QSqlQuery create_user_table("CREATE TABLE IF NOT EXISTS users ('ID' INTEGER, 'USERNAME' TEXT, 'SALT' TEXT, 'PASSWORD' TEXT, 'ACL' TEXT, PRIMARY KEY('ID' AUTOINCREMENT))");
-    create_user_table.exec();
-    QSqlQuery create_known_ipids_table("CREATE TABLE IF NOT EXISTS known_ipids ('IPID' TEXT, 'LAST_SEEN' INTEGER, PRIMARY KEY('IPID'))");
-    create_known_ipids_table.exec();
+    db.exec("CREATE TABLE IF NOT EXISTS bans ('ID' INTEGER, 'IPID' TEXT, 'HDID' TEXT, 'IP' TEXT, 'TIME' INTEGER, 'REASON' TEXT, 'DURATION' INTEGER, 'MODERATOR' TEXT, 'M-TYPE' INTEGER, PRIMARY KEY('ID' AUTOINCREMENT))"); // create ban table if not exist.
+    db.exec("CREATE TABLE IF NOT EXISTS users ('ID' INTEGER, 'USERNAME' TEXT, 'SALT' TEXT, 'PASSWORD' TEXT, 'ACL' TEXT, 'TYPE' INTEGER, PRIMARY KEY('ID' AUTOINCREMENT))"); // create users table if not exist.
+
+    /* > indexing < */
+    db.exec("CREATE INDEX IF NOT EXISTS idx_bans_ipid ON bans(IPID)");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_bans_hdid ON bans(HDID)");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_bans_time ON bans(TIME)");
+    db.exec("CREATE INDEX IF NOT EXISTS idx_users_username ON users(USERNAME)");
+
     if (db_version != DB_VERSION)
         updateDB(db_version);
+
+    QSqlQuery users_column = db.exec("SELECT group_concat(name, ',') AS cols FROM pragma_table_info('users')");
+    if (users_column.first() && !users_column.value("cols").toString().split(',', Qt::SkipEmptyParts).contains("type", Qt::CaseInsensitive)){ // if "type" (user type) not in "users"...
+        db.exec("ALTER TABLE users ADD COLUMN \"TYPE\" INTEGER");
+        const QStringList Users = getUsers();
+        if (db.transaction()){
+            for (const QString& U : Users){ // set type by acl..
+                QSqlQuery acl_to_usertype;
+                if (U == "root")
+                    acl_to_usertype.exec("UPDATE users SET TYPE = 2 WHERE USERNAME = 'root'");
+                else{
+                    acl_to_usertype.prepare("UPDATE users SET TYPE = ? WHERE USERNAME = ?");
+                    acl_to_usertype.addBindValue(getACL(U).toLower() == "vip" ? 0 : 1);
+                    acl_to_usertype.addBindValue(U);
+                    acl_to_usertype.exec();
+                }
+            }
+            db.commit();
+        }
+    }
+    QSqlQuery bans_column = db.exec("SELECT group_concat(name, ',') AS cols FROM pragma_table_info('bans')");
+    if (bans_column.first() && !bans_column.value("cols").toString().split(',', Qt::SkipEmptyParts).contains("m-type", Qt::CaseInsensitive)) // "m-type" (moderator type)..
+        db.exec("ALTER TABLE bans ADD COLUMN \"M-TYPE\" INTEGER");
 }
 
-QPair<bool, DBManager::BanInfo> DBManager::isIPBanned(QString ipid)
+QPair<bool, DBManager::BanInfo> DBManager::isIPBanned(const QString &ipid)
 {
     QSqlQuery query;
     query.prepare("SELECT * FROM BANS WHERE IPID = ? ORDER BY TIME DESC");
@@ -62,26 +84,23 @@ QPair<bool, DBManager::BanInfo> DBManager::isIPBanned(QString ipid)
         ban.reason = query.value(5).toString();
         ban.duration = query.value(6).toLongLong();
         ban.moderator = query.value(7).toString();
+        ban.m_type = query.value(8).isNull() ? -1 : query.value(8).toInt();
         if (ban.duration == -2)
             return {true, ban};
         unsigned long current_time = QDateTime::currentDateTime().toSecsSinceEpoch();
-        if (ban.time + ban.duration > current_time)
-            return {true, ban};
-        else
-            return {false, ban};
+        return {ban.time + ban.duration > current_time, ban};
     }
     else
         return {false, ban};
 }
 
-QPair<bool, DBManager::BanInfo> DBManager::isHDIDBanned(QString hdid)
+QPair<bool, DBManager::BanInfo> DBManager::isHDIDBanned(const QString &hdid)
 {
     QSqlQuery query;
     query.prepare("SELECT * FROM BANS WHERE HDID = ? ORDER BY TIME DESC");
     query.addBindValue(hdid);
-    query.exec();
     BanInfo ban;
-    if (query.first()) {
+    if (query.exec() && query.first()) {
         ban.id = query.value(0).toInt();
         ban.ipid = query.value(1).toString();
         ban.hdid = query.value(2).toString();
@@ -90,44 +109,30 @@ QPair<bool, DBManager::BanInfo> DBManager::isHDIDBanned(QString hdid)
         ban.reason = query.value(5).toString();
         ban.duration = query.value(6).toLongLong();
         ban.moderator = query.value(7).toString();
+        ban.m_type = query.value(8).isNull() ? -1 : query.value(8).toInt();
         if (ban.duration == -2)
             return {true, ban};
         unsigned long current_time = QDateTime::currentDateTime().toSecsSinceEpoch();
-        if (ban.time + ban.duration > current_time)
-            return {true, ban};
-        else
-            return {false, ban};
+        return {ban.time + ban.duration > current_time, ban};
     }
     else
         return {false, ban};
 }
 
-int DBManager::getBanID(QString hdid)
+int DBManager::getBanID(const QString &hdid)
 {
     QSqlQuery query;
     query.prepare("SELECT ID FROM BANS WHERE HDID = ? ORDER BY TIME DESC");
     query.addBindValue(hdid);
-    query.exec();
-    if (query.first()) {
-        return query.value(0).toInt();
-    }
-    else {
-        return -1;
-    }
+    return query.exec() && query.first() ? query.value(0).toInt() : -1;
 }
 
-int DBManager::getBanIDByIPID(QString ipid)
+int DBManager::getBanIDByIPID(const QString &ipid)
 {
     QSqlQuery query;
     query.prepare("SELECT ID FROM BANS WHERE IPID = ? ORDER BY TIME DESC");
     query.addBindValue(ipid);
-    query.exec();
-    if (query.first()) {
-        return query.value(0).toInt();
-    }
-    else {
-        return -1;
-    }
+    return query.exec() && query.first() ? query.value(0).toInt() : -1;
 }
 
 int DBManager::getBanID(QHostAddress ip)
@@ -135,13 +140,7 @@ int DBManager::getBanID(QHostAddress ip)
     QSqlQuery query;
     query.prepare("SELECT ID FROM BANS WHERE IP = ? ORDER BY TIME DESC");
     query.addBindValue(ip.toString());
-    query.exec();
-    if (query.first()) {
-        return query.value(0).toInt();
-    }
-    else {
-        return -1;
-    }
+    return query.exec() && query.first() ? query.value(0).toInt() : -1;
 }
 
 QList<DBManager::BanInfo> DBManager::getRecentBans()
@@ -161,16 +160,17 @@ QList<DBManager::BanInfo> DBManager::getRecentBans()
         ban.reason = query.value(5).toString();
         ban.duration = query.value(6).toLongLong();
         ban.moderator = query.value(7).toString();
+        ban.m_type = query.value(8).isNull() ? -1 : query.value(8).toInt();
         return_list.append(ban);
     }
     std::reverse(return_list.begin(), return_list.end());
     return return_list;
 }
 
-void DBManager::addBan(BanInfo ban)
+void DBManager::addBan(const BanInfo &ban)
 {
     QSqlQuery query;
-    query.prepare("INSERT INTO BANS(IPID, HDID, IP, TIME, REASON, DURATION, MODERATOR) VALUES(?, ?, ?, ?, ?, ?, ?)");
+    query.prepare("INSERT INTO BANS(IPID, HDID, IP, TIME, REASON, DURATION, MODERATOR, \"M-TYPE\") VALUES(?, ?, ?, ?, ?, ?, ?, ?)");
     query.addBindValue(ban.ipid);
     query.addBindValue(ban.hdid);
     query.addBindValue(ban.ip.toString());
@@ -178,30 +178,9 @@ void DBManager::addBan(BanInfo ban)
     query.addBindValue(ban.reason);
     query.addBindValue(ban.duration);
     query.addBindValue(ban.moderator);
+    query.addBindValue(ban.m_type);
     if (!query.exec())
         qDebug() << "SQL Error:" << query.lastError().text();
-}
-
-void DBManager::addKnownIpid(QString ipid)
-{
-    QSqlQuery query;
-    // INSERT OR REPLACE keeps a single row per IPID, refreshing LAST_SEEN on every visit.
-    query.prepare("INSERT OR REPLACE INTO known_ipids(IPID, LAST_SEEN) VALUES(?, ?)");
-    query.addBindValue(ipid);
-    query.addBindValue(QString::number(QDateTime::currentDateTime().toSecsSinceEpoch()));
-    if (!query.exec())
-        qDebug() << "SQL Error:" << query.lastError().text();
-}
-
-bool DBManager::isIpidKnown(QString ipid)
-{
-    QSqlQuery query;
-    query.prepare("SELECT EXISTS(SELECT 1 FROM known_ipids WHERE IPID = ?)");
-    query.addBindValue(ipid);
-    query.exec();
-    if (query.first())
-        return query.value(0).toInt() == 1;
-    return false;
 }
 
 bool DBManager::invalidateBan(int id)
@@ -211,21 +190,19 @@ bool DBManager::invalidateBan(int id)
     ban_exists.addBindValue(id);
     ban_exists.exec();
 
-    if (!ban_exists.first())
+    if (!ban_exists.first()|| ban_exists.value(0).toInt() < 1)
         return false;
 
     QSqlQuery query;
     query.prepare("UPDATE bans SET DURATION = 0 WHERE ID = ?");
     query.addBindValue(id);
-    query.exec();
-    return true;
+    return query.exec();
 }
 
-bool DBManager::createUser(QString f_username, QByteArray f_salt, QString f_password, QString f_acl)
-{
+bool DBManager::CreateUser(const QString &username, const QPair<QByteArray, QString> &password, const int u_type){
     QSqlQuery username_exists;
     username_exists.prepare("SELECT ACL FROM users WHERE USERNAME = ?");
-    username_exists.addBindValue(f_username);
+    username_exists.addBindValue(username);
     username_exists.exec();
 
     if (username_exists.first())
@@ -233,152 +210,160 @@ bool DBManager::createUser(QString f_username, QByteArray f_salt, QString f_pass
 
     QSqlQuery query;
 
-    QString salted_password = CryptoHelper::hash_password(f_salt, f_password);
+    QString salted_password = CryptoHelper::hash_password(password.first, password.second);
 
-    query.prepare("INSERT INTO users(USERNAME, SALT, PASSWORD, ACL) VALUES(?, ?, ?, ?)");
-    query.addBindValue(f_username);
-    query.addBindValue(f_salt.toHex());
+    query.prepare("INSERT INTO users(USERNAME, SALT, PASSWORD, ACL, TYPE) VALUES(?, ?, ?, ?, ?)");
+    query.addBindValue(username);
+    query.addBindValue(password.first.toHex());
     query.addBindValue(salted_password);
-    query.addBindValue(f_acl);
-    query.exec();
-
-    return true;
+    query.addBindValue(u_type == 2 ? "ROOT" : "NONE");
+    query.addBindValue(u_type);
+    return query.exec();
 }
 
-bool DBManager::deleteUser(QString username)
-{
-    if (username == "root") {
-        // To prevent lockout scenarios where an admin may accidentally delete root.
-        return false;
-    }
-
-    {
+bool DBManager::deleteUser(const QString &username){
+    if (getUserType(username) == 2)
+        return false; // To prevent lockout scenarios where an admin may accidentally delete root.
+    else{
         QSqlQuery username_exists;
         username_exists.prepare("SELECT EXISTS(SELECT USERNAME FROM users WHERE USERNAME = ?)");
         username_exists.addBindValue(username);
         username_exists.exec();
         username_exists.first();
-        // If EXISTS can't find a record, it returns 0.
-        if (username_exists.value(0).toInt() == 0)
-            // We were unable to locate an entry with this name.
-            return false;
-    }
-    {
+        if (username_exists.value(0).toInt() == 0) // If EXISTS can't find a record, it returns 0.
+            return false; // We were unable to locate an entry with this name.
+
         QSqlQuery username_delete;
         username_delete.prepare("DELETE FROM users WHERE USERNAME = ?");
         username_delete.addBindValue(username);
-        username_delete.exec();
-        return true;
+        return username_delete.exec();
     }
 }
 
-QString DBManager::getACL(QString moderator_name)
+QString DBManager::getACL(const QString &f_username)
 {
-    if (moderator_name == "")
-        return 0;
-    QSqlQuery query("SELECT ACL FROM users WHERE USERNAME = ?");
-    query.addBindValue(moderator_name);
-    query.exec();
-    if (!query.first())
-        return 0;
-    return query.value(0).toString();
+    if (f_username.isEmpty())
+        return {};
+
+    QSqlQuery query;
+    query.prepare("SELECT ACL FROM users WHERE USERNAME = ?");
+    query.addBindValue(f_username);
+    return query.exec() && query.first() ? query.value(0).toString() : QString();
 }
 
-bool DBManager::authenticate(QString username, QString password)
-{
-    QSqlQuery query_salt("SELECT SALT FROM users WHERE USERNAME = ?");
-    query_salt.addBindValue(username);
-    query_salt.exec();
-    if (!query_salt.first())
-        return false;
-    QString salt = query_salt.value(0).toString();
+int DBManager::getUserType(const QString &f_username){
+    if (f_username.isEmpty())
+        return -1;
 
-    QString salted_password = CryptoHelper::hash_password(QByteArray::fromHex(salt.toUtf8()), password);
+    QSqlQuery query;
+    query.prepare("SELECT TYPE FROM users WHERE USERNAME = ?");
+    query.addBindValue(f_username);
+    return query.exec() && query.first() ? query.value(0).toInt() : -1;
+}
+bool DBManager::authenticate(const QString& username, const QString& password){
+    QSqlQuery query;
+    query.prepare("SELECT SALT, PASSWORD FROM users WHERE USERNAME = ?");
+    query.addBindValue(username);
 
-    QSqlQuery query_pass("SELECT PASSWORD FROM users WHERE USERNAME = ?");
-    query_pass.addBindValue(username);
-    query_pass.exec();
-    if (!query_pass.first())
+    if (!query.exec() || !query.first())
         return false;
-    QString stored_pass = query_pass.value(0).toString();
+
+    const QString salt = query.value(0).toString();
+    const QString stored_pass = query.value(1).toString();
+    const QByteArray saltBytes = QByteArray::fromHex(salt.toUtf8());
+
+    const QString salted_password = CryptoHelper::hash_password(saltBytes,password);
+
+    const bool authenticated = (salted_password == stored_pass);
 
     // Update old-style hashes to new ones on the fly
-    if (QByteArray::fromHex(salt.toUtf8()).length() < CryptoHelper::pbkdf2_salt_len && salted_password == stored_pass) {
+    if (authenticated && saltBytes.length() < CryptoHelper::pbkdf2_salt_len){
         updatePassword(username, password);
     }
 
-    return salted_password == stored_pass;
+    return authenticated;
 }
 
-bool DBManager::updateACL(QString f_username, QString f_acl)
+bool DBManager::updateACL(const QString &f_username, const QString &f_acl)
 {
     QSqlQuery l_username_exists;
     l_username_exists.prepare("SELECT ACL FROM users WHERE USERNAME = ?");
     l_username_exists.addBindValue(f_username);
-    l_username_exists.exec();
 
-    if (!l_username_exists.first())
+    if (!l_username_exists.exec() || !l_username_exists.first())
         return false;
 
     QSqlQuery l_update_acl;
     l_update_acl.prepare("UPDATE users SET ACL = ? WHERE USERNAME = ?");
     l_update_acl.addBindValue(f_acl);
     l_update_acl.addBindValue(f_username);
-    l_update_acl.exec();
-    return true;
+    return l_update_acl.exec();
+}
+
+bool DBManager::updateUser(const QString &username, const QString &change){
+    QSqlQuery l_username_exists;
+    l_username_exists.prepare("SELECT ACL FROM users WHERE USERNAME = ?");
+    l_username_exists.addBindValue(username);
+
+    if (!l_username_exists.exec() || !l_username_exists.first() || username == change)
+        return false;
+
+    QSqlQuery l_update_acl;
+    l_update_acl.prepare("UPDATE users SET USERNAME = ? WHERE USERNAME = ?");
+    l_update_acl.addBindValue(change);
+    l_update_acl.addBindValue(username);
+    return l_update_acl.exec();
 }
 
 QStringList DBManager::getUsers()
 {
     QStringList users;
 
-    QSqlQuery query("SELECT USERNAME FROM users ORDER BY ID");
-    while (query.next()) {
-        users.append(query.value(0).toString());
+    QSqlQuery query(db);
+    query.prepare("SELECT USERNAME FROM users ORDER BY ID");
+    query.setForwardOnly(true);
+    if (query.exec()){
+        while (query.next())
+            users.append(query.value(0).toString());
     }
 
     return users;
 }
 
-QList<DBManager::BanInfo> DBManager::getBanInfo(QString lookup_type, QString id)
+QList<DBManager::BanInfo> DBManager::getBanInfo(const QString &lookup_type, const QString &id)
 {
-    QList<BanInfo> return_list;
+    const QHash<QString, QString> match_type{{"banid", "SELECT * FROM BANS WHERE ID = ?"}, {"hdid", "SELECT * FROM BANS WHERE HDID = ?"}, {"ipid", "SELECT * FROM BANS WHERE IPID = ?"}};
     QSqlQuery query;
-    QList<BanInfo> invalid;
-    if (lookup_type == "banid") {
-        query.prepare("SELECT * FROM BANS WHERE ID = ?");
-    }
-    else if (lookup_type == "hdid") {
-        query.prepare("SELECT * FROM BANS WHERE HDID = ?");
-    }
-    else if (lookup_type == "ipid") {
-        query.prepare("SELECT * FROM BANS WHERE IPID = ?");
-    }
-    else {
-        qCritical("Invalid ban lookup type!");
-        return invalid;
+
+    if (match_type.contains(lookup_type))
+        query.prepare(match_type[lookup_type]);
+    else{
+        qCritical("[DBManager]: Invalid ban lookup type!");
+        return {};
     }
     query.addBindValue(id);
     query.setForwardOnly(true);
-    query.exec();
-    while (query.next()) {
-        BanInfo ban;
-        ban.id = query.value(0).toInt();
-        ban.ipid = query.value(1).toString();
-        ban.hdid = query.value(2).toString();
-        ban.ip = QHostAddress(query.value(3).toString());
-        ban.time = static_cast<unsigned long>(query.value(4).toULongLong());
-        ban.reason = query.value(5).toString();
-        ban.duration = query.value(6).toLongLong();
-        ban.moderator = query.value(7).toString();
-        return_list.append(ban);
+    QList<BanInfo> return_list;
+    if (query.exec()){
+        while (query.next()) {
+            BanInfo ban;
+            ban.id = query.value(0).toInt();
+            ban.ipid = query.value(1).toString();
+            ban.hdid = query.value(2).toString();
+            ban.ip = QHostAddress(query.value(3).toString());
+            ban.time = static_cast<unsigned long>(query.value(4).toULongLong());
+            ban.reason = query.value(5).toString();
+            ban.duration = query.value(6).toLongLong();
+            ban.moderator = query.value(7).toString();
+            ban.m_type = query.value(8).isNull() ? -1 : query.value(8).toInt();
+            return_list.append(ban);
+        }
     }
     std::reverse(return_list.begin(), return_list.end());
     return return_list;
 }
 
-bool DBManager::updateBan(int ban_id, QString field, QVariant updated_info)
-{
+bool DBManager::updateBan(int ban_id, const QString &field, const QVariant &updated_info){
     QSqlQuery query;
     if (field == "reason") {
         query.prepare("UPDATE bans SET REASON = ? WHERE ID = ?");
@@ -388,17 +373,18 @@ bool DBManager::updateBan(int ban_id, QString field, QVariant updated_info)
         query.prepare("UPDATE bans SET DURATION = ? WHERE ID = ?");
         query.addBindValue(updated_info.toLongLong());
     }
-    query.addBindValue(ban_id);
-    if (!query.exec()) {
-        qDebug() << query.lastError();
+    else
         return false;
-    }
-    else {
-        return true;
-    }
+
+    query.addBindValue(ban_id);
+
+    const bool exec_ok = query.exec();
+    if (!exec_ok)
+        qDebug() << "[DBManager]: Error while doing update ban" << query.lastError();
+    return exec_ok;
 }
 
-bool DBManager::updatePassword(QString username, QString password)
+bool DBManager::updatePassword(const QString &username, const QString &password)
 {
     QByteArray salt = CryptoHelper::randbytes(16);
     QString salted_password = CryptoHelper::hash_password(salt, password);
@@ -408,21 +394,14 @@ bool DBManager::updatePassword(QString username, QString password)
     query.addBindValue(salted_password);
     query.addBindValue(salt.toHex());
     query.addBindValue(username);
-    query.exec();
-    return true;
+    return query.exec();
 }
 
 int DBManager::checkVersion()
 {
     QSqlQuery query;
     query.prepare("PRAGMA user_version");
-    query.exec();
-    if (query.first()) {
-        return query.value(0).toInt();
-    }
-    else {
-        return 0;
-    }
+    return query.exec() && query.first() ? query.value(0).toInt() : 0;
 }
 
 void DBManager::updateDB(int current_version)
@@ -435,7 +414,7 @@ void DBManager::updateDB(int current_version)
         QSqlQuery("PRAGMA user_version = " + QString::number(1));
         Q_FALLTHROUGH();
     case 2:
-        QSqlQuery("UPDATE users SET ACL = 'SUPER' WHERE USERNAME = 'root'");
+        QSqlQuery("UPDATE users SET ACL = 'SUPER' WHERE TYPE = '2'");
         QSqlQuery("PRAGMA user_version = " + QString::number(DB_VERSION));
         break;
     }

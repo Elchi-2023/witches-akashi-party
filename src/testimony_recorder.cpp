@@ -78,7 +78,7 @@ QStringList AOClient::updateStatement(QStringList packet)
 
 void AOClient::clearTestimony()
 {
-    QPointer<AreaData> area =server->getAreaById(areaId());
+    auto area = server->getAreaById(areaId());
     if (!area.isNull())
         area->clearTestimony();
 }

@@ -20,12 +20,12 @@ PacketInfo PacketDE::getPacketInfo() const
 
 void PacketDE::handlePacket(AreaData *area, AOClient &client) const
 {
-    if (!client.checkEvidenceAccess(area))
-        return;
-    bool is_int = false;
-    int l_idx = m_content[0].toInt(&is_int);
-    if (is_int && l_idx < area->evidence().size() && l_idx >= 0) {
-        area->deleteEvidence(l_idx);
+    if (client.checkEvidenceAccess(area)){
+        bool isIndex;
+        const int Index = m_content[0].toInt(&isIndex);
+
+        if (isIndex && Index >= 0 && Index < area->evidence().size())
+            area->deleteEvidence(Index);
+        client.sendEvidenceList(area);
     }
-    client.sendEvidenceList(area);
 }

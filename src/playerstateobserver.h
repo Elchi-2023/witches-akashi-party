@@ -14,7 +14,7 @@ class PlayerStateObserver : public QObject
     virtual ~PlayerStateObserver();
 
     void registerClient(AOClient *client);
-    void unregisterClient(AOClient *client);
+    bool unregisterClient(QPointer<AOClient> client);
 
   private:
     QList<AOClient *> m_client_list;
@@ -43,9 +43,12 @@ class PlayerStateObserver : public QObject
     void UploadStateToClients(const AOClient *client, const AOPacket &packet);
 
   private Q_SLOTS:
-    void notifyNameChanged(const QString &name);
-    void notifyCharacterChanged(const QString &character);
-    void notifyCharacterNameChanged(const QString &characterName);
-    void notifyAreaIdChanged(int areaId);
+    /**
+     * @brief broadcasing the sender client state to everyone..
+     */
+    void UpdateSender(const int type);
+    /**
+     * @brief [Moderator] - send everyone cllent state to the [M] sender.
+     */
     void ModeratorRequestsData();
 };

@@ -62,12 +62,12 @@ class Discord : public QObject
     /**
      * @brief Handles a modcall webhook request.
      *
-     * @param f_name The name of the modcall sender.
-     * @param f_area The name of the area the modcall was sent from.
+     * @param f_name The name & area of the modcall sender.
+     * @param f_area The name & area of the [regarding] who been reported from the caller.
      * @param f_reason The reason for the modcall.
      * @param f_buffer The area's log buffer.
      */
-    void onModcallWebhookRequested(const QStringList &f_name, const QString &f_area, const QString &f_reason, const QQueue<QString> &f_buffer);
+    void onModcallWebhookRequested(const QPair<QString, QString> &f_name, const QPair<QString, QString> &r_name, const QString &f_reason, const QQueue<QString> &f_buffer);
 
     /**
      * @brief Handles a ban webhook request.
@@ -77,9 +77,19 @@ class Discord : public QObject
      * @param f_duration The date the ban expires.
      * @param f_reason The reason of the ban.
      */
-    void onBanWebhookRequested(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID, const int &f_count);
+    void onBanWebhookRequested(const QString &f_ipid, const QPair<int, QString> &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID, const int &f_count);
 
-    void onUnbanWebhookRequested(const QString &f_ipid, const QStringList &f_moderator, const int &f_banID, const int &f_ban_duration, const QDateTime &f_date, const QStringList &f_reason);
+    /**
+     * @brief Handles a unban webhook request.
+     *
+     * @param f_ipid
+     * @param f_moderator The name of the moderator(s) banning.
+     * @param f_banID the ban ID.
+     * @param f_ban_duration The date the ban expires.
+     * @param f_date The date of when ban.
+     * @param f_reason The reason(s) of the ban.
+     */
+    void onUnbanWebhookRequested(const QString &f_ipid, const QPair<QPair<int, QString>, QPair<int, QString>> &f_moderator, const int &f_banID, const int &f_ban_duration, const QDateTime &f_date, const QStringList &f_reason);
 
   private:
     /**
@@ -101,7 +111,7 @@ class Discord : public QObject
      *
      * @return A JSON document for the modcall.
      */
-    QJsonDocument constructModcallJson(const QStringList &f_name, const QString &f_area, const QString &f_reason) const;
+    QJsonDocument constructModcallJson(const QPair<QString, QString> &f_name, const QPair<QString, QString> &r_name, const QString &f_reason) const;
 
     /**
      * @brief Constructs a new QHttpMultiPart document for log files.
@@ -144,9 +154,9 @@ class Discord : public QObject
      *
      * @return A JSON document for the ban.
      */
-    QJsonDocument constructBanJson(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID, const int &f_counts);
+    QJsonDocument constructBanJson(const QString &f_ipid, const QPair<int, QString> &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID, const int &f_counts);
 
-    QJsonDocument constructUnbanJson(const QString &f_ipid, const QStringList &f_moderator, const int &f_banID, const int &f_ban_duration, const QDateTime &f_date, const QStringList &f_reason);
+    QJsonDocument constructUnbanJson(const QString &f_ipid, const QPair<QPair<int, QString>, QPair<int, QString>> &f_moderator, const int &f_banID, const int &f_ban_duration, const QDateTime &f_date, const QStringList &f_reason);
 };
 
 #endif // DISCORD_H

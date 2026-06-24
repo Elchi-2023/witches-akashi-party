@@ -26,7 +26,6 @@ QSettings *ConfigManager::m_logtext = new QSettings("config/text/logtext.ini", Q
 QSettings *ConfigManager::m_ambience = new QSettings("config/ambience.ini", QSettings::IniFormat);
 ConfigManager::CommandSettings *ConfigManager::m_commands = new CommandSettings();
 MusicList *ConfigManager::m_musicList = new MusicList;
-QMap<int, QPair<QString, QString>> *ConfigManager::m_radioList = new QMap<int, QPair<QString, QString>>;
 QMap<QString, ConfigManager::HolidaysDesc> *ConfigManager::m_holidayList = new QMap<QString, ConfigManager::HolidaysDesc>;
 QHash<QString, ConfigManager::help> *ConfigManager::m_commands_help = new QHash<QString, ConfigManager::help>;
 QStringList *ConfigManager::m_ordered_list = new QStringList;
@@ -37,19 +36,19 @@ bool ConfigManager::verifyServerConfig()
     QStringList l_directories{"config/", "config/text/"};
     for (const QString &l_directory : l_directories) {
         if (!dirExists(QFileInfo(l_directory))) {
-            qCritical() << l_directory + " does not exist!";
+            qCritical() << "[C][AKASHI][CONFIG]: " << l_directory + " does not exist!";
             return false;
         }
     }
 
     // Verify config files
     QStringList l_config_files{"config/config.ini", "config/areas.ini", "config/backgrounds.txt", "config/characters.txt", "config/music.json",
-                               "config/radio.json", "config/discord.ini", "config/text/8ball.txt", "config/text/gimp.txt", "config/text/praise.txt",
-                               "config/text/holiday.json", "config/text/reprimands.txt", "config/text/commandhelp.json",
+                               "config/discord.ini", "config/text/8ball.txt", "config/text/gimp.txt", "config/text/praise.txt",
+                               "config/text/reprimands.txt", "config/text/commandhelp.json",
                                "config/text/cdns.txt", "config/ipbans.json"};
     for (const QString &l_file : l_config_files) {
         if (!fileExists(QFileInfo(l_file))) {
-            qCritical() << l_file + " does not exist!";
+            qCritical() << "[C][AKASHI][CONFIG]: " << l_file + " does not exist!";
             return false;
         }
     }
@@ -57,7 +56,7 @@ bool ConfigManager::verifyServerConfig()
     // Verify areas
     QSettings l_areas_ini("config/areas.ini", QSettings::IniFormat);
     if (l_areas_ini.childGroups().length() < 1) {
-        qCritical() << "areas.ini is invalid!";
+        qCritical() << "[C][AKASHI][CONFIG]: areas.ini is invalid!";
         return false;
     }
 
@@ -77,7 +76,7 @@ bool ConfigManager::verifyServerConfig()
                 faces.append(l_dice_ini.value(key).toString());
             }
             else {
-                qCritical() << "dice.ini max mismatch!";
+                qCritical() << "[W][AKASHI][CONFIG]: dice.ini max mismatch!";
                 break;
             }
         }
@@ -90,46 +89,46 @@ bool ConfigManager::verifyServerConfig()
     bool ok;
     m_settings->value("ms_port", 27016).toInt(&ok);
     if (!ok) {
-        qCritical("ms_port is not a valid port!");
+        qCritical("[C][AKASHI][CONFIG]: ms_port is not a valid port!");
         return false;
     }
     m_settings->value("port", 27016).toInt(&ok);
     if (!ok) {
-        qCritical("port is not a valid port!");
+        qCritical("[C][AKASHI][CONFIG]: port is not a valid port!");
         return false;
     }
     m_settings->value("secure_port", -1).toInt(&ok);
     if (!ok) {
-        qCritical("secure_port is not a valid port!");
+        qCritical("[C][AKASHI][CONFIG]: secure_port is not a valid port!");
         return false;
     }
 
     QString l_auth = m_settings->value("auth", "simple").toString().toLower();
     if (!(l_auth == "simple" || l_auth == "advanced")) {
-        qCritical("auth is not a valid auth type!");
+        qCritical("[W][AKASHI][CONFIG]: auth is not a valid auth type!");
         return false;
     }
 
     int l_soft_limit = m_settings->value("packet_rate_limit_soft", 10).toInt(&ok);
     if (!ok) {
-        qCritical("packet_rate_limit_soft is not a valid limit!");
+        qCritical("[W][AKASHI][CONFIG]: packet_rate_limit_soft is not a valid limit!");
         return false;
     }
     if (l_soft_limit <= 0) {
-        qWarning("packet_rate_limit_soft is 0 or less, warning threshold is disabled!");
+        qWarning("[W][AKASHI][CONFIG]: packet_rate_limit_soft is 0 or less, warning threshold is disabled!");
     }
 
     int l_hard_limit = m_settings->value("packet_rate_limit_hard", 20).toInt(&ok);
     if (!ok) {
-        qCritical("packet_rate_limit_hard is not a valid limit!");
+        qCritical("[C][AKASHI][CONFIG]:packet_rate_limit_hard is not a valid limit!");
         return false;
     }
     else if (l_soft_limit > 0 && l_hard_limit <= l_soft_limit) {
-        qCritical("packet_rate_limit_hard must be greater than packet_rate_limit_soft!");
+        qCritical("[C][AKASHI][CONFIG]: packet_rate_limit_hard must be greater than packet_rate_limit_soft!");
         return false;
     }
     if (l_hard_limit <= 0) {
-        qWarning("packet_rate_limit_hard is 0 or less, rate limiting is disabled!");
+        qWarning("[W][AKASHI][CONFIG]: packet_rate_limit_hard is 0 or less, rate limiting is disabled!");
     }
 
     m_settings->endGroup();
@@ -150,7 +149,7 @@ QString ConfigManager::bindIP()
     return m_settings->value("Options/bind_ip", "all").toString();
 }
 
-QStringList ConfigManager::charlist(const bool write)
+QStringList ConfigManager::charlist(const bool write, const bool print_to_console)
 {
     QFile l_read("config/characters.txt");
     l_read.open(QIODevice::ReadOnly | QIODevice::Text);
@@ -158,11 +157,14 @@ QStringList ConfigManager::charlist(const bool write)
     l_read.close();
 
     if (write){
-        if (l_charlist.isEmpty())
-            qWarning() << "[CharLoader]: Loaded an empty contexts.";
+        if (l_charlist.isEmpty()){
+            if (print_to_console)
+                qWarning() << "[CharLoader]: Loaded an empty contents.";
+        }
         else{
             QStringList l_currentlist = l_charlist;
-            qInfo().nospace() << "[CharLoader]: Loaded an " << l_charlist.size() << " contexts..\n[CharLoader]: Scanning any of duplicated...";
+            if (print_to_console)
+                qInfo().nospace() << "[CharLoader]: Loaded an " << l_charlist.size() << " contexts..\n[CharLoader]: Scanning any of duplicated...";
             const int duplicatedCount = l_currentlist.removeDuplicates();
             if (duplicatedCount > 0){
                 QFile l_write("config/characters.txt");
@@ -172,16 +174,19 @@ QStringList ConfigManager::charlist(const bool write)
                     if (l_currentlist.count(I) == 1 && l_charlist.count(I) > 1 && !duplicatedList.contains(qMakePair(I, int(l_charlist.count(I) -1)))) /* comparing between og and current */
                         duplicatedList.append(qMakePair(I, l_charlist.count(I) -1));
                 }
-                qWarning().nospace() << "[CharLoader]: Found an " << duplicatedCount << " duplicated as follows:";
-                for (auto& L : duplicatedList) /* better than shown "QVector<QPair<QString, int>>" */
-                    qWarning().nospace() << L.first << ": " << L.second;
-                qInfo() << "[CharLoader]: Writing characters.txt..";
+                if (print_to_console){
+                    qWarning().nospace() << "[CharLoader]: Found an " << duplicatedCount << " duplicated as follows:";
+                    for (auto& L : duplicatedList) /* better than shown "QVector<QPair<QString, int>>" */
+                        qWarning().nospace() << L.first << ": " << L.second;
+                    qInfo() << "[CharLoader]: Writing characters.txt..";
+                }
                 l_write.write(l_currentlist.join('\n').toUtf8());
-                qInfo() << "[CharLoader]: Done, Total now: " << l_currentlist.size();
+                if (print_to_console)
+                    qInfo() << "[CharLoader]: Done, Total now: " << l_currentlist.size();
                 l_charlist = l_currentlist;
                 l_write.close();
             }
-            else
+            else if (print_to_console)
                 qInfo() << "[CharLoader]: Nothing to be found, all good to go.";
         }
     }
@@ -210,14 +215,13 @@ MusicList ConfigManager::musiclist()
     QJsonParseError l_error;
     QJsonDocument l_music_list_json = QJsonDocument::fromJson(l_music_json.readAll(), &l_error);
     if (!(l_error.error == QJsonParseError::NoError)) { // Non-Terminating error.
-        qWarning() << "Unable to load musiclist. The following error was encounted : " + l_error.errorString();
+        qWarning() << "[W][AKASHI][CONFIG]: Unable to load musiclist. The following error was encounted : " + l_error.errorString();
         return QMap<QString, QPair<QString, int>>{}; // Server can still run without music.
     }
 
     // Make sure the list is empty before appending new data.
-    if (!m_ordered_list->empty()) {
+    if (!m_ordered_list->empty())
         m_ordered_list->clear();
-    }
 
     // Akashi expects the musiclist to be contained in a JSON array, even if its only a single category.
     QJsonArray l_Json_root_array = l_music_list_json.array();
@@ -234,7 +238,7 @@ MusicList ConfigManager::musiclist()
             m_ordered_list->append(l_category_name);
         }
         else {
-            qWarning() << "Category name not set. This may cause the musiclist to be displayed incorrectly.";
+            qWarning() << "[W][AKASHI][CONFIG]: Category name not set. This may cause the musiclist to be displayed incorrectly.";
         }
 
         l_child_array = l_child_obj["songs"].toArray();
@@ -255,37 +259,64 @@ MusicList ConfigManager::musiclist()
     return *m_musicList;
 }
 
+QPair<QStringList, MusicList> ConfigManager::Musiclist(){
+    QFile l_music_json("config/music.json");
+    QPair<QStringList, MusicList> l_music;
+
+    if (l_music_json.open(QIODevice::ReadOnly | QIODevice::Text)){
+        QJsonParseError l_error;
+        QJsonDocument l_music_list_json = QJsonDocument::fromJson(l_music_json.readAll(), &l_error);
+
+        if (l_error.error == QJsonParseError::NoError){
+            for (const auto l_child : l_music_list_json.array()){ // Iterate trough entire JSON file to assemble musiclist
+                const QJsonObject l_child_obj = l_child.toObject();
+
+                if (!l_child_obj["category"].toString().isEmpty()){ // Technically not a requirement, but neat for organisation.
+                    l_music.first.append(l_child_obj["category"].toString());
+                    l_music.second.insert(l_child_obj["category"].toString(), {l_child_obj["category"].toString(), 0});
+                }
+
+                for (const auto l_child_song : l_child_obj["songs"].toArray()){ // Inner for loop because a category can contain multiple songs.
+                    const QJsonObject l_song_obj = l_child_song.toObject();
+                    QPair<QString, int> l_song_data = {l_song_obj["realname"].toString(), l_song_obj["length"].toVariant().toInt()};
+                    if (l_song_data.first.isEmpty())
+                        l_song_data.first = l_song_obj["name"].toString();
+                    l_music.first.append(l_song_obj["name"].toString());
+                    l_music.second.insert(l_song_obj["name"].toString(), l_song_data);
+                }
+            }
+        }
+        else
+            qWarning() << "[W][AKASHI][CONFIG]: Unable to load musiclist. The following error was encounted : " + l_error.errorString();
+        l_music_json.close();
+    } // Server can still run without music.
+
+    return l_music;
+}
+
 QMap<int, QPair<QString, QString>> ConfigManager::radiolist(){
-
     QFile l_radio_json("config/radio.json");
-    l_radio_json.open(QIODevice::ReadOnly | QIODevice::Text);
+    QMap<int, QPair<QString, QString>> l_radio;
+    if (l_radio_json.open(QIODevice::ReadOnly | QIODevice::Text)){
+        QJsonParseError l_error;
+        QJsonDocument l_radio_list_json = QJsonDocument::fromJson(l_radio_json.readAll(), &l_error);
 
-    QJsonParseError l_error;
-    QJsonDocument l_radio_list_json = QJsonDocument::fromJson(l_radio_json.readAll(), &l_error);
-    if (!(l_error.error == QJsonParseError::NoError)) { // Non-Terminating error.
-        qWarning() << "Unable to load radiolist. The following error was encounted : " + l_error.errorString();
-        return QMap<int, QPair<QString, QString>>{}; // Mimic the music list behaviour.
+        if (l_error.error == QJsonParseError::NoError){ // The JSON is an array for the radio.
+            for (const auto l_child : l_radio_list_json.array()){ // Iterate trough entire JSON file
+                const QJsonObject l_child_obj = l_child.toObject();
+                if (l_child.isNull() || l_child_obj.isEmpty()) // skipped null array or <empty> objects..
+                    continue;
+
+                // Reading the silly id and name and url from JSON
+                l_radio.insert(l_child_obj["id"].toVariant().toInt(), {l_child_obj["name"].toString(), l_child_obj["url"].toString()});
+            }
+        }
+        else
+            qWarning() << "[W][AKASHI][CONFIG]: Unable to load radiolist. The following error was encounted : " + l_error.errorString();
+        l_radio_json.close();
     }
 
-    // The JSON is an array for the radio.
-    QJsonArray l_Json_root_array = l_radio_list_json.array();
-    QJsonObject l_child_obj;
-
-    for (int i = 0; i < l_Json_root_array.size(); i++) { // Iterate trough entire JSON file
-        l_child_obj = l_Json_root_array.at(i).toObject();
-
-               // Reading the silly id and name and url from JSON
-        int l_radio_id = l_child_obj["id"].toVariant().toInt();
-        QString l_radio_name = l_child_obj["name"].toString();
-        QString l_radio_url = l_child_obj["url"].toString();
-
-        m_radioList->insert(l_radio_id, {l_radio_name, l_radio_url});
-    }
-
-    l_radio_json.close();
-
-    return *m_radioList;
-
+    return l_radio;
 }
 
 QStringList ConfigManager::ordered_songs()
@@ -293,37 +324,27 @@ QStringList ConfigManager::ordered_songs()
     return *m_ordered_list;
 }
 
-void ConfigManager::loadCommandHelp()
-{
+void ConfigManager::loadCommandHelp(){
     QFile l_help_json("config/text/commandhelp.json");
-    l_help_json.open(QIODevice::ReadOnly | QIODevice::Text);
+    if (l_help_json.open(QIODevice::ReadOnly | QIODevice::Text)){
+        QJsonParseError l_error;
+        const QJsonArray l_help_list_json = QJsonDocument::fromJson(l_help_json.readAll(), &l_error).array();
 
-    QJsonParseError l_error;
-    QJsonDocument l_help_list_json = QJsonDocument::fromJson(l_help_json.readAll(), &l_error);
-    if (!(l_error.error == QJsonParseError::NoError)) { // Non-Terminating error.
-        qWarning() << "Unable to load help information. The following error occurred: " + l_error.errorString();
-    }
+        switch (l_error.error){
+        case QJsonParseError::NoError:
+            for (auto I : l_help_list_json){
+                for (auto Name : I.toObject()["names"].toArray()){
+                    if (Name.toString().isEmpty())
+                        continue;
 
-    // Akashi expects the helpfile to contain multiple entires, so it always checks for an array first.
-    QJsonArray l_Json_root_array = l_help_list_json.array();
-    QJsonObject l_child_obj;
-    QJsonArray l_names;
-
-    for (int i = 0; i < l_Json_root_array.size(); i++) {
-        l_child_obj = l_Json_root_array.at(i).toObject();
-        l_names = l_child_obj["names"].toArray();
-        QString l_usage = l_child_obj["usage"].toString();
-        QString l_text = l_child_obj["text"].toString();
-
-        for (int j = 0; j < l_names.size(); j++) {
-            QString l_name = l_names.at(j).toString();
-            if (!l_name.isEmpty()) {
-                help l_help_information = {
-                    .usage = l_usage,
-                    .text = l_text};
-
-                m_commands_help->insert(l_name, l_help_information);
+                    const help l_help_information = {.usage = I.toObject()["usage"].toString(), .text = I.toObject()["text"].toString()};
+                    m_commands_help->insert(Name.toString(), l_help_information);
+                }
             }
+            break;
+        default:
+            qWarning() << "[W][AKASHI][CONFIG]: Unable to load help information. The following error occurred: " + l_error.errorString();
+            break;
         }
     }
 }
@@ -357,74 +378,118 @@ QStringList ConfigManager::rawAreaNames()
     return m_areas->childGroups();
 }
 
-QStringList ConfigManager::iprangeBans()
-{
+QStringList ConfigManager::iprangeBans(){
     QFile l_json_file("config/ipbans.json");
-    l_json_file.open(QIODevice::ReadOnly | QIODevice::Text);
-
-    QJsonParseError l_error;
-    QJsonDocument l_ip_bans = QJsonDocument::fromJson(l_json_file.readAll(), &l_error);
-    if (l_error.error != QJsonParseError::NoError) {
-        qDebug() << "Unable to parse JSON file. Error:" << l_error.errorString();
-        return {};
-    }
-
-    QJsonObject l_json_obj = l_ip_bans.object();
-
     QStringList l_range_bans;
-    l_range_bans.append(l_json_obj["ip_range"].toVariant().toStringList());
+    if (l_json_file.open(QIODevice::ReadOnly | QIODevice::Text)){
+        QJsonParseError l_error;
+        const QJsonObject l_ip_bans = QJsonDocument::fromJson(l_json_file.readAll(), &l_error).object();
 
-    if (QFile::exists("storage/asn.sqlite3")) {
-        QSqlDatabase asn_db = QSqlDatabase::addDatabase("QSQLITE", "ASN");
-        asn_db.setDatabaseName("storage/asn.sqlite3");
-        asn_db.open();
+        switch (l_error.error){
+        case QJsonParseError::NoError:
+            l_range_bans.append(l_ip_bans["ip_range"].toVariant().toStringList());
 
-        // This is a dumb hack. Idk how else I can do this, but who gives a shit?
-        QSqlQuery query("SELECT ip FROM maxmind WHERE asn in (" + l_json_obj["asn"].toVariant().toStringList().join(",") + ")", asn_db);
-        query.exec();
-        while (query.next()) {
-            l_range_bans.append(query.value(0).toString());
+            if (QFile::exists("storage/asn.sqlite3")) {
+                QSqlDatabase asn_db = QSqlDatabase::addDatabase("QSQLITE", "ASN");
+                asn_db.setDatabaseName("storage/asn.sqlite3");
+                asn_db.open();
+
+                /* ==== [Devs notes] ====
+                 * This is a dumb hack.
+                 * Idk how else I can do this, but who gives a [s-word]?
+                 * ====================== */
+                QSqlQuery query("SELECT ip FROM maxmind WHERE asn in (" + l_ip_bans["asn"].toVariant().toStringList().join(",") + ")", asn_db);
+                query.exec();
+                while (query.next())
+                    l_range_bans.append(query.value(0).toString());
+                asn_db.close();
+            }
+            l_range_bans.removeDuplicates();
+            break;
+        default:
+            qDebug() << "[E][AKASHI][CONFIG]: Unable to parse JSON file of \"config/ipbans.json\" . Error:" << l_error.errorString();
+            break;
         }
-        asn_db.close();
     }
-    l_range_bans.removeDuplicates();
+    else
+        qWarning() << "[W][AKASHI][CONFIG]: Unable to open JSON file of \"config/ipbans.json\". Error:" << l_json_file.errorString();
     return l_range_bans;
 }
 
-void ConfigManager::reloadSettings()
-{
+void ConfigManager::reloadSettings(){
     m_settings->sync();
     m_discord->sync();
     m_logtext->sync();
+    m_areas->sync();
+    m_ambience->sync();
+
+    m_commands->magic_8ball = (loadConfigFile("8ball"));
+    m_commands->praises = (loadConfigFile("praise"));
+    m_commands->reprimands = (loadConfigFile("reprimands"));
+    m_commands->gimps = (loadConfigFile("gimp"));
+    m_commands->filters = (loadConfigFile("filter"));
+    m_commands->cdns = (loadConfigFile("cdns"));
+    if (m_commands->cdns.isEmpty())
+        m_commands->cdns = QStringList{"cdn.discord.com"};
+
+    auto ReloadedMusic = ConfigManager::Musiclist();
+    m_ordered_list->swap(ReloadedMusic.first);
+    m_musicList->swap(ReloadedMusic.second);
+}
+
+QVariant ConfigManager::GetVoiceParameter(VoiceParameter type){
+    QSettings read("config/config.ini", QSettings::IniFormat);
+    switch (type){
+    case VoiceParameter::ENABLE:
+        return read.value("voice/enable", true).toBool();
+    case VoiceParameter::PTT:
+        return read.value("voice/PTT", false).toBool();
+    case VoiceParameter::MAXPEERSAREA:
+        return qMax(0, read.value("voice/max_peers", 0).toInt());
+    case VoiceParameter::MAXBYTES:
+        return qMax(4000, read.value("voice/max_bytes", 4000).toInt());
+    case VoiceParameter::VCODEC:
+        return QString("opus");
+    case VoiceParameter::VHZ:
+        return qBound(8000, read.value("voice/voice_hz", 48000).toInt(), 48000);
+    case VoiceParameter::VFRAME_MS:
+        return qBound(5, read.value("voice/voice_tick", 20).toInt(), 60);
+    }
+    return QVariant();
+}
+QVariantList ConfigManager::GetVoiceParamters(){
+    QSettings read("config/config.ini", QSettings::IniFormat);
+    QVariantList params;
+    params << read.value("voice/enable", true).toBool() << read.value("voice/PTT", false).toBool() << read.value("voice/max_peers").toInt() << qMax(4000, read.value("voice/max_bytes", 4000).toInt()) << QString("opus") << 48000 << 20;
+    return params;
 }
 
 QStringList ConfigManager::loadConfigFile(const QString filename)
 {
     QStringList stringlist;
     QFile l_file("config/text/" + filename + ".txt");
-    l_file.open(QIODevice::ReadOnly | QIODevice::Text);
-    while (!(l_file.atEnd())) {
-        stringlist.append(l_file.readLine().trimmed());
+    if (l_file.open(QIODevice::ReadOnly | QIODevice::Text)){
+        while (!(l_file.atEnd())) {
+            if (!l_file.readLine().trimmed().isEmpty())
+                stringlist.append(l_file.readLine().trimmed());
+        }
+        l_file.close();
     }
-    l_file.close();
     return stringlist;
 }
 
-int ConfigManager::maxPlayers()
-{
+int ConfigManager::maxPlayers(){
     bool ok;
     int l_players = m_settings->value("Options/max_players", 100).toInt(&ok);
-    if (!ok) {
-        qWarning("max_players is not an int!");
-        l_players = 100;
-    }
-    return l_players;
+    if (!ok)
+        qWarning("[W][AKASHI][CONFIG]: max_players is not an int!");
+    return qMax(1, ok ? l_players : 100);
 }
 
 int ConfigManager::serverPort()
 {
     if (m_settings->contains("Options/webao_port")) {
-        qWarning("webao_port is deprecated, use port instead");
+        qWarning("[W][AKASHI][CONFIG]: webao_port is deprecated, use port instead");
         return m_settings->value("Options/webao_port", 27016).toInt();
     }
 
@@ -477,7 +542,7 @@ int ConfigManager::logBuffer()
     bool ok;
     int l_buffer = m_settings->value("Options/logbuffer", 500).toInt(&ok);
     if (!ok) {
-        qWarning("logbuffer is not an int!");
+        qWarning("[W][AKASHI][CONFIG]: logbuffer is not an int!");
         l_buffer = 500;
     }
     return l_buffer;
@@ -494,7 +559,7 @@ int ConfigManager::maxStatements()
     bool ok;
     int l_max = m_settings->value("Options/maximum_statements", 10).toInt(&ok);
     if (!ok) {
-        qWarning("maximum_statements is not an int!");
+        qWarning("[W][AKASHI][CONFIG]: maximum_statements is not an int!");
         l_max = 10;
     }
     return l_max;
@@ -504,7 +569,7 @@ int ConfigManager::multiClientLimit()
     bool ok;
     int l_limit = m_settings->value("Options/multiclient_limit", 15).toInt(&ok);
     if (!ok) {
-        qWarning("multiclient_limit is not an int!");
+        qWarning("[W][AKASHI][CONFIG]: multiclient_limit is not an int!");
         l_limit = 15;
     }
     return l_limit;
@@ -515,7 +580,7 @@ int ConfigManager::maxCharacters()
     bool ok;
     int l_max = m_settings->value("Options/maximum_characters", 256).toInt(&ok);
     if (!ok) {
-        qWarning("maximum_characters is not an int!");
+        qWarning("[W][AKASHI][CONFIG]: maximum_characters is not an int!");
         l_max = 256;
     }
     return l_max;
@@ -526,7 +591,7 @@ int ConfigManager::messageFloodguard()
     bool ok;
     int l_flood = m_settings->value("Options/message_floodguard", 250).toInt(&ok);
     if (!ok) {
-        qWarning("message_floodguard is not an int!");
+        qWarning("[W][AKASHI][CONFIG]: message_floodguard is not an int!");
         l_flood = 250;
     }
     return l_flood;
@@ -537,7 +602,7 @@ int ConfigManager::globalMessageFloodguard()
     bool ok;
     int l_flood = m_settings->value("Options/global_message_floodguard", 0).toInt(&ok);
     if (!ok) {
-        qWarning("global_message_floodguard is not an int!");
+        qWarning("[W][AKASHI][CONFIG]: global_message_floodguard is not an int!");
         l_flood = 0;
     }
     return l_flood;
@@ -548,7 +613,7 @@ int ConfigManager::packetRateLimitSoft()
     bool ok;
     int l_limit = m_settings->value("Options/packet_rate_limit_soft", 10).toInt(&ok);
     if (!ok) {
-        qWarning("packet_rate_limit_soft is not an int!");
+        qWarning("[W][AKASHI][CONFIG]: packet_rate_limit_soft is not an int!");
         l_limit = 10;
     }
     return l_limit;
@@ -559,22 +624,18 @@ int ConfigManager::packetRateLimitHard()
     bool ok;
     int l_limit = m_settings->value("Options/packet_rate_limit_hard", 20).toInt(&ok);
     if (!ok) {
-        qWarning("packet_rate_limit_hard is not an int!");
+        qWarning("[W][AKASHI][CONFIG]: packet_rate_limit_hard is not an int!");
         l_limit = 20;
     }
     return l_limit;
 }
 
-QUrl ConfigManager::assetUrl()
-{
-    QByteArray l_url = m_settings->value("Options/asset_url", "").toString().toUtf8();
-    if (QUrl(l_url).isValid()) {
-        return QUrl(l_url);
-    }
-    else {
-        qWarning("asset_url is not a valid url!");
-        return QUrl(NULL);
-    }
+QUrl ConfigManager::assetUrl(){
+    const QUrl l_url = QUrl::fromStringList({QByteArray(m_settings->value("Options/asset_url", "").toString().toUtf8())}).first();
+    if (!l_url.isValid())
+        qWarning("[W][AKASHI][CONFIG]: asset_url is not a valid url!");
+
+    return l_url.isValid() ? l_url : QUrl();
 }
 
 int ConfigManager::diceMaxValue()
@@ -582,7 +643,7 @@ int ConfigManager::diceMaxValue()
     bool ok;
     int l_value = m_settings->value("Dice/max_value", 100).toInt(&ok);
     if (!ok) {
-        qWarning("max_value is not an int!");
+        qWarning("[W][AKASHI][CONFIG]: max_value is not an int!");
         l_value = 100;
     }
     return l_value;
@@ -593,7 +654,7 @@ int ConfigManager::diceMaxDice()
     bool ok;
     int l_dice = m_settings->value("Dice/max_dice", 100).toInt(&ok);
     if (!ok) {
-        qWarning("max_dice is not an int!");
+        qWarning("[W][AKASHI][CONFIG]: max_dice is not an int!");
         l_dice = 100;
     }
     return l_dice;
@@ -638,12 +699,8 @@ QString ConfigManager::discordWebhookColor()
 {
     const QString l_default_color = "13312842";
     QString l_color = m_discord->value("Discord/webhook_color", l_default_color).toString();
-    if (l_color.isEmpty()) {
-        return l_default_color;
-    }
-    else {
-        return l_color;
-    }
+
+    return l_color.isEmpty() ? l_default_color : l_color;
 }
 
 bool ConfigManager::passwordRequirements()
@@ -656,7 +713,7 @@ int ConfigManager::passwordMinLength()
     bool ok;
     int l_min = m_settings->value("Password/pass_min_length", 8).toInt(&ok);
     if (!ok) {
-        qWarning("pass_min_length is not an int!");
+        qWarning("[W][AKASHI][CONFIG]: pass_min_length is not an int!");
         l_min = 8;
     }
     return l_min;
@@ -667,7 +724,7 @@ int ConfigManager::passwordMaxLength()
     bool ok;
     int l_max = m_settings->value("Password/pass_max_length", 0).toInt(&ok);
     if (!ok) {
-        qWarning("pass_max_length is not an int!");
+        qWarning("[W][AKASHI][CONFIG]:pass_max_length is not an int!");
         l_max = 0;
     }
     return l_max;
@@ -703,7 +760,7 @@ int ConfigManager::afkTimeout()
     bool ok;
     int l_afk = m_settings->value("Options/afk_timeout", 300).toInt(&ok);
     if (!ok) {
-        qWarning("afk_timeout is not an int!");
+        qWarning("[W][AKASHI][CONFIG]: afk_timeout is not an int!");
         l_afk = 300;
     }
     return l_afk;
@@ -752,37 +809,43 @@ QStringList ConfigManager::cdnList()
 QMap<QString, ConfigManager::HolidaysDesc> ConfigManager::holidaylist(){
 
     QFile l_holiday_json("config/text/holiday.json");
-    l_holiday_json.open(QIODevice::ReadOnly | QIODevice::Text);
+    m_holidayList->clear();
 
-    QJsonParseError l_error;
-    QJsonDocument l_holiday_list_json = QJsonDocument::fromJson(l_holiday_json.readAll(), &l_error);
-    if (!(l_error.error == QJsonParseError::NoError)) { // Non-Terminating error.
-        qWarning() << "Unable to load holidaylist. The following error was encounted : " + l_error.errorString();
-        return QMap<QString, HolidaysDesc>{};
+    if (l_holiday_json.open(QIODevice::ReadOnly | QIODevice::Text)){
+        QJsonParseError l_error;
+        QJsonDocument l_holiday_list_json = QJsonDocument::fromJson(l_holiday_json.readAll(), &l_error);
+
+        if (l_error.error == QJsonParseError::NoError){
+            const QJsonObject l_root = l_holiday_list_json.object(); // The root is a json object in this case.
+
+            for (const QString &holidayName : l_root.keys()) { // Iterate trough entire JSON file, with holidayName as the key
+                const QJsonObject l_child_obj = l_root[holidayName].toObject();
+                if (l_child_obj.isEmpty())
+                    continue;
+
+                HolidaysDesc l_holidaydesc{.pre_name = l_child_obj["word before name"].toString(), .msg_replacement = l_child_obj["replacement word"].toString(),
+                            .emoji_before = l_child_obj["emoji before name"].toString(), .emoji_after = l_child_obj["emoji after name"].toString(),
+                            .chance = l_child_obj["chance"].toInt()}; //struct to keep the data of each holiday
+
+                m_holidayList->insert(holidayName, l_holidaydesc); //mapping each name to the descriptions inside it
+            }
+        }
+        else
+            qWarning() << "[W][AKASHI]: Unable to load holidaylist. The following error was encounted : " + l_error.errorString();
+        l_holiday_json.close();
     }
-
-           // The root is a json object in this case.
-    QJsonObject l_Json_root_object = l_holiday_list_json.object();
-
-    for (const QString &holidayName : l_Json_root_object.keys()) { // Iterate trough entire JSON file, with holidayName as the key
-
-        QJsonObject l_child_obj = l_Json_root_object[holidayName].toObject();
-
-        HolidaysDesc l_holidaydesc; //struct to keep the data of each holiday
-
-        l_holidaydesc.pre_name = l_child_obj["word before name"].toString();
-        l_holidaydesc.msg_replacement = l_child_obj["replacement word"].toString();
-        l_holidaydesc.emoji_before = l_child_obj["emoji before name"].toString();
-        l_holidaydesc.emoji_after = l_child_obj["emoji after name"].toString();
-        l_holidaydesc.chance = l_child_obj["chance"].toInt();
-
-        m_holidayList->insert(holidayName, l_holidaydesc); //mapping each name to the descriptions inside it
+    return (*m_holidayList);
+}
+QStringList ConfigManager::CustomReminder(){
+    QFile l_custom_reminder("config/text/custom_reminder.txt");
+    QStringList c_reminderlist;
+    if (l_custom_reminder.open(QIODevice::ReadOnly | QIODevice::Text)){ // if "can" reads..
+        while (!l_custom_reminder.atEnd())
+            c_reminderlist << l_custom_reminder.readLine().trimmed();
+        c_reminderlist.removeDuplicates(); // remove dups..
+        c_reminderlist.removeAll(""); // remove empty..
     }
-
-    l_holiday_json.close();
-
-    return *m_holidayList;
-
+    return c_reminderlist;
 }
 
 bool ConfigManager::publishServerEnabled()

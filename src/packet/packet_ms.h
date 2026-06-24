@@ -10,11 +10,12 @@ class PacketMS : public AOPacket
     virtual PacketInfo getPacketInfo() const;
     virtual void handlePacket(AreaData *area, AOClient &client) const;
 
-    static QString applyUwu(const QString &input);
-    static QString applyPigLatin(const QString &input);
-
   private:
-    AOPacket *validateIcPacket(AOClient &client) const;
+    /**
+     * @brief Create the packet of IC-Message object.
+     * @return Valid pointer, Nullptr otherwise.
+     */
+    AOPacket *CreatePacket(AOClient &client) const;
     QRegularExpressionMatch isTestimonyJumpCommand(QString message) const;
 };
 #endif

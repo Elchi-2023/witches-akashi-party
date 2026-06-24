@@ -9,21 +9,13 @@
 
 inline int MedievalParser::randomInt(int min, int max)
 {
-    if (min > max) {
-        return 0;
-    }
-    return QRandomGenerator::global()->bounded(min, max + 1);
+    return min > max ? 0 : QRandomGenerator::global()->bounded(min, max + 1);
 }
 
 inline bool MedievalParser::containsCaseInsensitive(const QVector<QString> &vector, const QString &str)
 {
 #if QT_VERSION_MAJOR == 5
-    for (const QString &s : vector) {
-        if (s.compare(str, Qt::CaseInsensitive) == 0) {
-            return true;
-        }
-    }
-    return false;
+    return QStringList(vector.toList()).contains(str, Qt::CaseInsensitive);
 #else
     return vector.contains(str, Qt::CaseInsensitive);
 #endif
@@ -34,170 +26,94 @@ MedievalParser::MedievalParser()
     parseDataFile();
 }
 
-QString MedievalParser::degrootify(QString message)
-{
-    if (!datafile_valid) {
-        qWarning() << "[medieval][debug] degrootify called but datafile_valid=false; returning unchanged:" << message;
-        return message;
-    }
-    bool do_pends = true;
-    QString final_text = message;
+QString MedievalParser::degrootify(QString message){
+    if (datafile_valid){
+        bool do_pends = true;
+        QString final_text = message;
 
-    if (message.startsWith("-")) {
-        do_pends = false;
-        final_text.remove(0, 1);
-    }
-
-    QString out = modifySpeech(final_text, do_pends, false);
-    qDebug() << "[medieval][debug] in:" << message << "out:" << out;
-    return out;
-}
-
-void MedievalParser::parseDataFile()
-{
-    datafile_valid = true;
-
-    QFile l_datafile_json("config/text/autorp.json");
-    if (!l_datafile_json.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        qWarning() << "[medieval][debug] Could not open" << QFileInfo(l_datafile_json).absoluteFilePath() << "-" << l_datafile_json.errorString();
-        datafile_valid = false;
-        return;
-    }
-
-    QJsonParseError l_error;
-    const QJsonDocument &l_datafile_list_json = QJsonDocument::fromJson(l_datafile_json.readAll(), &l_error);
-    if (!(l_error.error == QJsonParseError::NoError)) { // Non-Terminating error.
-        qWarning() << "Unable to load Medieval Mode data file. The following error occurred: " + l_error.errorString();
-        datafile_valid = false;
-        return;
-    }
-
-    // Prepended words
-    const QJsonObject &l_Json_prepend_object = l_datafile_list_json["prepended_words"].toObject();
-    for (const QString &word : l_Json_prepend_object.keys()) {
-        prepended_words.append(word);
-    }
-
-    if (prepended_words.isEmpty()) {
-        qWarning() << "[medieval][debug] prepended_words is empty after parsing; disabling medieval mode";
-        datafile_valid = false;
-        return;
-    }
-
-    // Appended words
-    const QJsonObject &l_Json_append_object = l_datafile_list_json["appended_words"].toObject();
-    for (const QString &word : l_Json_append_object.keys()) {
-        appended_words.append(word);
-    }
-
-    if (appended_words.isEmpty()) {
-        qWarning() << "[medieval][debug] appended_words is empty after parsing; disabling medieval mode";
-        datafile_valid = false;
-        return;
-    }
-
-    // Replaced words
-    const QJsonArray &l_Json_replacement_array = l_datafile_list_json["word_replacements"].toArray();
-    for (const QJsonValue &replacement : l_Json_replacement_array) {
-        const QJsonObject &rep_obj = replacement.toObject();
-        WordReplacement replacement_struct;
-        for (const QString &key : rep_obj.keys()) {
-            if (key == "replacement") {
-                replacement_struct.replacements = QVector<QString>(rep_obj[key].toVariant().toStringList().toVector());
-            }
-            else if (key == "replacement_prepend") {
-                replacement_struct.prepended = QVector<QString>(rep_obj[key].toVariant().toStringList().toVector());
-            }
-            else if (key == "replacement_plural") {
-                replacement_struct.plural_replacements = QVector<QString>(rep_obj[key].toVariant().toStringList().toVector());
-            }
-            else if (key == "prepend_count") {
-                replacement_struct.prepend_count = rep_obj[key].toVariant().toInt();
-            }
-            else if (key == "chance") {
-                replacement_struct.chance = rep_obj[key].toVariant().toInt();
-            }
-            else if (key == "word") {
-                replacement_struct.words = QVector<QString>(rep_obj[key].toVariant().toStringList().toVector());
-                for (const QString &word : replacement_struct.words) {
-                    word_vector.append(word);
-                }
-            }
-            else if (key == "word_plural") {
-                replacement_struct.plurals = QVector<QString>(rep_obj[key].toVariant().toStringList().toVector());
-                for (const QString &word : replacement_struct.plurals) {
-                    word_vector.append(word);
-                }
-            }
-            else if (key == "prev") {
-                replacement_struct.prev_words = QVector<QString>(rep_obj[key].toVariant().toStringList().toVector());
-                for (const QString &word : replacement_struct.prev_words) {
-                    word_vector.append(word);
-                }
-            }
+        if (message.startsWith("-")) {
+            do_pends = false;
+            final_text.remove(0, 1);
         }
-        word_replacements.append(replacement_struct);
+
+        message = modifySpeech(final_text, do_pends, false);
     }
-    if (word_replacements.isEmpty()) {
-        qWarning() << "[medieval][debug] word_replacements is empty after parsing; disabling medieval mode";
-        datafile_valid = false;
-        return;
-    }
-    qDebug() << "[medieval][debug] parseDataFile OK -"
-             << "prepended:" << prepended_words.size()
-             << "appended:" << appended_words.size()
-             << "replacements:" << word_replacements.size();
+    return message;
 }
 
-QString MedievalParser::getRandomPre()
-{
-    if (randomInt(1, 4) != 1) {
-        return "";
+void MedievalParser::parseDataFile(){
+    QFile l_datafile_json("config/text/autorp.json");
+    if ((datafile_valid = l_datafile_json.open(QIODevice::ReadOnly | QIODevice::Text))){ // set and check if can open..
+        QJsonParseError l_error;
+        const QJsonDocument &l_datafile_list_json = QJsonDocument::fromJson(l_datafile_json.readAll(), &l_error);
+        switch (l_error.error){
+        case QJsonParseError::NoError:
+            datafile_valid = !(prepended_words << l_datafile_list_json["prepended_words"].toObject().keys().toVector()).isEmpty(); // Prepended words..
+            if (datafile_valid){ // if it's <true> from the prepended_words !isEmpty(), this vaild tho..
+                datafile_valid = !(prepended_words << l_datafile_list_json["appended_words"].toObject().keys().toVector()).isEmpty(); // Appended words..
+                if (datafile_valid){ // if it's <true> from the appended_words !isEmpty(), this another vaild tho..
+                    for (const QJsonValue &replacement : l_datafile_list_json["word_replacements"].toArray()) {
+                        const QJsonObject &rep_obj = replacement.toObject();
+                        WordReplacement replacement_struct;
+                        replacement_struct.replacements = QVector<QString>(rep_obj["replacement"].toVariant().toStringList().toVector());
+                        replacement_struct.prepended = QVector<QString>(rep_obj["replacement_prepend"].toVariant().toStringList().toVector());
+                        replacement_struct.plural_replacements = QVector<QString>(rep_obj["replacement_plural"].toVariant().toStringList().toVector());
+                        replacement_struct.prepend_count = rep_obj["chance"].toVariant().toInt();
+                        word_vector << (replacement_struct.words = QVector<QString>(rep_obj["word"].toVariant().toStringList().toVector())) << (replacement_struct.plurals = QVector<QString>(rep_obj["word_plural"].toVariant().toStringList().toVector())) << (replacement_struct.prev_words = QVector<QString>(rep_obj["prev"].toVariant().toStringList().toVector()));
+                        word_replacements.append(replacement_struct);
+                    }
+
+                    if (!(datafile_valid = !word_replacements.isEmpty())) // set and check..
+                        qWarning() << "[W][AKASHI][Medieval]: word_replacements is empty after parsing; disabling medieval mode"; // send the warning if <true>..
+                }
+                else
+                    qWarning() << "[W][AKASHI][Medieval]: appended_words is empty after parsing; disabling medieval mode";
+            }
+            else
+                qWarning() << "[W][AKASHI][Medieval]: prepended_words is empty after parsing; disabling medieval mode";
+            break;
+        default:
+            qWarning() << "Unable to load Medieval Mode data file. The following error occurred: " + l_error.errorString();
+            break;
+        }
+
     }
-    if (prepended_words.isEmpty()) {
-        return "";
-    }
+    else
+        qWarning() << "[D][AKASHI][Medieval]: Could not open" << QFileInfo(l_datafile_json).absoluteFilePath() << "-" << l_datafile_json.errorString();
+}
+
+QString MedievalParser::getRandomPre(){
+    if (randomInt(1, 4) != 1 || prepended_words.isEmpty())
+        return QString();
 
     static int prevPre = 0;
     prevPre += (randomInt(1, 4));
-    while (prevPre >= prepended_words.count()) { // ensure we do not go out of bounds
+    while (prevPre >= prepended_words.count()) // ensure we do not go out of bounds
         prevPre -= prepended_words.count();
-    }
 
     return prepended_words[prevPre];
 }
 
-QString MedievalParser::getRandomPost()
-{
-    if (randomInt(1, 5) != 1) {
-        return "";
-    }
-    if (appended_words.isEmpty()) {
-        return "";
-    }
+QString MedievalParser::getRandomPost(){
+    if (randomInt(1, 5) != 1 || appended_words.isEmpty())
+        return QString();
 
     static int prevPost = 0;
     prevPost += randomInt(1, 4);
-    while (prevPost >= appended_words.count()) { // ensure we do not go out of bounds
+    while (prevPost >= appended_words.count()) // ensure we do not go out of bounds
         prevPost -= appended_words.count();
-    }
 
     return appended_words[prevPost];
 }
 
-MatchResult MedievalParser::wordMatches(WordReplacement *rep, ReplacementCheck *check)
-{
-    if (rep->chance != 1) {
-        if (randomInt(1, rep->chance) > 1) {
-            return MATCHES_NOT;
-        }
-    }
+MatchResult MedievalParser::wordMatches(WordReplacement *rep, ReplacementCheck *check){
+    if (rep->chance != 1 && randomInt(1, rep->chance) > 1)
+        return MATCHES_NOT;
 
     // if it has prewords make sure the preword matches first
-    if (rep->prev_words.count() > 0) {
-        if (check->prev_word.length() <= 0 || !containsCaseInsensitive(word_vector, check->prev_word) || !containsCaseInsensitive(rep->prev_words, check->prev_word)) {
+    if (!rep->prev_words.isEmpty()) {
+        if (check->prev_word.isEmpty()|| !containsCaseInsensitive(word_vector, check->prev_word) || !containsCaseInsensitive(rep->prev_words, check->prev_word))
             return MATCHES_NOT;
-        }
         check->used_prev_word = true;
     }
 
@@ -372,9 +288,8 @@ QString MedievalParser::modifySpeech(QString text, bool generate_pre_and_post, b
     if (generate_pre_and_post) {
         // See if we generate a pre. If we do, modify it as well so we can perform replacements on it.
         QString pre = getRandomPre();
-        if (pre != "") {
+        if (!pre.isEmpty())
             final_text.append(modifySpeech(pre, false, true) + " ");
-        }
     }
 
     // Iterate through all words and test them against the replacement list

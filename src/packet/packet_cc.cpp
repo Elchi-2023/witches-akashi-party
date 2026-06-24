@@ -14,35 +14,25 @@ PacketInfo PacketCC::getPacketInfo() const
 {
     PacketInfo info{
         .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 3,
+        .min_args = 2,
         .header = "CC"};
     return info;
 }
 
-void PacketCC::handlePacket(AreaData *area, AOClient &client) const
-{
+void PacketCC::handlePacket(AreaData *area, AOClient &client) const{
     Q_UNUSED(area)
 
-    if (!client.hasJoined()) {
-        // No character selecting when you aren't joined.
-        return;
-    }
+    if (client.hasJoined()){ // character selecting when you are joined.
+        if (client.getServer().isNull() || QPointer<AreaData>(area).isNull())
+            return; // safey first..
 
-    bool argument_ok;
-    int l_selected_char_id = m_content[1].toInt(&argument_ok);
-    if (!argument_ok) {
-        l_selected_char_id = client.SPECTATOR_ID;
-    }
+        // we needs validate the client CC (<char_id>) packet..
+        bool charId_ok;
+        int charId = m_content[1].toInt(&charId_ok);
+        if (!charId_ok || charId < -1 || charId > client.getServer()->getCharacters().size() -1) // always be set spectator for invalid ranges..
+            charId = client.SPECTATOR_ID;
 
-    if (l_selected_char_id < -1 || l_selected_char_id > client.getServer()->getCharacters().size() - 1) {
-        client.sendPacket("KK", {"A protocol error has been encountered.Packet : CC\nCharacter ID out of range."});
-        client.m_socket->close();
-    }
-
-    if (client.changeCharacter(l_selected_char_id))
-        client.m_char_id = l_selected_char_id;
-
-    if (client.m_char_id > client.SPECTATOR_ID) {
-        client.setSpectator(false);
+        if (client.changeCharacter(charId) && area->owners().contains(client.clientId()))
+            client.arup(AOClient::ARUPType::CM, true);
     }
 }

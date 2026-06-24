@@ -26,7 +26,7 @@ class PacketPU : public AOPacket
     {
         NAME,
         CHARACTER,
-        CHARACTER_NAME,
+        SHOWNAME,
         AREA_ID,
     };
 

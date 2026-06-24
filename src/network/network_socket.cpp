@@ -25,21 +25,21 @@ NetworkSocket::NetworkSocket(QWebSocket *f_socket, QObject *parent) :
     connect(m_client_socket, &QWebSocket::textMessageReceived, this, &NetworkSocket::handleMessage);
     connect(m_client_socket, &QWebSocket::disconnected, this, &NetworkSocket::clientDisconnected);
 
-    bool l_is_local = (m_client_socket->peerAddress() == QHostAddress::LocalHost) ||
+    const bool l_is_local = (m_client_socket->peerAddress() == QHostAddress::LocalHost) ||
                       (m_client_socket->peerAddress() == QHostAddress::LocalHostIPv6) ||
                       (m_client_socket->peerAddress() == QHostAddress("::ffff:127.0.0.1"));
     // TLDR : We check if the header comes trough a proxy/tunnel running locally.
     // This is to ensure nobody can send those headers from the web.
     QNetworkRequest l_request = m_client_socket->request();
-    if (l_request.hasRawHeader("x-real-ip") && l_is_local) {
+    if (l_request.hasRawHeader("x-real-ip") && l_is_local)
         m_socket_ip = QHostAddress(QString::fromUtf8(l_request.rawHeader("x-real-ip")));
-    }
-    else if (l_request.hasRawHeader("x-forwarded-for") && l_is_local) {
+    else if (l_request.hasRawHeader("x-forwarded-for") && l_is_local)
         m_socket_ip = QHostAddress(QString::fromUtf8(l_request.rawHeader("x-forwarded-for")));
-    }
-    else {
+    else
         m_socket_ip = f_socket->peerAddress();
-    }
+
+    if (l_request.header(QNetworkRequest::UserAgentHeader).isValid() && !l_request.header(QNetworkRequest::UserAgentHeader).toString().isEmpty())
+        m_useragent = l_request.header(QNetworkRequest::UserAgentHeader).toString();
 }
 
 NetworkSocket::~NetworkSocket()
@@ -56,7 +56,9 @@ void NetworkSocket::close(QWebSocketProtocol::CloseCode f_code)
 {
     m_client_socket->close(f_code);
 }
-
+void NetworkSocket::close(QWebSocketProtocol::CloseCode f_code, const QString &reason){
+    m_client_socket->close(f_code, reason);
+}
 void NetworkSocket::handleMessage(QString f_data)
 {
     QString l_data = f_data;
@@ -76,7 +78,7 @@ void NetworkSocket::handleMessage(QString f_data)
     for (const QString &l_single_packet : qAsConst(l_all_packets)) {
         AOPacket *l_packet = PacketFactory::createPacket(l_single_packet);
         if (!l_packet) {
-            qDebug() << "Unimplemented packet: " << l_single_packet;
+            qDebug() << "[AKASHI][NET-Packet]: Unimplemented packet: " << l_single_packet;
             continue;
         }
 

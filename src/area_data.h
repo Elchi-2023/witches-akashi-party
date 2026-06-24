@@ -20,7 +20,6 @@
 
 #include <QDebug>
 #include <QElapsedTimer>
-#include <QHash>
 #include <QMap>
 #include <QRandomGenerator>
 #include <QSettings>
@@ -41,7 +40,7 @@ class AreaData : public QObject
 {
     Q_OBJECT
 
-  public:
+public:
     /**
      * @brief Constructor for the AreaData class.
      *
@@ -226,26 +225,22 @@ class AreaData : public QObject
      *
      * @details This function counts down the playercount and removes the character from the list of taken characters.
      *
-     * @param f_charId The character ID of the client who left. The default value is `-1`. If it is left at that,
-     * the area will not try to remove any character from the list of characters taken.
-     *
-     * @param f_userId The user ID of the client who left. The default value is '-1', This ID is technically
-     * impossible.
+     * @param f_userId The user ID of the client who left.
      */
-    void removeClient(int f_charId = -1, int f_userId = -1);
+    void removeClient(const int f_userId);
 
     /**
      * @brief A client in the area joined recently.
      *
      * @details This function adds one to the playercount and adds the client's character to the list of taken characters.
      *
-     * @param f_charId The character ID of the client who joined. The default value is `-1`. If it is left at that,
-     * the area will not add any character to the list of characters taken.
-     *
      * @param f_userId The user ID of the client who left. The default value is '-1', This ID is technically
      * impossible.
+     *
+     * @param f_charId The character ID of the client who joined. The default value is `-1`. If it is left at that,
+     * the area will not add any character to the list of characters taken.
      */
-    void addClient(int f_charId = -1, int f_userId = -1);
+    void addClient(const int f_userId, const int f_charId = -1);
 
     /**
      * @brief Returns a copy of the list of owners of this area.
@@ -343,17 +338,17 @@ class AreaData : public QObject
     /**
      * @brief Locks the area, setting it to LOCKED.
      */
-    void lock();
+    bool lock();
 
     /**
      * @brief Unlocks the area, setting it to FREE.
      */
-    void unlock();
+    bool unlock();
 
     /**
      * @brief Sets the area to SPECTATABLE only.
      */
-    void spectatable();
+    bool spectatable();
 
     /**
      * @brief Returns the amount of players in the area.
@@ -398,6 +393,8 @@ class AreaData : public QObject
      */
     QList<int> charactersTaken() const;
 
+    QHash<int, int> PlayerCharacterMap() const;
+
     /**
      * @brief Adjusts the composition of the list of characters taken, by optionally removing and optionally adding one.
      *
@@ -416,7 +413,7 @@ class AreaData : public QObject
      * @todo This is godawful, but I'm at my wits end. Needs a bigger refactor later down the line --
      * the separation should help somewhat already, maybe.
      */
-    bool changeCharacter(int f_from = -1, int f_to = -1);
+    bool changeCharacter(const int f_clientid, const int f_target_charid = -1);
 
     /**
      * @brief Returns a copy of the list of evidence in the area.
@@ -949,6 +946,14 @@ class AreaData : public QObject
     void toggleJukebox();
 
     /**
+     * @brief Clears the jukebox queue and stops its timer without disabling the jukebox.
+     *
+     * @details Called when a direct /play, /play_once, /radio, or /shuffle command interrupts
+     * an active queue so that the jukebox no longer overrides the manually chosen song.
+     */
+    void clearJukeboxQueue();
+
+    /**
      * @brief Toggles whether testimony animations can be used in the area.
      */
     void toggleWtceAllowed();
@@ -964,18 +969,9 @@ class AreaData : public QObject
     void toggleMedievalMode();
 
     /**
-     * @brief Clears the jukebox queue and stops its timer without disabling the jukebox.
-     *
-     * @details Called when a direct /play, /play_once, /radio, or /shuffle command interrupts
-     * an active queue so that the jukebox no longer overrides the manually chosen song.
-     */
-    void clearJukeboxQueue();
-
-    /**
      * @brief Adds a song to the Jukebox's queue.
      */
     QString addJukeboxSong(QString f_song);
-
     /**
      * @brief Adds a song to the Jukebox's queue with an explicit fallback duration.
      *
@@ -984,11 +980,23 @@ class AreaData : public QObject
      * priority; f_duration is only used when the lookup returns 0.
      */
     QString addJukeboxSong(QString f_song, float f_duration);
+    /**
+     * @brief Remove a song from the jukebox's queue by <Index> of m_jukebox_queue.
+     */
+    bool removeJukeboxSong(const int index);
+    /**
+     * @brief Get the Jukebox's queues.
+     */
+    QVector<QString> GetJukeBoxQueues();
 
     /**
      * @brief Returns a constant that includes all currently joined userids.
      */
     QVector<int> joinedIDs() const;
+    /**
+     * @brief Return a constant that includes all currenty joined users.
+     */
+    QHash<int, int> PlayerJoinedMap() const;
 
     /**
      * @brief Returns whether a game message may be broadcasted or not.
@@ -1010,6 +1018,11 @@ class AreaData : public QObject
      * @return True if permitted, false otherwise.
      */
     bool isShoutAllowed() const;
+    /**
+     * @brief Returns whether a voice-chat can be used in the area.
+     * @return True if permitted, false otherwise.
+     */
+    bool isVoiceChatAllowed() const;
 
     /**
      * @brief Returns whether the area is in Medieval Mode.
@@ -1028,9 +1041,9 @@ class AreaData : public QObject
     /**
      * @brief Adds or change client id onto /pair sync list.
      *
-     * @param Self client id, must not < 0 or vaild.
+     * @param Self client id, must not < 0 or valid.
      *
-     * @param Target client id, must not < 0 or vaild.
+     * @param Target client id, must not < 0 or valid.
      *
      * @return True if success, false otherwise.
      */
@@ -1039,7 +1052,7 @@ class AreaData : public QObject
     /**
      * @brief Remove client id from /pair sync list.
      *
-     * @param Self client id, must not < 0 or vaild.
+     * @param Self client id, must not < 0 or valid.
      *
      * @return True if success, false otherwise.
      */
@@ -1048,13 +1061,17 @@ class AreaData : public QObject
     /**
      * @brief check if client id were on /pair sync list.
      *
-     * @param client id, must not < 0 or vaild.
+     * @param client id, must not < 0 or valid.
      *
      * @param Choices between self or target, self by default.
      *
      * @return True if checked, false otherwise.
      */
     bool checkPairSync(const int client_id, const bool is_target = false);
+    /**
+     * @overload
+     */
+    int checkPairSync(const QPair<int, int> client_ids);
 
     /**
      * @brief Get all ids from /pair sync list
@@ -1064,7 +1081,7 @@ class AreaData : public QObject
     /**
      * @brief Get client ids from specifc of /pair sync list.
      *
-     * @param Client id, must not < 0 or vaild.
+     * @param Client id, must not < 0 or valid.
      *
      * @param Choices between target or visa.
      *
@@ -1072,14 +1089,74 @@ class AreaData : public QObject
      */
     int get_pair_sync_clientID(const int client_id, const bool target = true);
 
-  public slots:
+    /**
+     * @brief [RPS] Set the fighter.
+     *
+     * @param Client id to set, -1 it will stop the timer.
+     *
+     * @param The fighter [RPS] choice(s).
+     *
+     */
+    bool SetRPSFighter(const int id, const QString choices = QString());
+
+    /**
+     * @brief [RPS] Get the fighter client id(s).
+     *
+     * @return The fighter client id, -1 otherwise.
+     */
+    QPair<int, QString> GetRPSFighter();
+
+    /**
+     * @brief (Un)registering client id from the voice peers.
+     * @param Client ID
+     * @param True if it need be removed, false if it need be create.
+     * @return True if client_id are (un)registered, false otherwise.
+     */
+    bool RegisterVoice(const int ID, const bool remove = false);
+    /**
+     * @brief The registered clients voice peers (QStringList version).
+     * @param This just switcher between peers and id's.
+     * @return the stringlist'ed of the between.
+     */
+    QStringList GetRegisteredVoice(const bool peersonly = false);
+    /**
+     * @brief The registered clients voice peers.
+     * @param This just switcher between peers and id's.
+     * @return the stringlist'ed of the between.
+     */
+    QVector<int> GetRegisteredVoiceID(const bool peeronly = false);
+    /**
+     * @brief The registered clients voice peers.
+     * @param This just switcher between peers and id's.
+     * @return the map of the target of filtered betweens.
+     */
+    QHash<int, bool> GetRegisteredVoiceMap(const bool peeronly = false);
+    /**
+     * @brief The voice speak state.
+     * @param ClientID.
+     * @param Toggle.
+     */
+    void SetVoicePeerState(const int c_id, const int toggle);
+
+public slots:
 
     /**
      * @brief Plays a random song from the jukebox. Plays the same if only one is left.
      */
     void switchJukeboxSong();
 
-  signals:
+    /**
+      * @brief Removes the disconnect client from the list of owners via signals.
+      */
+    void RemoveDClient(const int id);
+
+    /**
+     * @brief Update the name of the area.
+     * @param The name to change.
+     */
+    void UpdateName(const QStringList &list);
+
+signals:
 
     /**
      * @brief Sends a packet to every client inside the area.
@@ -1107,7 +1184,7 @@ class AreaData : public QObject
      */
     void userJoinedArea(int f_area_index, int f_user_id);
 
-  private:
+private:
     /**
      * @brief The list of timers available in the area.
      */
@@ -1127,11 +1204,6 @@ class AreaData : public QObject
      * @brief Pointer to the global music manager.
      */
     MusicManager *m_music_manager;
-
-    /**
-     * @brief A list of the character IDs of all characters taken.
-     */
-    QList<int> m_charactersTaken;
 
     /**
      * @brief A list of Evidence currently available in the area's court record.
@@ -1327,9 +1399,9 @@ class AreaData : public QObject
     bool m_send_area_message;
 
     /**
-     * @brief Collection of joined IDs to this area.
+     * @brief Collection of joined IDs & the character IDs to this area.
      */
-    QVector<int> m_joined_ids;
+    QHash<int, int> m_joined_ids;
 
     // Jukebox specific members
     /**
@@ -1385,6 +1457,10 @@ class AreaData : public QObject
      * @brief If false, shouts are stripped from all messages in the area.
      */
     bool m_can_use_shouts = true;
+    /**
+     * @brief If false, voice-chat will be rejected.
+     */
+    bool m_can_use_voicechat = true;
 
     /**
      * @brief If true, all clients in the area are subject to Medieval Mode.
@@ -1396,11 +1472,30 @@ class AreaData : public QObject
      */
     QMap<int, int> m_clients_pairing_sync;
 
-  private slots:
+    /**
+     * @brief [RPS] the who was want challenge.
+     */
+    QPair<int, QString> m_rps_client = {-1, QString()};
+    /**
+     * @brief [RPS] the timer of when the game will expired.
+     */
+    QTimer *RPS_timeout;
+
+    /**
+     * @brief The peers of voice(s).
+     */
+    QHash<int, bool> m_voice_peers;
+
+private slots:
     /**
      * @brief Allow game messages to be broadcasted.
      */
     void allowMessage();
+
+    /**
+     * @brief [Rock-Paper-Scissors] Timeout event.
+     */
+    void RPSTimeout();
 };
 
 #endif // AREA_DATA_H

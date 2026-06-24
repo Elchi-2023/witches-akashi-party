@@ -17,9 +17,12 @@ PacketInfo PacketSetcase::getPacketInfo() const
     return info;
 }
 
-void PacketSetcase::handlePacket(AreaData *area, AOClient &client) const
-{
+void PacketSetcase::handlePacket(AreaData *area, AOClient &client) const{
     Q_UNUSED(area)
+    if (!client.m_joined){
+        client.m_socket->close(QWebSocketProtocol::CloseCodeProtocolError);
+        return;
+    }
 
     QList<bool> l_prefs_list;
     for (int i = 2; i <= 6; i++) {

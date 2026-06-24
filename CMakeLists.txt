@@ -21,6 +21,7 @@ qt_add_executable(akashi
   src/commands/moderation.cpp
   src/commands/music.cpp
   src/commands/roleplay.cpp
+  src/commands/voice.cpp
   src/logger/u_logger.cpp
   src/logger/u_logger.h
   src/logger/writer_full.cpp
@@ -81,7 +82,9 @@ qt_add_executable(akashi
   src/packet/packet_tt.cpp
   src/packet/packet_tt.h
   src/packet/packet_zz.cpp
-  src/packet/packet_zz.h
+  src/packet/packet_zz.h  
+  src/packet/packet_voice.cpp
+  src/packet/packet_voice.h
   src/acl_roles_handler.cpp
   src/acl_roles_handler.h
   src/akashiutils.h

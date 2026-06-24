@@ -19,33 +19,74 @@ PacketInfo PacketHP::getPacketInfo() const
     return info;
 }
 
-void PacketHP::handlePacket(AreaData *area, AOClient &client) const
-{
-    if (client.m_is_spectator) {
+void PacketHP::handlePacket(AreaData *area, AOClient &client) const{
+    if (!client.m_joined)
+        client.m_socket->close(QWebSocketProtocol::CloseCodeProtocolError);
+    else if (client.isSpectator())
         client.sendServerMessage("Spectators are blocked from using the judge controls.");
-        return;
-    }
+    else{
+        switch (area->lockStatus()){
+        case AreaData::LockStatus::SPECTATABLE:
+            if (client.isAccessBlocked(AOClient::WTCE))
+                client.sendServerMessage("You are blocked from using the judge controls.");
+            else if (area->invited().contains(client.clientId()) || client.checkPermission(ACLRole::BYPASS_LOCKS)){
+                bool side_type_ok;
+                const int side_type = m_content[0].toInt(&side_type_ok) -1;
+                if (side_type_ok && side_type >= 0 && side_type <= 1){
+                    bool penalty_bar_ok;
+                    int l_newValue = m_content.at(1).toInt(&penalty_bar_ok);
+                    if (penalty_bar_ok){
+                        area->changeHP(QList<AreaData::Side>({AreaData::Side::DEFENCE, AreaData::Side::PROSECUTOR})[side_type], l_newValue);
+                        client.getServer()->broadcast(PacketFactory::createPacket("HP", {"1", QString::number(area->defHP())}), area->index());
+                        client.getServer()->broadcast(PacketFactory::createPacket("HP", {"2", QString::number(area->proHP())}), area->index());
 
-    if (area->lockStatus() == AreaData::LockStatus::SPECTATABLE && !area->invited().contains(client.clientId()) && !client.checkPermission(ACLRole::BYPASS_LOCKS)) {
-        client.sendServerMessage("Spectators are blocked from using the judge controls.");
-        return;
-    }
+                        client.updateJudgeLog(area, &client, "updated the penalties");
+                    }
+                }
+            }
+            else
+                client.sendServerMessage("Spectators are blocked from using the judge controls.");
+            break;
+        case AreaData::LockStatus::LOCKED:
+            if (client.isAccessBlocked(AOClient::WTCE))
+                client.sendServerMessage("You are blocked from using the judge controls.");
+            else if (area->invited().contains(client.clientId()) || client.checkPermission(ACLRole::BYPASS_LOCKS)){
+                bool side_type_ok;
+                const int side_type = m_content[0].toInt(&side_type_ok) -1;
+                if (side_type_ok && side_type >= 0 && side_type <= 1){
+                    bool penalty_bar_ok;
+                    int l_newValue = m_content.at(1).toInt(&penalty_bar_ok);
+                    if (penalty_bar_ok){
+                        area->changeHP(QList<AreaData::Side>({AreaData::Side::DEFENCE, AreaData::Side::PROSECUTOR})[side_type], l_newValue);
+                        client.getServer()->broadcast(PacketFactory::createPacket("HP", {"1", QString::number(area->defHP())}), area->index());
+                        client.getServer()->broadcast(PacketFactory::createPacket("HP", {"2", QString::number(area->proHP())}), area->index());
 
-    if (client.m_is_wtce_blocked) {
-        client.sendServerMessage("You are blocked from using the judge controls.");
-        return;
-    }
-    int l_newValue = m_content.at(1).toInt();
+                        client.updateJudgeLog(area, &client, "updated the penalties");
+                    }
+                }
+            }
+            else
+                client.sendServerMessage("Uninvited clients are blocked from using the judge controls.");
+            break;
+        case AreaData::LockStatus::FREE:
+            if (client.isAccessBlocked(AOClient::WTCE))
+                client.sendServerMessage("You are blocked from using the judge controls.");
+            else{
+                bool side_type_ok;
+                const int side_type = m_content[0].toInt(&side_type_ok) -1;
+                if (side_type_ok && side_type >= 0 && side_type <= 1){
+                    bool penalty_bar_ok;
+                    int l_newValue = m_content.at(1).toInt(&penalty_bar_ok);
+                    if (penalty_bar_ok){
+                        area->changeHP(QList<AreaData::Side>({AreaData::Side::DEFENCE, AreaData::Side::PROSECUTOR})[side_type], l_newValue);
+                        client.getServer()->broadcast(PacketFactory::createPacket("HP", {"1", QString::number(area->defHP())}), area->index());
+                        client.getServer()->broadcast(PacketFactory::createPacket("HP", {"2", QString::number(area->proHP())}), area->index());
 
-    if (m_content[0] == "1") {
-        area->changeHP(AreaData::Side::DEFENCE, l_newValue);
+                        client.updateJudgeLog(area, &client, "updated the penalties");
+                    }
+                }
+            }
+            break;
+        }
     }
-    else if (m_content[0] == "2") {
-        area->changeHP(AreaData::Side::PROSECUTOR, l_newValue);
-    }
-
-    client.getServer()->broadcast(PacketFactory::createPacket("HP", {"1", QString::number(area->defHP())}), area->index());
-    client.getServer()->broadcast(PacketFactory::createPacket("HP", {"2", QString::number(area->proHP())}), area->index());
-
-    client.updateJudgeLog(area, &client, "updated the penalties");
 }

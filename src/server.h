@@ -172,6 +172,7 @@ class Server : public QObject
      */
     void updateCharsTaken(AreaData *area);
 
+    /* > === broadcast Packet === < */
     /**
      * @brief Sends a packet to all clients in a given area.
      *
@@ -182,14 +183,12 @@ class Server : public QObject
      * @note Does nothing if an area by the given index does not exist.
      */
     void broadcast(AOPacket *packet, int area_index);
-
     /**
      * @brief Sends a packet to all clients in the server.
      *
      * @param packet The packet to send to the clients.
      */
     void broadcast(AOPacket *packet);
-
     /**
      * @brief Sends a packet to a specific usergroup..
      *
@@ -198,7 +197,24 @@ class Server : public QObject
      * @param ENUM to determine the targets of the altered packet.
      */
     void broadcast(AOPacket *packet, TARGET_TYPE target);
-
+    /**
+     * @brief Sends a packet to a specific usergroup..
+     *
+     * @param The packet to send to the clients.
+     *
+     * @param ENUM to determine the type of the altered authenticated packet.
+     */
+    void broadcast(AOPacket *packet, const AOClient::AuthenticateType type);
+    /**
+     * @brief Sends a packet to a specific usergroup..
+     *
+     * @param The packet to send to the clients.
+     *
+     * @param ENUM to determine the type of the altered authenticated packet.
+     *
+     * @param area_index The index of the area to look for clients in.
+     */
+    void broadcast(AOPacket *packet, const AOClient::AuthenticateType type, const int area_index);
     /**
      * @brief Sends a packet to a specific usergroup in a given area.
      *
@@ -209,7 +225,6 @@ class Server : public QObject
      * @param ENUM to determine the targets of the altered packet.
      */
     void broadcast(AOPacket *packet, int area_index, TARGET_TYPE target);
-
     /**
      * @brief Sends a packet to clients, sends an altered packet to a specific usergroup.
      *
@@ -220,6 +235,29 @@ class Server : public QObject
      * @param ENUM to determine the targets of the altered packet.
      */
     void broadcast(AOPacket *packet, AOPacket *other_packet, enum TARGET_TYPE target);
+    /**
+      * @brief Same like Server::broadcast(AOPacket, AOPacket) but with client type.
+      *
+      * @param the packet to send at the clients (not target client type).
+      *
+      * @param the altered packet to send to the target client type.
+      *
+      * @param the target of client type.
+      */
+    void broadcast(AOPacket *packet, AOPacket *other_packet, AOClient::ClientVersion::ClientType t_target);
+    /**
+      * @brief Same like Server::broadcast(AOPacket, int area) and same like Server::broadcast(AOPacket, AOPacket, AOClient::ClientVersion::ClientType).
+      *
+      * @param same param as above of this functions.
+      *
+      * @param same param as above of this functions.
+      *
+      * @param same param as above of this functions.
+      *
+      * @param the area to send the packet to.
+      */
+    void broadcast(AOPacket *packet, AOPacket *other_packet, AOClient::ClientVersion::ClientType t_target, int area_index);
+    /* > ================== < */
 
     /**
      * @brief Sends a packet to a single client.
@@ -327,8 +365,21 @@ class Server : public QObject
      * @brief The server-wide global timer.
      */
     QTimer *timer;
+    /**
+     * @brief the server lockdown timeout.
+     *
+     * @details this timer been using if it been set from AOClient::CalendarParse, otherwise nothing.
+     */
+    QTimer *lockdown_timeout;
 
-    QStringList getCursedCharsTaken(AOClient *client, QStringList chars_taken);
+    /**
+     * @brief Set cursed-characters taken.
+     * @param target client.
+     * @param the list of character taken.
+     *
+     * @return the list of characters between cursed list or normal list.
+     */
+    static QStringList SetCCTaken(QPointer<AOClient> client, const QStringList &chars_taken =  QStringList());
 
     /**
      * @brief Returns whatever a game message may be broadcasted or not.
@@ -336,6 +387,39 @@ class Server : public QObject
      * @return True if expired; false otherwise.
      */
     bool isMessageAllowed() const;
+
+    // > === [lockdown system] === <
+    /**
+     * @brief Get server current lockdown state.
+     */
+    bool isLockdownState() const;
+    /**
+     * @brief Check if the client is whitelisted while lockdown stated.
+     * @param hashed 12 length (sha256).
+     * @return true if server are not lockdown or if client is whitelisted, false otherwise.
+     */
+    bool ClientWhitelisted(const QByteArray &c_hashid);
+    /**
+     * @brief Get the list of whitelisted client (lockdown version).
+     */
+    QVector<QByteArray> Getwhitelistclient();
+    /**
+     * @brief the (un)registering the client <hashid>.
+     * @param hashed 12 length (sha256).
+     * @param true if register, otherwise unregister.
+     * @return true if it are (un)registered, false otherwise.
+     */
+    bool LockdownRegister(const QByteArray &c_hashid, const bool create);
+    /**
+     * @brief Set server lockdown state.
+     */
+    void setlockdownstate(bool state = false);
+    /**
+     * @brief Set/start server lockdown with time.
+     * @param the most not below 1 and it must millsec, otherwise it does nothing.
+     */
+    void startlockdown(const long long time);
+    // > ======================== <
 
     /**
      * @brief Starts a global timer that determines whatever a game message may be broadcasted or not.
@@ -349,33 +433,7 @@ class Server : public QObject
      */
     QHostAddress parseToIPv4(QHostAddress f_remote_ip);
 
-    /**
-     * @brief Returns a raw-pointer of the curr
-     */
-    PlayerStateObserver *getPlayerStateObserver();
-
-    /**
-     * @brief Returns whether the server is currently in lockdown.
-     *
-     * @details While lockdown is active, only clients whose IPID is already recorded in the
-     * persistent known_ipids list may join. Brand-new IPIDs are rejected, which prevents ban
-     * evaders from joining on a fresh IP. Because the list is stored long-term in the database,
-     * users seen on previous days/sessions are still recognised, minimising false positives.
-     *
-     * @return True if lockdown is active, false otherwise.
-     */
-    bool isLockdownActive() const;
-
-    /**
-     * @brief Enables or disables server lockdown.
-     *
-     * @details Enabling lockdown also records the IPIDs of all currently-connected clients into
-     * the persistent known list so that they may rejoin while lockdown is active. Only IPID is
-     * used for this; HDID/HWID is intentionally never considered.
-     *
-     * @param f_state True to enable lockdown, false to disable it.
-     */
-    void setLockdownActive(const bool &f_state);
+    bool RegisterClienthwid(const int c_index);
 
   public slots:
     /**
@@ -401,9 +459,14 @@ class Server : public QObject
     /**
      * @brief Marks a userID as free and ads it back to the available client id queue.
      */
-    void markIDFree(const int &f_user_id);
+    void markIDFree(AOClient *f_client);
 
   signals:
+
+    /**
+      * @brief sends the all area to remove an disconnect client from areadata::owner.
+      */
+    void RemoveDisconnectCA(const int id);
 
     /**
      * @brief Sends the server name and description, emitted by /reload.
@@ -413,6 +476,22 @@ class Server : public QObject
      */
     void reloadRequest(QString p_name, QString p_desc);
 
+    /**
+     * @brief Tell areas to change area name based their index if doesn't same from the list.
+     * @param The list of area names.
+     */
+    void ReloadAreas(const QStringList &list);
+
+    /**
+     * @brief Tell clients to send all type of arups.
+     */
+    void ArupClient();
+
+    /**
+     * @brief Triggers the m_socket of the all client to closed.
+     * @param The reason of close via [KK] packet if persents.
+     */
+    void Forcedcloseclients(const QString &reason = QString());
     /**
      * @brief This signal is emitted whenever the current player count has changed.
      *
@@ -429,12 +508,12 @@ class Server : public QObject
     /**
      * @brief Sends a modcall webhook request, emitted by AOClient::pktModcall.
      *
-     * @param f_name The character or OOC name of the client who sent the modcall.
-     * @param f_area The name of the area the modcall was sent from.
+     * @param f_name The character and OOC name & area of the client who sent the modcall.
+     * @param r_name The name & area of the [regarding] who been reported from the caller.
      * @param f_reason The reason the client specified for the modcall.
      * @param f_buffer The area's log buffer.
      */
-    void modcallWebhookRequest(const QStringList &f_name, const QString &f_area, const QString &f_reason, const QQueue<QString> &f_buffer);
+    void modcallWebhookRequest(const QPair<QString, QString> &f_name, const QPair<QString, QString> &r_name, const QString &f_reason, const QQueue<QString> &f_buffer);
 
     /**
      * @brief Sends a ban webhook request, emitted by AOClient::cmdBan
@@ -444,9 +523,9 @@ class Server : public QObject
      * @param f_reason The reason for the ban.
      * @param f_banID The ID of the issued ban.
      */
-    void banWebhookRequest(const QString &f_ipid, const QString &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID, const int &f_count);
+    void banWebhookRequest(const QString &f_ipid, const QPair<int, QString> &f_moderator, const QString &f_duration, const QString &f_reason, const int &f_banID, const int &f_count);
 
-    void UnbanWebhookRequested(const QString &f_ipid, const QStringList &f_moderator, const int &f_banID, const int &f_ban_duration, const QDateTime &f_date, const QStringList &f_reason);
+    void UnbanWebhookRequested(const QString &f_ipid, const QPair<QPair<int, QString>, QPair<int, QString>> &f_moderator, const int &f_banID, const int &f_ban_duration, const QDateTime &f_date, const QStringList &f_reason);
 
     /**
      * @brief Signal connected to universal logger. Logs a client connection attempt.
@@ -455,6 +534,33 @@ class Server : public QObject
      * @param f_hdid The HDID of the incoming connection.
      */
     void logConnectionAttempt(const QString &f_ip_address, const QString &f_ipid, const QString &f_hwid);
+
+    /* > broadcast to client(s) via signal(s) < */
+    /**
+     * @brief A signals of <vs_frame> for sending an <vs_audio#<user_id>#<b64_frame>> packet to clients.
+     * @param The client_id from.
+     * @param The frame of byte(s).
+     * @param Target area.
+     */
+    void broadcastVFrame(const int c_from, const QByteArray &frame_byte, const int area_id);
+    /**
+     * @brief A signals of user <vs_speak> toggle for sending an <vs_speak#<user_id>#<toggle>> packet to clients.
+     * @param The client_id from.
+     * @param toggle of speak(s).
+     * @param Target area.
+     */
+    void broadcastVState(const int c_from, const bool toggle, const int area_id);
+    /**
+     * @brief A signals of <vs_join> nor <vs_leave> for sending an <vs_join#<user_id>> nor <vs_leave#<user_id>> packet to clients.
+     * @param The client_id from.
+     * @param The boolean of if client are leave or not.
+     * @param Target area.
+     */
+    void broadcastVJoinLeave(const int c_from, const bool isleave, const int area_id);
+
+    /* > broadcase to client via signal(s) (AOClient::AuthenticateType version) < */
+    void broadcastCAuth(AOPacket *packet, const AOClient::AuthenticateType AuthType);
+    void broadcastCAuth(AOPacket *packet, const AOClient::AuthenticateType AuthType, const int areaID);
 
   private:
     /**
@@ -496,6 +602,21 @@ class Server : public QObject
      * @brief Collection of all clients with their userID as key.
      */
     QHash<int, QPointer<AOClient>> m_clients_ids;
+    /**
+     * @brief Collection of all clients with their userIP as key (only for (dis)connect)
+     */
+    QMultiHash<QHostAddress, QPointer<AOClient>> m_client_ips;
+    /**
+     * @brief Collection of all clients with their userIPID as key.
+     */
+    QMultiHash<const QString, QPointer<AOClient>> m_client_ipids;
+    /**
+     * @brief Collection of all clients with their userHWID as key.
+     */
+    QMultiHash<const QString, QPointer<AOClient>> m_client_hwids;
+    /**
+     * @brief The playerlist state observer.
+     */
     PlayerStateObserver m_player_state_observer;
 
     /**
@@ -513,6 +634,7 @@ class Server : public QObject
      * @brief The characters available on the server to use.
      */
     QStringList m_characters;
+
 
     /**
      * @brief The areas on the server.
@@ -546,16 +668,6 @@ class Server : public QObject
     QStringList m_ipban_list;
 
     /**
-     * @brief Whether the server is currently in lockdown.
-     *
-     * @details While true, only clients whose IPID is already recorded in the database's
-     * known_ipids table may connect. The set of known IPIDs is persisted long-term by the
-     * DBManager so that previously-seen users keep being recognised across server restarts,
-     * minimising false positives. Only IPID is used; HDID/HWID is intentionally not considered.
-     */
-    bool m_lockdown_active = false;
-
-    /**
      * @brief Timer until the next IC message can be sent.
      */
     QTimer *m_message_floodguard_timer;
@@ -565,6 +677,17 @@ class Server : public QObject
      */
     bool m_can_send_ic_messages = true;
 
+    /**
+     * @brief The server lockdown state.
+     */
+    bool m_lockdown_mode = false;
+
+    /**
+     * @brief The server whitelist of client while lockdown state.
+     *
+     * @details This were the client's hashid been stored until server restart/off.
+     */
+    QVector<QByteArray> m_lockdown_whitelist;
     /**
      * @brief The database manager on the server, used to store users' bans and authorisation details.
      */

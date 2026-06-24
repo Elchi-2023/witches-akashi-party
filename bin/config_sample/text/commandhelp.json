@@ -1,959 +1,767 @@
 [
    {
-      "names": [
-         "foo"
-      ],
-      "usage":"/foo <bar> [baz|qux]",
-      "text":"A sample explanation."
+      "names": ["foo"],
+      "usage": "/foo <bar> [baz|qux]",
+      "text": "A sample explanation."
    },
    {
-      "names": [
-         "login"
-      ],
-      "usage":"/login",
-      "text":"Activates the login dialogue to enter your credentials. This command takes no arguments."
+      "names": ["login"],
+      "usage": "/login",
+      "text": "Activates the login dialogue to enter your credentials. This command takes no arguments."
    },
    {
-      "names": [
-         "getareas",
-         "ga"
-      ],
-      "usage":"/getareas",
-      "text":"Lists all clients in all areas. This command takes no arguments."
+      "names": ["getareas", "gas"],
+      "usage": "/getareas",
+      "text": "Lists all clients in all areas. This command takes no arguments."
    },
    {
-      "names": [
-         "getarea",
-         "ga"
-      ],
-      "usage":"/getarea",
-      "text":"Lists all clients in the area the caller is in. This command takes no arguments."
+      "names": ["getarea", "ga"],
+      "usage": "/getarea",
+      "text": "Lists all clients in the area the caller is in. This command takes no arguments."
    },
    {
-      "names": [
-         "area"
-      ],
-      "usage":"/area <id>",
-      "test":"Moves the caller to the area with the given ID."
+      "names": ["area"],
+      "usage": "/area <id>",
+      "test": "Moves the caller to the area with the given ID."
    },
    {
-      "names": [
-         "ban"
-      ],
-      "usage":"/ban <IPID> <Duration> <Reason>",
-      "text":"Bans a client from the server, forcibly disconnecting them and disallowing their return."
+      "names": ["ban"],
+      "usage": "/ban <IPID|ClientID> <Duration> <Reason>",
+      "text": "Bans a client from the server, forcibly disconnecting them and all other clients sharing the same IP. The target can be a client ID (kicks and bans all clients with that IP) or an IPID. Duration is a time string like '1h30m' or 'perma' for permanently. The reason is mandatory."
    },
    {
-      "names": [
-         "kick"
-      ],
-      "usage":"/kick <IPID> <Reason>",
-      "text":"Kicks a client from the server, forcibly disconnecting them."
+      "names": ["kick"],
+      "usage": "/kick <target> <Reason>",
+      "text": "Kicks a client or multiple clients from the server. <target> can be a client ID (kicks all clients sharing that client's IP), an IPID (kicks all clients with that IP), *ID (kicks that specific client only), or *IPID (kicks the first client with that IP only). The reason is mandatory."
    },
    {
-      "names": [
-         "changeauth"
-      ],
-      "usage":"/changeauth",
-      "text":"A helper to change the authorisation for moderators from simple to advanced."
+      "names": ["changeauth"],
+      "usage": "/changeauth",
+      "text": "A helper to change the authorisation for moderators from simple to advanced."
    },
    {
-      "names": [
-         "rootpass"
-      ],
-      "usage":"/rootpass <Password>",
-      "text":"Sets the root user's password."
+      "names": ["rootpass"],
+      "usage": "/rootpass <Password>",
+      "text": "Sets the root user's password."
    },
    {
-      "names": [
-         "background",
-         "bg"
-      ],
-      "usage":"/background <Background>",
-      "text":"Changes the background of the current area."
+      "names": ["rootname"],
+      "usage": "/rootname <name>",
+      "text": "Changes the root user's name. Only available for the root user."
    },
    {
-      "names": [
-         "bg"
-      ],
-      "usage":"/bg <Background>",
-      "text":"Changes the background of the current area."
+      "names": ["background", "bg"],
+      "usage": "/background <Background>",
+      "text": "Changes the background of the current area."
    },
    {
-      "names": [
-         "bglock"
-      ],
-      "usage":"/bglock",
-      "text":"Locks the background, preventing it from being changed. This command takes no arguments."
+      "names": ["side"],
+      "usage": "/side <side>",
+      "text": "Sets the background side for the current area. For example, 'wit' or 'pro'."
    },
    {
-      "names": [
-         "bgunlock"
-      ],
-      "usage":"/bgunlock",
-      "text":"Unlocks the background, allowing it to be changed again."
+      "names": ["bg"],
+      "usage": "/bg <Background>",
+      "text": "Changes the background of the current area."
    },
    {
-      "names": [
-         "adduser"
-      ],
-      "usage":"/adduser <Usernames> <Password>",
-      "text":"Adds a user to the moderators in advanced authorisation type."
+      "names": ["bglock"],
+      "usage": "/bglock",
+      "text": "Locks the background, preventing it from being changed. This command takes no arguments."
    },
    {
-      "names": [
-         "listperms"
-      ],
-      "usage":"/listperms 'Usernames'",
-      "text":"Lists the permission of a given user. When called with an argument it shows the user's permission."
+      "names": ["bgunlock"],
+      "usage": "/bgunlock",
+      "text": "Unlocks the background, allowing it to be changed again."
    },
    {
-      "names": [
-         "setperms"
-      ],
-      "usage":"/setperms <Usernames> <Role>",
-      "text":"Sets the role of the user."
+      "names": ["lock_background"],
+      "usage": "/lock_background",
+      "text": "Locks the background in the current area, preventing it from being changed. This command takes no arguments."
    },
    {
-      "names": [
-         "removeperms"
-      ],
-      "usage":"/removeperms <Usernames> <Permission>",
-      "text":"Removes the role from a given user."
+      "names": ["unlock_background"],
+      "usage": "/unlock_background",
+      "text": "Unlocks the background in the current area, allowing it to be changed again."
    },
    {
-      "names": [
-         "listusers"
-      ],
-      "usage":"/listusers",
-      "text":" Lists all users in the server's database. This command takes no arguments."
+      "names": ["adduser"],
+      "usage": "/adduser <Usernames> <Password> <UserType>",
+      "text": "Adds a user to the moderators in advanced authorisation type. UserType is 0 for VIP, 1 for Moderator. Use /setperms to modify their permissions after creation."
    },
    {
-      "names": [
-         "logout"
-      ],
-      "usage":"/logout",
-      "text":"Logs the caller out from their moderator user. This command takes no arguments."
+      "names": ["listperms"],
+      "usage": "/listperms [username]",
+      "text": "Lists your own permissions (no argument). With a username argument, lists the specified user's permissions (requires the MODIFY_USERS permission). Root users and those with the SUPER permission bypass all restrictions."
    },
    {
-      "names": [
-         "pos"
-      ],
-      "usage":"/pos <Position>",
-      "text":"Changes the client's position."
+      "names": ["setperms"],
+      "usage": "/setperms <Usernames> <Role>",
+      "text": "Sets the role of the user."
    },
    {
-      "names": [
-         "g"
-      ],
-      "usage":"/g <Message>",
-      "text":"Sends a global message (i.e., all clients in the server will be able to see it)."
+      "names": ["removeperms"],
+      "usage": "/removeperms <Usernames> <Permission>",
+      "text": "Removes the role from a given user."
    },
    {
-      "names": [
-         "need"
-      ],
-      "usage":"/need <Message>",
-      "text":"A global message expressing that the client needs something (generally: players for something)."
+      "names": ["listusers"],
+      "usage": "/listusers",
+      "text": "Lists all users in the server's database. This command takes no arguments."
    },
    {
-      "names": [
-         "coinflip"
-      ],
-      "usage":"/coinflip",
-      "text":"Flips a coin, returning heads or tails. This command takes no arguments."
+      "names": ["logout"],
+      "usage": "/logout",
+      "text": "Logs the caller out from their moderator user. This command takes no arguments."
    },
    {
-      "names": [
-         "roll"
-      ],
-      "usage":"/roll 'face' 'die'",
-      "text":"Rolls dice and sends the results to the area. The first argument is the amount of faces each die should have. The second argument is the amount of dice that should be rolled. Both arguments are optional."
+      "names": ["pos"],
+      "usage": "/pos <Position>",
+      "text": "Changes the client's position."
    },
    {
-      "names": [
-         "rollp"
-      ],
-      "usage":"/rollp 'face' 'die'",
-      "text":"Rolls dice, but sends the results in private to the roller. The first argument is the amount of faces each die should have. The second argument is the amount of dice that should be rolled. Both arguments are optional."
+      "names": ["holiday"],
+      "usage": "/holiday <holiday name>",
+      "text": "Activates a holiday mode that changes your OOC name and messages. The only argument is the holiday name (from the server's holiday list)."
    },
    {
-      "names": [
-         "doc"
-      ],
-      "usage":"/doc <document>",
-      "text":"Sets the `/doc` to a custom text."
+      "names": ["unholiday"],
+      "usage": "/unholiday",
+      "text": "Deactivates your current holiday mode, restoring your normal name and messages. This command takes no arguments."
    },
    {
-      "names": [
-         "cleardoc"
-      ],
-      "usage":"/cleardoc",
-      "text":"Sets the `/doc` to `No document.`. This command takes no arguments."
+      "names": ["pair"],
+      "usage": "/pair <client id>",
+      "text": "Pairs you with another client. Overrides normal client pairing choice when the other client also uses this command."
    },
    {
-      "names": [
-         "cm"
-      ],
-      "usage":"/cm 'ID'",
-      "text":"Promotes a client to CM status. If called with a user ID as an argument, and the caller is a CM, promotes the target client to CM status."
+      "names": ["unpair"],
+      "usage": "/unpair",
+      "text": "Stops pairing with someone. Resets your pairing state. This command takes no arguments."
    },
    {
-      "names": [
-         "uncm"
-      ],
-      "usage":"/uncm",
-      "text":"Removes the CM status from the caller. This command takes no arguments."
+      "names": ["pair_order"],
+      "usage": "/pair_order <order>",
+      "text": "Sets whether you appear in front of or behind the character you are paired with. Valid values: 'front' or '0' for front, 'behind' or '1' for behind."
    },
    {
-      "names": [
-         "invite"
-      ],
-      "usage":"/invite <ID>",
-      "text":"Invites a client to the area."
+      "names": ["offset"],
+      "usage": "/offset <x> [y]",
+      "text": "Sets your character's offset relative to the default position. You can specify an X offset only, or both X and Y offsets separated by a space. Use 'rst' to reset to the default."
    },
    {
-      "names": [
-         "uninvite"
-      ],
-      "usage":"/uninvite <ID>",
-      "text":"Uninvites a client from. the area."
+      "names": ["g"],
+      "usage": "/g <Message>",
+      "text": "Sends a global message (i.e., all clients in the server will be able to see it)."
    },
    {
-      "names": [
-         "lock",
-         "area_lock"
-      ],
-      "usage":"/lock",
-      "text":"Locks the area. This command takes no arguments."
+      "names": ["need"],
+      "usage": "/need <Message>",
+      "text": "A global message expressing that the client needs something (generally: players for something)."
    },
    {
-      "names": [
-         "spectatable",
-         "area_spectate"
-      ],
-      "usage":"/spectatable",
-      "text":"Sets the area to spectatable. This command takes no arguments."
+      "names": ["coinflip"],
+      "usage": "/coinflip",
+      "text": "Flips a coin, returning heads or tails. This command takes no arguments."
    },
    {
-      "names": [
-         "area_spectate"
-      ],
-      "usage":"/area_spectate",
-      "text":"Sets the area to spectatable. This command takes no arguments."
+      "names": ["roll"],
+      "usage": "/roll 'face' 'die'",
+      "text": "Rolls dice and sends the results to the area. The first argument is the amount of faces each die should have. The second argument is the amount of dice that should be rolled. Both arguments are optional."
    },
    {
-      "names": [
-         "unlock",
-         "area_unlock"
-      ],
-      "usage":"/unlock",
-      "text":"Unlocks the area. This command takes no arguments."
+      "names": ["rolla"],
+      "usage": "/rolla <dice string>",
+      "text": "Rolls custom dice (e.g., '1d20') and sends the result to the area. The dice string must be in the format 'NdM' where N is the number of dice and M the number of faces."
    },
    {
-      "names": [
-         "area_unlock"
-      ],
-      "usage":"/area_unlock",
-      "text":"Unlocks the area. This command takes no arguments."
+      "names": ["rollp"],
+      "usage": "/rollp 'face' 'die'",
+      "text": "Rolls dice, but sends the results in private to the roller. The first argument is the amount of faces each die should have. The second argument is the amount of dice that should be rolled. Both arguments are optional."
    },
    {
-      "names": [
-         "timer"
-      ],
-      "usage":"/timer 'Timer' 'Duration'",
-      "text":"Gets or sets the global or one of the area-specific timers. If called without arguments, sends an out-of-character message listing the statuses of both the global timer and the area-specific timers. If called with one argument, and that argument is between `0` and `4` (inclusive on both ends), sends an out-of-character message about the status of the given timer, where `0` is the global timer, and the remaining numbers are the first, second, third and fourth timers in the current area."
+      "names": ["wheel"],
+      "usage": "/wheel <option1> <option2> ...",
+      "text": "Spins a wheel of fortune from the provided list of options (up to 20) and announces the randomly chosen one to the area."
    },
    {
-      "names": [
-         "play"
-      ],
-      "usage":"/play <Song>",
-      "text":"Plays music in the area. Can play either a local file or a URL."
+      "names": ["wheelp"],
+      "usage": "/wheelp <option1> <option2> ...",
+      "text": "Like /wheel, but sends the randomly chosen option only to you, privately."
    },
    {
-      "names": [
-         "areakick",
-         "area_kick"
-      ],
-      "usage":"/areakick <ID>",
-      "text":"Kicks a client from the area, moving them back to the default area."
+      "names": ["rps"],
+      "usage": "/rps <choice> or /rps cancel",
+      "text": "Play rock-paper-scissors against the people. Choices: 'rock', 'paper', or 'scissors'. Use '/rps cancel' to cancel the current game."
    },
    {
-      "names": [
-         "randomchar"
-      ],
-      "usage":"/randomchar",
-      "text":"Picks a new random character for the client. This command takes no arguments."
+      "names": ["doc"],
+      "usage": "/doc <document>",
+      "text": "Sets the `/doc` to a custom text."
    },
    {
-      "names": [
-         "switch"
-      ],
-      "usage":"/switch <ID>",
-      "text":"Switches to a different character based on character ID."
+      "names": ["cleardoc"],
+      "usage": "/cleardoc",
+      "text": "Sets the `/doc` to `No document.`. This command takes no arguments."
    },
    {
-      "names": [
-         "toggleglobal"
-      ],
-      "usage":"/toggleglobal",
-      "text":"Toggles whether the client will ignore global messages or not."
+      "names": ["cm"],
+      "usage": "/cm [ID1] [ID2] ...",
+      "text": "Promotes you or the given client(s) to CM in the current area. If no arguments, makes yourself CM (subject to area protection and authentication). With one or more client IDs, promotes those clients (requires you to already be CM or have appropriate moderator permissions)."
    },
    {
-      "names": [
-         "mods"
-      ],
-      "usage":"/mods",
-      "text":"Lists the currently logged-in moderators on the server."
+      "names": ["uncm"],
+      "usage": "/uncm [ID1] [ID2] ...",
+      "text": "Removes CM status. With no arguments, removes your own CM. With one or more client IDs, removes CM from those specific clients (requires you to be CM or have the un-cm permission). Removing a client not in the area will affect their CM there regardless."
    },
    {
-      "names": [
-         "commands"
-      ],
-      "usage":"/commands",
-      "text":"Lists all the commands that the caller client has the permissions to use. This command takes no arguments."
+      "names": ["invite"],
+      "usage": "/invite <ID1> [ID2] ...",
+      "text": "Invites one or more clients to the current area, granting them access. Only usable when the area is locked or spectatable. Can take multiple IDs separated by spaces."
    },
    {
-      "names": [
-         "status"
-      ],
-      "usage":"/status <Status>",
-      "text":"Changes the status of the current area."
+      "names": ["uninvite"],
+      "usage": "/uninvite <ID1> [ID2] ...",
+      "text": "Uninvites one or more clients from the current area, revoking their access. Cannot uninvite a CM. Only usable when the area is locked or spectatable. Can take multiple IDs separated by spaces."
    },
    {
-      "names": [
-         "forcepos"
-      ],
-      "usage":"/forcepos <ID> <Position>",
-      "text":"Forces a client, or all clients in the area, to a specific position. The first argument is the client's ID or * for all clients. The second argument is the position to force the clients to."
+      "names": ["lock", "area_lock"],
+      "usage": "/lock",
+      "text": "Locks the area. This command takes no arguments."
    },
    {
-      "names": [
-         "currentmusic"
-      ],
-      "usage":"/currentmusic",
-      "text":"Returns the currently playing music in the area, and who played it. This command takes no arguments."
+      "names": ["spectatable", "area_spectate"],
+      "usage": "/spectatable",
+      "text": "Sets the area to spectatable. This command takes no arguments."
    },
    {
-      "names": [
-         "pm"
-      ],
-      "usage":"/pm <ID> <Message>",
-      "text":"Sends a direct message to another client on the server based on ID."
+      "names": ["area_spectate"],
+      "usage": "/area_spectate",
+      "text": "Sets the area to spectatable. This command takes no arguments."
    },
    {
-      "names": [
-         "evidence_mod"
-      ],
-      "usage":"/evidence_mod <EvidenceMod>",
-      "text":"Changes the evidence mod in the area. Available values: ffa (anyone can modify), mod (only mods), cm (case makers and mods), hidden_cm/hiddencm (case makers and mods with ownership system)."
+      "names": ["unlock", "area_unlock"],
+      "usage": "/unlock",
+      "text": "Unlocks the area. This command takes no arguments."
    },
    {
-      "names": [
-         "motd"
-      ],
-      "usage":"/motd 'Message'",
-      "text":"Gets or sets the server's Message Of The Day. If called without an argument, gets the MOTD. If it has a message, sets the message as the MOTD."
+      "names": ["area_unlock"],
+      "usage": "/area_unlock",
+      "text": "Unlocks the area. This command takes no arguments."
    },
    {
-      "names": [
-         "announce"
-      ],
-      "usage":"/announce <Message>",
-      "text":"Sends out a decorated global message, for announcements."
+      "names": ["timer"],
+      "usage": "/timer 'Timer' 'Duration'",
+      "text": "Gets or sets the global or one of the area-specific timers. If called without arguments, sends an out-of-character message listing the statuses of both the global timer and the area-specific timers. If called with one argument, and that argument is between `0` and `4` (inclusive on both ends), sends an out-of-character message about the status of the given timer, where `0` is the global timer, and the remaining numbers are the first, second, third and fourth timers in the current area."
    },
    {
-      "names": [
-         "m"
-      ],
-      "usage":"/m <Message>",
-      "text":"Sends a message in the server-wide, moderator only chat."
+      "names": ["play"],
+      "usage": "/play <Song>",
+      "text": "Plays music in the area. Can play either a local file or a URL."
    },
    {
-      "names": [
-         "gm"
-      ],
-      "usage":"/gm <Message>",
-      "text":"Sends out a global message that is marked with an `[M]` to mean it is coming from a moderator."
+      "names": ["radio"],
+      "usage": "/radio [choice]",
+      "text": "If a choice is given, plays a radio stream from the server's radio list. If no arguments, lists all available radio stations."
    },
    {
-      "names": [
-         "mute"
-      ],
-      "usage":"/mute <ID>",
-      "text":"Mutes a client."
+      "names": ["getmusic"],
+      "usage": "/getmusic",
+      "text": "Re-sends the current area music to you, so you can start playing it. This command takes no arguments."
    },
    {
-      "names": [
-         "unmute"
-      ],
-      "usage":"/unmute <ID>",
-      "text":"Removes the muted status from a client."
+      "names": ["play_once"],
+      "usage": "/play_once <song>",
+      "text": "Plays a song once in the area. Similar to /play, but the song will not loop."
    },
    {
-      "names": [
-         "bans"
-      ],
-      "usage":"/bans",
-      "text":"Lists the last five bans made on the server. This command takes no arguments."
+      "names": ["areakick", "area_kick"],
+      "usage": "/areakick <ID>",
+      "text": "Kicks a client from the area, moving them back to the default area."
    },
    {
-      "names": [
-         "unban"
-      ],
-      "usage":"/unban <ID>",
-      "text":"Removes a ban from the database."
+      "names": ["randomchar"],
+      "usage": "/randomchar",
+      "text": "Picks a new random character for the client. This command takes no arguments."
    },
    {
-      "names": [
-         "removeuser"
-      ],
-      "usage":"/removeuser <Usernames>",
-      "text":"Removes a user from the moderators in `advanced` authorisation type."
+      "names": ["switch"],
+      "usage": "/switch <ID>",
+      "text": "Switches to a different character based on character ID."
    },
    {
-      "names": [
-         "subtheme"
-      ],
-      "usage":"/subtheme <Theme>",
-      "text":"Changes the subtheme of the clients in the current area."
+      "names": ["toggleglobal"],
+      "usage": "/toggleglobal",
+      "text": "Toggles whether the client will ignore global messages or not."
    },
    {
-      "names": [
-         "about"
-      ],
-      "usage":"/about",
-      "text":"Gives a very brief description of Akashi. This command takes no arguments."
+      "names": ["mods"],
+      "usage": "/mods",
+      "text": "Lists the currently logged-in moderators on the server."
    },
    {
-      "names": [
-         "evidence_swap"
-      ],
-      "usage":"/evidence_swap <EvidenceID> <EvidenceID>",
-      "text":"Changes position of two pieces of evidence in the area."
+      "names": ["commands"],
+      "usage": "/commands",
+      "text": "Lists all the commands that the caller client has the permissions to use. This command takes no arguments."
    },
    {
-      "names": [
-         "notecard"
-      ],
-      "usage":"/notecard <Message>",
-      "text":"Writes a notecard in the current area. The notecard is not readable until all note cards in the area are revealed by a CM. A message will appear to all clients in the area indicating that a notecard has been written."
+      "names": ["status"],
+      "usage": "/status <Status>",
+      "text": "Changes the status of the current area."
    },
    {
-      "names": [
-         "notecardreveal",
-         "notecard_reveal"
-      ],
-      "usage":"/notecardreveal",
-      "text":"Reveals all note cards in the current area. This command takes no arguments."
+      "names": ["forcepos"],
+      "usage": "/forcepos <ID> <Position>",
+      "text": "Forces a client, or all clients in the area, to a specific position. The first argument is the client's ID or * for all clients. The second argument is the position to force the clients to."
    },
    {
-      "names": [
-         "notecardclear",
-         "notecard_clear"
-      ],
-      "usage":"/notecardclear",
-      "text":"Erases the client's notecard from the area's list of cards. A message will appear to all clients in the area indicating that a notecard has been erased. This command takes no arguments."
+      "names": ["currentmusic"],
+      "usage": "/currentmusic",
+      "text": "Returns the currently playing music in the area, and who played it. This command takes no arguments."
    },
    {
-      "names": [
-         "8ball"
-      ],
-      "usage":"/8ball <Question>",
-      "text":"Randomly selects an answer from 8ball.txt to a question."
+      "names": ["pm"],
+      "usage": "/pm <ID> <Message>",
+      "text": "Sends a direct message to another client on the server based on ID."
    },
    {
-      "names": [
-         "lm"
-      ],
-      "usage":"/lm <Message>",
-      "text":"Sends out a local message that is marked with an `[M]` to mean it is coming from a moderator."
+      "names": ["evidence_mod"],
+      "usage": "/evidence_mod <EvidenceMod>",
+      "text": "Changes the evidence mod in the area. Available values: ffa (anyone can modify), mod (only mods), cm (case makers and mods), hidden_cm/hiddencm (case makers and mods with ownership system)."
    },
    {
-      "names": [
-         "judgelog"
-      ],
-      "usage":"/judgelog",
-      "text":"ends an out-of-character message with the judgelog of an area. This command takes no arguments."
+      "names": ["motd"],
+      "usage": "/motd 'Message'",
+      "text": "Gets or sets the server's Message Of The Day. If called without an argument, gets the MOTD. If it has a message, sets the message as the MOTD."
    },
    {
-      "names": [
-         "allowblankposting",
-         "allow_blankposting"
-      ],
-      "usage":"/allowblankposting",
-      "text":"Toggle whether or not in-character messages purely consisting of spaces are allowed. Takes no arguments. Against all common sense, this also allows you to disable blankposting."
+      "names": ["set_motd"],
+      "usage": "/set_motd <message>",
+      "text": "Sets the server's Message Of The Day to the given message."
    },
    {
-      "names": [
-         "gimp"
-      ],
-      "usage":"/gimp <ID>",
-      "text":"Replaces a target client's in-character messages with strings randomly selected from gimp.txt. Takes the client id as the only argument."
+      "names": ["announce"],
+      "usage": "/announce <Message>",
+      "text": "Sends out a decorated global message, for announcements."
    },
    {
-      "names": [
-         "ungimp"
-      ],
-      "usage":"/ungimp <ID>",
-      "text":"Allows a gimped client to speak normally. The user needs to be gimped to be ungimped. Takes the client id as the only argument."
+      "names": ["m"],
+      "usage": "/m <Message>",
+      "text": "Sends a message in the server-wide, moderator only chat."
    },
    {
-      "names": [
-         "baninfo"
-      ],
-      "usage":"/baninfo <BanID>",
-      "text":"Looks up info on a ban."
+      "names": ["gm"],
+      "usage": "/gm <Message>",
+      "text": "Sends out a global message that is marked with an `[M]` to mean it is coming from a moderator."
    },
    {
-      "names": [
-         "testify"
-      ],
-      "usage":"/testify",
-      "text":"Enables the testimony recorder in the area. The next message will automatically be used as the title of the testimony. This command takes no arguments."
+      "names": ["mute"],
+      "usage": "/mute <ID> [type]",
+      "text": "Mutes a client. With one argument (ID only), applies an IC mute. With type 0=IC mute, 1=OOC mute, 2=both IC & OOC mute. Invalid or out-of-range types default to IC mute."
    },
    {
-      "names": [
-         "testimony"
-      ],
-      "usage":"/testimony",
-      "text":"Outputs the contents of the testimony recorder into OOC. This command takes no arguments."
+      "names": ["unmute"],
+      "usage": "/unmute <ID> [type]",
+      "text": "Removes muted status from a client. With one argument (ID only), lifts both IC and OOC mutes (if any). With type 0=lifts IC mute only, 1=lifts OOC mute only, 2=lifts both IC & OOC mutes. Invalid types default to lifting both."
    },
    {
-      "names": [
-         "examine"
-      ],
-      "usage":"/testify",
-      "text":"Switches the testimony recorder into playback mode. If no testimony has been recorded, this command can't be used. This command takes no arguments."
+      "names": ["bans"],
+      "usage": "/bans",
+      "text": "Lists the last five bans made on the server. This command takes no arguments."
    },
    {
-      "names": [
-         "pause"
-      ],
-      "usage":"/pause",
-      "text":"Pauses testimony playback. This command takes no arguments."
+      "names": ["unban"],
+      "usage": "/unban <ID>",
+      "text": "Removes a ban from the database."
    },
    {
-      "names": [
-         "delete"
-      ],
-      "usage":"/delete",
-      "text":"Deletes the currently displayed testimony message from the testimony recorder. This command takes no arguments."
+      "names": ["removeuser"],
+      "usage": "/removeuser <Usernames>",
+      "text": "Removes a user from the moderators in `advanced` authorisation type."
    },
    {
-      "names": [
-         "update"
-      ],
-      "usage":"/update",
-      "text":"Updates the currently displayed testimony message with the next message said in IC chat. This command takes no arguments."
+      "names": ["subtheme"],
+      "usage": "/subtheme <Theme>",
+      "text": "Changes the subtheme of the clients in the current area."
    },
    {
-      "names": [
-         "add"
-      ],
-      "usage":"/add",
-      "text":"Adds the next IC message into the testimony recorder after the currently displayed message. This command takes no arguments."
+      "names": ["about"],
+      "usage": "/about",
+      "text": "Gives a very brief description of Akashi. This command takes no arguments."
    },
    {
-      "names": [
-         "reload"
-      ],
-      "usage":"/reload",
-      "text":"Reloads the server configuration. This command takes no arguments."
+      "names": ["evidence_swap"],
+      "usage": "/evidence_swap <EvidenceID> <EvidenceID>",
+      "text": "Changes position of two pieces of evidence in the area."
    },
    {
-      "names": [
-         "disemvovel"
-      ],
-      "usage":"/disemvovel <ID>",
-      "text":"Disemvovels a user, removing vowels from their IC messages. Takes the client ID as an argument."
+      "names": ["notecard"],
+      "usage": "/notecard <Message>",
+      "text": "Writes a notecard in the current area. The notecard is not readable until all note cards in the area are revealed by a CM. A message will appear to all clients in the area indicating that a notecard has been written."
    },
    {
-      "names": [
-         "undisemvovel"
-      ],
-      "usage":"undisemvovel <ID>",
-      "text":"Removes the disemvovel from a user, allowing them to use vowels again."
+      "names": ["notecardreveal", "notecard_reveal"],
+      "usage": "/notecardreveal",
+      "text": "Reveals all note cards in the current area. This command takes no arguments."
    },
    {
-      "names": [
-         "shake"
-      ],
-      "usage":"/shake <ID>",
-      "text":"Scrambles the words of a target client's in-character messages. The only argument is the client ID"
+      "names": ["notecardclear", "notecard_clear"],
+      "usage": "/notecardclear",
+      "text": "Erases the client's notecard from the area's list of cards. A message will appear to all clients in the area indicating that a notecard has been erased. This command takes no arguments."
    },
    {
-      "names": [
-         "unshake"
-      ],
-      "usage":"/unshake <ID>",
-      "text":"llows a shaken client to speak normally."
+      "names": ["8ball"],
+      "usage": "/8ball <Question>",
+      "text": "Randomly selects an answer from 8ball.txt to a question."
    },
    {
-      "names": [
-         "forceimmediate",
-         "force_noint_pres"
-      ],
-      "usage":"/forceimmediate",
-      "text":"Toggles immediate text processing in the current area. This command takes no arguments."
+      "names": ["lm"],
+      "usage": "/lm <Message>",
+      "text": "Sends out a local message that is marked with an `[M]` to mean it is coming from a moderator."
    },
    {
-      "names": [
-         "allowiniswap",
-         "allow_iniswap"
-      ],
-      "usage":"/allowiniswap",
-      "text":"Toggles whether iniswaps are allowed in the current area. For no apparent reason, this also can be used to disable it. This command takes no arguments."
+      "names": ["judgelog"],
+      "usage": "/judgelog",
+      "text": "Sends an out-of-character message with the judgelog of an area. This command takes no arguments."
    },
    {
-      "names": [
-         "afk"
-      ],
-      "usage":"/afk",
-      "text":"Toggles whether this client is considered AFK. This command takes no arguments."
+      "names": ["allowblankposting", "allow_blankposting"],
+      "usage": "/allowblankposting",
+      "text": "Toggle whether or not in-character messages purely consisting of spaces are allowed. Takes no arguments. Against all common sense, this also allows you to disable blankposting."
    },
    {
-      "names": [
-         "savetestimony"
-      ],
-      "usage":"/savetestimony <names>",
-      "text":"Saves a testimony recording to the server's storage. Argument is the names of the testimony."
+      "names": ["baninfo"],
+      "usage": "/baninfo <BanID>",
+      "text": "Looks up info on a ban."
    },
    {
-      "names": [
-         "loadtestimony"
-      ],
-      "usage":"/loadtestimony <names>",
-      "text":"Loads testimony for the testimony replay. Argument is the testimony names."
+      "names": ["testify"],
+      "usage": "/testify",
+      "text": "Enables the testimony recorder in the area. The next message will automatically be used as the title of the testimony. This command takes no arguments."
    },
    {
-      "names": [
-         "permitsaving"
-      ],
-      "usage":"/permitsaving <ID>",
-      "text":"Grants a client the temporary permission to save a testimony. Argument is the client ID"
+      "names": ["testimony"],
+      "usage": "/testimony",
+      "text": "Outputs the contents of the testimony recorder into OOC. This command takes no arguments."
    },
    {
-      "names": [
-         "mutepm"
-      ],
-      "usage":"/mutepm",
-      "text":"Toggles whether a client will recieve private messages or not. This command takes no arguments."
+      "names": ["examine"],
+      "usage": "/examine",
+      "text": "Switches the testimony recorder into playback mode. If no testimony has been recorded, this command can't be used. This command takes no arguments."
    },
    {
-      "names": [
-         "oocmute",
-         "ooc_mute"
-      ],
-      "usage":"/oocmute <ID>",
-      "text":"OOC-mutes a client. Argument is the client ID."
+      "names": ["pause"],
+      "usage": "/pause",
+      "text": "Pauses testimony playback. This command takes no arguments."
    },
    {
-      "names": [
-         "oocunmute",
-         "ooc_unmute"
-      ],
-      "usage":"/oocunmute <ID>",
-      "text":"Removes the OOC-muted status from a client. Argument is the client ID."
+      "names": ["delete"],
+      "usage": "/delete",
+      "text": "Deletes the currently displayed testimony message from the testimony recorder. This command takes no arguments."
    },
    {
-      "names": [
-         "blockwtce",
-         "block_wtce"
-      ],
-      "usage":"/blockwtce <ID>",
-      "text":"WTCE-blocks a client. Argument is the client ID."
+      "names": ["update"],
+      "usage": "/update",
+      "text": "Updates the currently displayed testimony message with the next message said in IC chat. This command takes no arguments."
    },
    {
-      "names": [
-         "unblockwtce",
-         "unblock_wtce"
-      ],
-      "usage":"/unblockwtce <ID>",
-      "text":"WTCE-unblocks a client. Argument is the client ID."
+      "names": ["add"],
+      "usage": "/add",
+      "text": "Adds the next IC message into the testimony recorder after the currently displayed message. This command takes no arguments."
    },
    {
-      "names": [
-         "blockdj",
-         "block_dj"
-      ],
-      "usage":"/blockdj <ID>",
-      "text":"DJ-blocks a client. Argument is the client ID."
+      "names": ["reload"],
+      "usage": "/reload",
+      "text": "Reloads the server configuration. This command takes no arguments."
    },
    {
-      "names": [
-         "unblockdj",
-         "unblock_dj"
-      ],
-      "usage":"/unblockdj <ID>",
-      "text":"Removes the DJ-blocked status from a client. Argument is the client ID."
+      "names": ["forceimmediate", "force_noint_pres"],
+      "usage": "/forceimmediate",
+      "text": "Toggles immediate text processing in the current area. This command takes no arguments."
    },
    {
-      "names": [
-         "charcurse"
-      ],
-      "usage":"/charcurse <ClientID> <Characternames>",
-      "text":"Restricts a target client to a set of characters that they can switch from, blocking them from other characters."
+      "names": ["allowiniswap", "allow_iniswap"],
+      "usage": "/allowiniswap",
+      "text": "Toggles whether iniswaps are allowed in the current area. For no apparent reason, this also can be used to disable it. This command takes no arguments."
    },
    {
-      "names": [
-         "uncharcurse"
-      ],
-      "usage":"uncharcurse <ID>",
-      "text":"Removes the charcurse status from a client. Argument is the ClientID"
+      "names": ["afk"],
+      "usage": "/afk",
+      "text": "Toggles whether this client is considered AFK. This command takes no arguments."
    },
    {
-      "names": [
-         "charselect"
-      ],
-      "usage":"/charselect 'ID'",
-      "text":"Forces yourself into the charselect screen. If used with a client ID, it forces that client back into the charselect screen."
+      "names": ["savetestimony"],
+      "usage": "/savetestimony <names>",
+      "text": "Saves a testimony recording to the server's storage. Argument is the names of the testimony."
    },
    {
-      "names": [
-         "togglemusic"
-      ],
-      "usage":"/tooglemusic",
-      "text":"Toggles music playing in the current area. This command takes no arguments."
+      "names": ["loadtestimony"],
+      "usage": "/loadtestimony <names>",
+      "text": "Loads testimony for the testimony replay. Argument is the testimony names."
    },
    {
-      "names": [
-         "a"
-      ],
-      "usage":"/a <Area> <Message>",
-      "text":"Sends a message to an area that you a CM in."
+      "names": ["permitsaving"],
+      "usage": "/permitsaving <ID>",
+      "text": "Grants a client the temporary permission to save a testimony. Argument is the client ID"
    },
    {
-      "names": [
-         "s"
-      ],
-      "usage":"/s <Message>",
-      "text":"Send a message to all areas that you are a CM in."
+      "names": ["mutepm"],
+      "usage": "/mutepm",
+      "text": "Toggles whether a client will recieve private messages or not. This command takes no arguments."
    },
    {
-      "names": [
-         "kickuid",
-         "kick_uid"
-      ],
-      "usage":"/kickuid <ID> <Message>",
-      "text":"Kicks a client from the server, forcibly severing its connection to the server. This command only kicks the client with the user ID. Argument is the User ID."
+      "names": ["blockwtce", "block_wtce"],
+      "usage": "/blockwtce <ID>",
+      "text": "WTCE-blocks a client. Argument is the client ID."
    },
    {
-      "names": [
-         "firstperson"
-      ],
-      "usage":"/firstperson",
-      "text":"Toggle whether the client's messages will be sent in first person mode. This command takes no arguments."
+      "names": ["unblockwtce", "unblock_wtce"],
+      "usage": "/unblockwtce <ID>",
+      "text": "WTCE-unblocks a client. Argument is the client ID."
    },
    {
-      "names": [
-         "updateban",
-         "update_ban"
-      ],
-      "usage":"/updateban <BanID> <Field> [Duration|Reason]",
-      "text":"Updates a ban in the database, changing either its reason or duration. First argument is the ban ID. Second is the field, 'reason' or 'duration'. Last argument is either the new duration or reason."
+      "names": ["blockdj", "block_dj"],
+      "usage": "/blockdj <ID>",
+      "text": "DJ-blocks a client. Argument is the client ID."
    },
    {
-      "names": [
-         "changepass"
-      ],
-      "usage":"/changepass <Password> 'Moderator'",
-      "text":"Changes a moderator's password. The first argument is the new password. The optional second argument is the moderator names."
+      "names": ["unblockdj", "unblock_dj"],
+      "usage": "/unblockdj <ID>",
+      "text": "Removes the DJ-blocked status from a client. Argument is the client ID."
    },
    {
-      "names": [
-         "ignorebglist"
-      ],
-      "usage":"/ignorebglist",
-      "text":"Toggles whether the BG list is ignored in an area. This command takes no arguments."
+      "names": ["charcurse"],
+      "usage": "/charcurse <ClientID> <Characternames>",
+      "text": "Restricts a target client to a set of characters that they can switch from, blocking them from other characters."
    },
    {
-      "names": [
-         "ignore_bglist"
-      ],
-      "usage":"/ignore_bglist",
-      "text":"Toggles whether the BG list is ignored in an area. This command takes no arguments."
+      "names": ["uncharcurse"],
+      "usage": "/uncharcurse <ID>",
+      "text": "Removes the charcurse status from a client. Argument is the ClientID"
    },
    {
-      "names": [
-         "notice"
-      ],
-      "usage":"/notice <Message>",
-      "text":"Pops up a notice for all clients in the targeted area with a given message. The only argument is the message."
+      "names": ["curses"],
+      "usage": "/curses <client id> [type]",
+      "text": "Applies a curse (message filter) to the target client. If type is omitted, defaults to 0 (disemvowel). Types: 0=disemvowel (remove vowels), 1=shake (randomise word order), 2=medieval (Ye Olde English), 3=gimp (replace with random strings), 4=uwuify (UwU-speak), 5=pigify (Pig Latin), -1=full (all curses except charcurse). Out-of-range values default to 0 (disemvowel)."
    },
    {
-      "names": [
-         "noticeg"
-      ],
-      "usage":"/noticeg <Message>",
-      "text":"Pops up a notice for all clients in the server with a given message. The only argument is the message."
+      "names": ["uncurses"],
+      "usage": "/uncurses <client id> [type]",
+      "text": "Removes a curse from the target client. If type is omitted, defaults to 0 (disemvowel). Types are the same as in /curses: 0=disemvowel, 1=shake, 2=medieval, 3=gimp, 4=uwuify, 5=pigify, -1=full (all curses). Out-of-range values default to 0."
    },
    {
-      "names": [
-         "togglejukebox"
-      ],
-      "usage":"/togglejukebox",
-      "text":"Enables/Disables the Jukebox in the area. This command takes no arguments."
+      "names": ["charselect"],
+      "usage": "/charselect 'ID'",
+      "text": "Forces yourself into the charselect screen. If used with a client ID, it forces that client back into the charselect screen."
    },
    {
-      "names": [
-         "help"
-      ],
-      "usage":"/help <Command>",
-      "text":"Shows you information about a command, if available. The only argument is the command names. About Syntax : <Argument> are mandatory arguments. 'Argument' are optional arguments. [Argument|OtherArgument] is that two argument types are valid, but only one can be used."
+      "names": ["force_charselect"],
+      "usage": "/force_charselect <client id>",
+      "text": "Forces the target client back to the character selection screen. Argument is the client ID."
    },
    {
-      "names": [
-         "clearcm"
-      ],
-      "usage":"/clearcm",
-      "text":"Removes all CMs from the current area. This command takes no arguments."
+      "names": ["togglemusic"],
+      "usage": "/tooglemusic",
+      "text": "Toggles music playing in the current area. This command takes no arguments."
    },
    {
-      "names": [
-         "togglemessage"
-      ],
-      "usage":"/togglemessage",
-      "text":"Toggles wether the client shows the area message when joining the current area."
+      "names": ["a"],
+      "usage": "/a <Area> <Message>",
+      "text": "Sends a message to an area that you a CM in."
    },
    {
-      "names": [
-         "clearmessage"
-      ],
-      "usage":"/clearmessage",
-      "text":"Clears the areas message and disables automatic sending."
+      "names": ["s"],
+      "usage": "/s <Message>",
+      "text": "Send a message to all areas that you are a CM in."
    },
    {
-      "names": [
-         "areamessage"
-      ],
-      "usage":"/areamessage 'Message'",
-      "text":"Returns the area message in OOC. If text is entered it updates the current area message."
+      "names": ["firstperson"],
+      "usage": "/firstperson",
+      "text": "Toggle whether the client's messages will be sent in first person mode. This command takes no arguments."
    },
    {
-      "names": [
-         "addsong"
-      ],
-      "usage":"/addsong <Songnames>,'Truenames','Duration'",
-      "text":"Adds a song to the custom musiclist. Optionally can be an aliased names to hide a streamlink. Set the duration for the jukebox."
+      "names": ["updateban", "update_ban"],
+      "usage": "/updateban <BanID> <Field> [Duration|Reason]",
+      "text": "Updates a ban in the database, changing either its reason or duration. First argument is the ban ID. Second is the field, 'reason' or 'duration'. Last argument is either the new duration or reason."
    },
    {
-      "names": [
-         "addcategory"
-      ],
-      "usage":"/addsong <Category>",
-      "text":"Adds a category to the custom musiclist."
+      "names": ["changepass"],
+      "usage": "/changepass <Password> 'Moderator'",
+      "text": "Changes a moderator's password. The first argument is the new password. The optional second argument is the moderator names."
    },
    {
-      "names": [
-         "removeentry"
-      ],
-      "usage":"/removeentry 'names'",
-      "text":"Removes an entry from the custom musiclist."
+      "names": ["ignorebglist"],
+      "usage": "/ignorebglist",
+      "text": "Toggles whether the BG list is ignored in an area. This command takes no arguments."
    },
    {
-      "names": [
-         "toggleglobal"
-      ],
-      "usage":"/toggleglobal",
-      "text":"Changes the behaviour of prepending the server root musiclist to the custom lists of the area."
+      "names": ["ignore_bglist"],
+      "usage": "/ignore_bglist",
+      "text": "Toggles whether the BG list is ignored in an area. This command takes no arguments."
    },
    {
-      "names": [
-         "clearcustom"
-      ],
-      "usage":"/clearcustom",
-      "text":"Removes all custom songs from the area."
+      "names": ["notice"],
+      "usage": "/notice <Message>",
+      "text": "Pops up a notice for all clients in the targeted area with a given message. The only argument is the message."
    },
    {
-      "names": [
-         "kick_other",
-		 "kickother"
-      ],
-      "usage":"/kick_other",
-      "text":"Removes all multiclients of the user from the server."
+      "names": ["noticeg"],
+      "usage": "/noticeg <Message>",
+      "text": "Pops up a notice for all clients in the server with a given message. The only argument is the message."
    },
    {
-      "names": [
-         "jukebox_skip",
-		 "jukeboxskip"
-      ],
-      "usage":"/jukebox_skip",
-      "text":"Skips the current song in the Jukebox and plays the next available one."
+      "names": ["togglejukebox"],
+      "usage": "/togglejukebox",
+      "text": "Enables/Disables the Jukebox in the area. This command takes no arguments."
    },
    {
-      "names": [
-         "play_ambience",
-		 "playambience",
-		 "playa"
-      ],
-      "usage":"/play_ambience <Track>",
-      "text":"Plays the requested track in the ambience channel."
+      "names": ["help"],
+      "usage": "/help [command | category | *]",
+      "text": "Shows help text. Use /help with no argument for a welcome message and list of available categories.\n/help <category> lists all allowed commands in that category. /help <command> shows detailed usage for that command.\n/help * lists all commands you are allowed to use."
    },
    {
-      "names": [
-         "medievalmode",
-		 "medieval_mode"
-      ],
-      "usage":"/medievalmode",
-      "text":"Toggles Medieval Mode for the current area."
+      "names": ["clearcm"],
+      "usage": "/clearcm [true|false|0|1]",
+      "text": "Removes all CMs from the current area. Without arguments, clears only the current area. With argument 'true'/'1', clears all CMs from every area (requires the 'uncm' permission). With 'false'/'0', clears only the current area (same as no argument)."
    },
    {
-      "names": [
-         "medieval"
-      ],
-      "usage":"/medieval <ID>",
-      "text":"Causes the target client to have its messages run through a Ye Olde English chat filter."
+      "names": ["togglemessage"],
+      "usage": "/togglemessage",
+      "text": "Toggles wether the client shows the area message when joining the current area."
    },
    {
-      "names": [
-         "unmedieval"
-      ],
-      "usage":"/unmedieval <ID>",
-      "text":"Allows Ye Olde client to speak normally. The user needs to be in Medieval Mode to be un-Medieval'd. Takes the client id as the only argument."
+      "names": ["clearmessage"],
+      "usage": "/clearmessage",
+      "text": "Clears the areas message and disables automatic sending."
    },
    {
-      "names": [
-         "randomsong"
-      ],
-      "usage":"/randomsong",
-      "text":"Picks a random song from the server music list and adds it to the jukebox queue. The jukebox must be enabled in the area. Example: /randomsong → might queue 'TH01_Boss.mp3'."
+      "names": ["areamessage"],
+      "usage": "/areamessage 'Message'",
+      "text": "Returns the area message in OOC. If text is entered it updates the current area message."
    },
    {
-      "names": [
-         "shuffle"
-      ],
-      "usage":"/shuffle",
-      "text":"Fills the jukebox queue with all available songs in a random order. The jukebox must be enabled in the area. Example: /shuffle → queues every song on the server in a random order."
+      "names": ["toggleadverts"],
+      "usage": "/toggleadverts",
+      "text": "Toggles whether you receive global advertisement messages (such as /need). This command takes no arguments."
    },
    {
-      "names": [
-         "playlistadd"
-      ],
-      "usage":"/playlistadd <song1> [song2] [song3] ...",
-      "text":"Adds one or more songs to the jukebox queue. Pass local song names or approved CDN URLs separated by spaces. Custom URLs play for 5 minutes each. The jukebox must be enabled in the area.\nLocal song example: /playlistadd TH01_Boss.mp3 TH02_Stage.mp3 TH03_Ending.mp3\nCustom URL example: /playlistadd https://cdn.example.com/song1.mp3 https://cdn.example.com/song2.mp3"
+      "names": ["toggleafkmute"],
+      "usage": "/toggleafkmute",
+      "text": "Toggles whether you receive out-of-character messages about other players going AFK or returning. This command takes no arguments."
    },
    {
-      "names": [
-         "radio"
-      ],
-      "usage":"/radio [id]",
-      "text":"Without arguments, lists all available radio stations with their IDs. With an ID, streams that station for everyone in the area. Clears the jukebox queue if one is active. Example: /radio → shows station list. /radio 1 → plays station #1."
+      "names": ["toggleafk_announce"],
+      "usage": "/toggleafk_announce",
+      "text": "Toggles whether your AFK status is announced to other players. This command takes no arguments."
    },
    {
-      "names": [
-         "play_once",
-         "playonce"
-      ],
-      "usage":"/play_once <song>",
-      "text":"Plays a song once in the area without looping. Accepts a local file name or an approved CDN URL. Clears the jukebox queue if one is active. Example: /play_once TH01_Boss.mp3 or /play_once https://cdn.example.com/song.mp3"
+      "names": ["addsong"],
+      "usage": "/addsong <Songnames>,'Truenames','Duration'",
+      "text": "Adds a song to the custom musiclist. Optionally can be an aliased names to hide a streamlink. Set the duration for the jukebox."
    },
    {
-      "names": [
-         "lockdown"
-      ],
-      "usage":"/lockdown <on|off>",
-      "text":"Toggles server lockdown. While on, only IPIDs that have connected before may join; brand-new IPIDs are blocked with a lockdown notice. Helps stop ban evaders joining from a fresh IP. Uses IPID only."
-   }
+      "names": ["addcategory"],
+      "usage": "/addcategory <Category>",
+      "text": "Adds a category to the custom musiclist."
+   },
+   {
+      "names": ["removeentry"],
+      "usage": "/removeentry 'names'",
+      "text": "Removes an entry from the custom musiclist."
+   },
+   {
+      "names": ["toggleroot"],
+      "usage": "/toggleroot",
+      "text": "Toggles whether the server's root music list is prepended to the area's custom music list. This command takes no arguments."
+   },
+   {
+      "names": ["clearcustom"],
+      "usage": "/clearcustom",
+      "text": "Removes all custom songs from the area."
+   },
+   {
+      "names": ["toggle_wtce"],
+      "usage": "/toggle_wtce",
+      "text": "Toggles whether players can use testimony/WTCE animations in the current area. This command takes no arguments."
+   },
+   {
+      "names": ["toggle_shouts"],
+      "usage": "/toggle_shouts",
+      "text": "Toggles whether players can send game shouts (like *shout*) in the current area. This command takes no arguments."
+   },
+   {
+      "names": ["webfiles"],
+      "usage": "/webfiles",
+      "text": "Generates a download link for characters who are iniswapping, useful for webAO clients to obtain the swapped character. This command takes no arguments."
+   },
+   {
+      "names": ["kick_other", "kickother"],
+      "usage": "/kick_other",
+      "text": "Removes all multiclients of the user from the server."
+   },
+   {
+      "names": ["jukebox_skip", "jukeboxskip"],
+      "usage": "/jukebox_skip",
+      "text": "Skips the current song in the Jukebox and plays the next available one."
+   },
+   {
+      "names": ["play_ambience", "playambience", "playa"],
+      "usage": "/play_ambience <Track>",
+      "text": "Plays the requested track in the ambience channel."
+   },
+   {
+      "names": ["medievalmode", "medieval_mode"],
+      "usage": "/medievalmode",
+      "text": "Toggles Medieval Mode for the current area."
+   },
+   {
+      "names": ["randomsong", "rsong"],
+      "usage": "/randomsong",
+      "text": "Picks a random song from the server music list and adds it to the jukebox queue. The jukebox must be enabled in the area."
+   },
+   {
+      "names": ["jukebox_shuffle", "shuffle"],
+      "usage": "/jukebox_shuffle",
+      "text": "Fills the jukebox queue with all available songs in a random order. The jukebox must be enabled in the area."
+   },
+   {
+      "names": ["jukebox_add", "playlistadd"],
+      "usage": "/jukebox_add <song1> [song2] [song3] ...",
+      "text": "Adds one or more songs to the jukebox queue. Pass local song names or approved CDN URLs separated by spaces. Custom URLs play for 5 minutes each. The jukebox must be enabled in the area.\nLocal song example: /playlistadd TH01_Boss.mp3 TH02_Stage.mp3 TH03_Ending.mp3\nCustom URL example: /jukebox_add https://cdn.example.com/song1.mp3 https://cdn.example.com/song2.mp3"
+   },
+   {
+      "names": ["jukebox_remove", "playlistremove", "jukeboxremove", "jremove"],
+      "usage": "/jukebox_remove <index>",
+      "text": "Removes a song from the jukebox queue at the specified index.\nUse /jukebox to see the current queue and their indices.\nRequires CM permission in the area."
+   },
+   {
+      "names": ["jukebox", "playlists", "jukeboxqueue", "queues", "jqueues"],
+      "usage": "/jukebox [page]",
+      "text": "Lists the current songs in the jukebox queue for the current area.\nWithout arguments, shows all queued songs.\nOptionally specify a page number to view 10 songs per page."
+   },
+   {
+      "names": ["lockdown"],
+      "usage": "/lockdown [on|off|start|stop|add <hashid>|remove <hashid>|<duration>]",
+      "text": "Manages the server lockdown state.\nWithout arguments: checks current lockdown status.\n'on' / 'start': enables lockdown immediately.\n'off' / 'stop': disables lockdown.\n'add <hashid>': adds a client's hashid to the lockdown whitelist.\n'remove <hashid>': removes a hashid from the whitelist.\n'<duration>': sets a timed lockdown (e.g., '1h30m')."
+   },
+   {
+      "names": ["lockdownlist"],
+      "usage": "/lockdownlist [page]",
+      "text": "Lists the lockdown whitelist of client hashids, 10 entries per page.\nOptionally specify a page number to view a specific page."
+   },
+	{
+   "names": ["vblock"],
+   "usage": "/vblock <client id> [duration] [reason]",
+   "text": "Blocks a client from using voice chat. Moderator only.\nIf they're currently in voice chat, they'll be muted and prevented from rejoining if they disconnect.\nThe server tries to determine if the second argument is a duration or a reason:\n- If it looks like a time (e.g., '1h30m'), it applies the block for that duration, and everything after is the reason.\n- If it doesn't look like a time, everything from the second argument onward is treated as the reason (permanent block)."
+	},
+   {
+      "names": ["vublock"],
+      "usage": "/vublock <client id>",
+      "text": "Unblocks a client from voice chat (Moderator only), allowing them to use it again.\nThe target must have been previously blocked with /vblock."
+   },
+	{
+	   "names": ["vkick"],
+	   "usage": "/vkick <client id> [duration] [reason]",
+	   "text": "Kicks a client from the voice chat channel.\nIf you are a moderator/root, you can kick anyone regardless of whether you are in voice chat yourself.\nIf you are not a moderator, you must be in the voice chat to kick someone.\nIf used by a moderator with the MUTE permission, optional duration and reason can be provided to also voice-block the client after kicking (same as /vblock).\nIf you kick yourself, you will receive a confirmation warning first."
+	}
 ]
