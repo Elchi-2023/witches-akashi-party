@@ -460,7 +460,7 @@ QVariant ConfigManager::GetVoiceParameter(VoiceParameter type){
 QVariantList ConfigManager::GetVoiceParamters(){
     QSettings read("config/config.ini", QSettings::IniFormat);
     QVariantList params;
-    params << read.value("voice/enable", true).toBool() << read.value("voice/PTT", false).toBool() << read.value("voice/max_peers").toInt() << qMax(4000, read.value("voice/max_bytes", 4000).toInt()) << QString("opus") << 48000 << 20;
+    params << read.value("voice/enable", true).toBool() << read.value("voice/PTT", false).toBool() << read.value("voice/max_peers").toInt() << qMax(4000, read.value("voice/max_bytes", 4000).toInt()) << QString("opus") << qBound(8000, read.value("voice/voice_hz", 48000).toInt(), 48000) << qBound(5, read.value("voice/voice_tick", 20).toInt(), 60);;
     return params;
 }
 
