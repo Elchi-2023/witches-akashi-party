@@ -84,19 +84,23 @@ void AOClient::cmdVBlock(int argc, QStringList argv){
 void AOClient::cmdVUBlock(int argc, QStringList argv){
     Q_UNUSED(argc)
 
-    bool cid_ok;
-    auto target = server->getClientByID(argv[0].toInt(&cid_ok));
-    if (cid_ok && target){
-        if (target->isAccessBlocked(BlockType::VOICE)){
-            sendServerMessage("Unblocking " + AOClient::NameWId(target) + " from voice-chat.");
-            target->SetAccessBlock(BlockType::VOICE, false);
-            target->sendServerMessage("You are been released from blocked voice-chat by moderator. " + AOClient::getReprimand(true));
+    if (isVAuthenticated()) // even <vip> have perms.. still tho..
+        sendServerMessage("This command for Moderator only.");
+    else{
+        bool cid_ok;
+        auto target = server->getClientByID(argv[0].toInt(&cid_ok));
+        if (cid_ok && target){
+            if (target->isAccessBlocked(BlockType::VOICE)){
+                sendServerMessage("Unblocking " + AOClient::NameWId(target) + " from voice-chat.");
+                target->SetAccessBlock(BlockType::VOICE, false);
+                target->sendServerMessage("You are been released from blocked voice-chat by moderator. " + AOClient::getReprimand(true));
+            }
+            else
+                sendServerMessage("That target unblocked from voice-chat blocked.");
         }
         else
-            sendServerMessage("That target unblocked from voice-chat blocked.");
+            sendServerMessage("Invalid client target.");
     }
-    else
-        sendServerMessage("Invalid client target.");
 }
 void AOClient::cmdVKick(int argc, QStringList argv){
     bool cid_ok;
