@@ -132,8 +132,11 @@ void AreaData::removeClient(const int f_userId){
     }
 
     if (RegisterVoice(f_userId, true)){
-        emit sendAreaPacket(PacketFactory::createPacket("VS_LEAVE", {QString::number(f_userId)}), m_index);
-        emit sendAreaPacket(PacketFactory::createPacket("VS_PEERS", GetRegisteredVoice(true)), m_index);
+        const auto current_user = m_voice_peers.keys();
+        for (const int peerid : current_user){
+            emit sendAreaPacketClient(PacketFactory::createPacket("VS_LEAVE", {QString::number(f_userId)}), peerid);
+            emit sendAreaPacketClient(PacketFactory::createPacket("VS_PEERS", GetRegisteredVoice(true)), peerid);
+        }
     }
 }
 
@@ -258,9 +261,10 @@ int AreaData::index() const
     return m_index;
 }
 
-QList<int> AreaData::charactersTaken() const
-{
-    return m_joined_ids.values();
+QList<int> AreaData::charactersTaken() const{
+    static QList<int> current = m_joined_ids.values();
+    current.removeAll(-1);
+    return current;
 }
 
 QHash<int, int> AreaData::PlayerCharacterMap() const{
@@ -390,7 +394,7 @@ bool AreaData::addPairSync(const int self, const int target){
     if (m_clients_pairing_sync.contains(self) && m_clients_pairing_sync[self] == target)
         return false;
     else if (m_clients_pairing_sync.contains(self) && m_clients_pairing_sync[self] != target)
-        m_clients_pairing_sync.insert(self, target);
+        m_clients_pairing_sync[self] = target;
     else
         m_clients_pairing_sync.insert(self, target);
     return true;

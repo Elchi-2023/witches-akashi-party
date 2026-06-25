@@ -104,7 +104,7 @@ QStringList AOClient::buildAreaList(int area_idx)
                             info.append("(V: " + client->m_moderator_name + ")");
                     }
                     if (ld_state)
-                        info[0].append(" (" + AOClient::calcutateHashid(client) + ")");
+                        info[0].append(" (" + AOClient::calculateHashid(client) + ")");
                     Entry.append("\n└─ [" + info.join(" | ") + "]");
                     break;
                 }

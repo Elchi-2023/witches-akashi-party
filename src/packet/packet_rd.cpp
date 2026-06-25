@@ -36,7 +36,7 @@ void PacketRD::handlePacket(AreaData *area, AOClient &client) const{
         static const QString Motd = QString(ConfigManager::motd()).replace('\n', "\r\n");
         if (!Motd.isEmpty())
             client.sendServerMessage("=== MOTD ===\r\n" + Motd + "\r\n=============");
-        static const QVariantList VCParams = ConfigManager::GetVoiceParamters();
+        static const QVariantList VCParams = ConfigManager::GetVoiceParameters();
         client.sendPacket("VS_CAPS", {QString::number(VCParams[ConfigManager::VoiceParameter::ENABLE].toBool()), QString::number(VCParams[ConfigManager::VoiceParameter::PTT].toBool()), VCParams[ConfigManager::VoiceParameter::MAXPEERSAREA].toString(), VCParams[ConfigManager::VoiceParameter::VCODEC].toString(), VCParams[ConfigManager::VoiceParameter::VHZ].toString(), VCParams[ConfigManager::VoiceParameter::VFRAME_MS].toString(), VCParams[ConfigManager::VoiceParameter::MAXBYTES].toString()});
 
         client.fullArup(); // Give client all the area data

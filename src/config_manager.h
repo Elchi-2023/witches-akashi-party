@@ -58,9 +58,13 @@ class ConfigManager
     static QString bindIP();
 
     /**
-     * @brief Returns the character list of the server..
+     * @brief Returns the character list of the server (and remove duplicates)..
      */
-    static QStringList charlist(const bool write = false, const bool print_to_console = false);
+    static QStringList characterlist();
+    /**
+     * @brief Returns the character list of the server (and remove duplicates) Verbose..
+     */
+    static QStringList characterlistVerbose(const QString &cname = "[CharLoader]");
 
     /**
      * @brief Returns the a QStringList of the available backgrounds..
@@ -436,7 +440,7 @@ class ConfigManager
     };
 
     static QVariant GetVoiceParameter(VoiceParameter type = VoiceParameter::ENABLE);
-    static QVariantList GetVoiceParamters();
+    static QVariantList GetVoiceParameters();
 
   private:
     /**

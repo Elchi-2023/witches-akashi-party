@@ -150,7 +150,7 @@ public:
      * @param the client pointer.
      * @return return hashed 12 length (sha256) ipid&hdid, otherwise empty.
      */
-    static QByteArray calcutateHashid(const QPointer<AOClient> &client);
+    static QByteArray calculateHashid(const QPointer<AOClient> &client);
 
     /**
      * @brief Getter for the pointer to the server.
@@ -864,6 +864,8 @@ public:
     static QString MessageToPigify(const QString Message);
 
     static QString NameWId(const QPointer<AOClient> client);
+
+    QElapsedTimer &GetRateTick(const QString &Packet);
 
 public slots:
     /**
@@ -2626,6 +2628,8 @@ private:
      * @brief The reason of voice-chat blocked.
      */
     QString m_vcblock_reason;
+
+    QHash<QString, QElapsedTimer> m_rate_tick;
 
 signals:
 

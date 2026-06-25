@@ -36,8 +36,11 @@ void PacketMS::handlePacket(AreaData *area, AOClient &client) const{
     if (!area->isMessageAllowed() || !CurrentServer->isMessageAllowed())
         return;
     
-    AOPacket *validated_packet = CreatePacket(client);
-    if (validated_packet){ // only accepted valid pointer..
+    auto current_rate = client.GetRateTick("MS");
+    QScopedPointer<AOPacket> validated_packet = CreatePacket(client);
+    if (current_rate.restart() < 10)
+        client.sendServerMessage("Do not spamming IC Message, slow down..");
+    else if (!validated_packet.isNull()){ // only accepted valid pointer..
         if (!client.m_pos.isEmpty())
             validated_packet->setContentField(5, client.m_pos);
 
@@ -76,7 +79,7 @@ void PacketMS::handlePacket(AreaData *area, AOClient &client) const{
             }
         }
         else /* Normal broadcast for non-evidence messages or non-HIDDEN_CM areas */
-            CurrentServer->broadcast(validated_packet, client.areaId());
+            CurrentServer->broadcast(validated_packet.get(), client.areaId());
 
         emit client.logIC((client.character() + " " + client.characterName()), client.name(), {client.clientId(), client.m_ipid}, CurrentServer->getAreaById(client.areaId()).isNull() ? "[NULL]" : CurrentServer->getAreaById(client.areaId())->name(), client.m_last_message);
         CurrentArea->updateLastICMessage(validated_packet->getContent());
@@ -100,7 +103,7 @@ static QString NormalizeFormatting(QString s){ /* > normalize of [zero-width & a
     return s.trimmed();
 }
 
-AOPacket *PacketMS::CreatePacket(AOClient &client) const{
+QScopedPointer<AOPacket> PacketMS::CreatePacket(AOClient &client) const{
     /* ====================== [Devs notes] ================================
      * Welcome to the super cursed server-side IC chat validation hell
      *
@@ -117,11 +120,11 @@ AOPacket *PacketMS::CreatePacket(AOClient &client) const{
     QStringList l_args;
     if (CurrentServer.isNull() || client.isSpectator() || !client.m_joined)
         // Spectators cannot use IC
-        return nullptr;
+        return QScopedPointer<AOPacket>();
     QPointer<AreaData> area = CurrentServer->getAreaById(client.areaId());
     if (area.isNull() || (area->lockStatus() >= AreaData::LockStatus::LOCKED && !area->invited().contains(client.clientId()) && !client.checkPermission(ACLRole::BYPASS_LOCKS)))
         // Non-invited players cannot speak in spectatable/locked areas
-        return nullptr;
+        return QScopedPointer<AOPacket>();
 
     QVariantList l_incoming_args;
     for (const QString &l_arg : m_content)
@@ -132,7 +135,7 @@ AOPacket *PacketMS::CreatePacket(AOClient &client) const{
     if (allowed_desk_mods.contains(l_incoming_args[0].toString()))
         l_args.append(QString::number(allowed_desk_mods[l_incoming_args[0].toString()]));
     else
-        return nullptr;
+        return QScopedPointer<AOPacket>();
     
     /* == this orignally "hack" and not been deleted ===
     QStringList allowed_desk_mods;
@@ -156,7 +159,7 @@ AOPacket *PacketMS::CreatePacket(AOClient &client) const{
         }
     }
     else
-        return nullptr;
+        return QScopedPointer<AOPacket>();
     * ================================================= */
     
     // preanim
@@ -169,7 +172,7 @@ AOPacket *PacketMS::CreatePacket(AOClient &client) const{
         if (area->iniswapAllowed()) /* user can iniswaping */
             client.m_current_iniswap = l_character_name;
         else if (!CurrentServer->getCharacters().contains(l_character_split.at(0), Qt::CaseInsensitive) || l_character_split.contains("..")) /* this means the user is INI-swapped */
-            return nullptr;
+            return QScopedPointer<AOPacket>();
     }
     else if (!client.m_current_iniswap.isEmpty()) /* otherwise.. clear user iniswap state.. */
         client.m_current_iniswap.clear();
@@ -181,7 +184,7 @@ AOPacket *PacketMS::CreatePacket(AOClient &client) const{
     
     // message text
     if (l_incoming_args[4].toString().size() > ConfigManager::maxCharacters())
-        return nullptr;
+        return QScopedPointer<AOPacket>();
     
     // Doublepost prevention. Has to ignore blankposts and testimony commands.
     QString l_incoming_msg = client.dezalgo(l_incoming_args[4].toString().trimmed());
@@ -190,11 +193,11 @@ AOPacket *PacketMS::CreatePacket(AOClient &client) const{
     if (!client.m_last_message.isEmpty()           // If the last message you sent isn't empty,
             && l_incoming_msg == client.m_last_message // and it matches the one you're sending,
             && !msg_is_testimony_cmd)                  // and it's not a testimony command,
-        return nullptr;                          // get it the hell outta here!
+        return QScopedPointer<AOPacket>();                          // get it the hell outta here!
     
     if (NormalizeFormatting(l_incoming_msg).trimmed().isEmpty() && !area->blankpostingAllowed()) {
         client.sendServerMessage("Blankposting has been forbidden in this area.");
-        return nullptr;
+        return QScopedPointer<AOPacket>();
     }
     
     client.m_last_message = l_incoming_msg;
@@ -266,7 +269,7 @@ AOPacket *PacketMS::CreatePacket(AOClient &client) const{
     bool emote_mod_ok;
     const int emote_mod = l_incoming_args[7].toInt(&emote_mod_ok);
     if (!emote_mod_ok)
-        return nullptr;
+        return QScopedPointer<AOPacket>();
     
     /* emote mod range (0 - 6) */
     switch (emote_mod){
@@ -277,7 +280,7 @@ AOPacket *PacketMS::CreatePacket(AOClient &client) const{
         l_args.append(QString::number(6));
         break;
     default: // reject out-of-range..
-        return nullptr;
+        return QScopedPointer<AOPacket>();
     }
     
     // char id
@@ -285,7 +288,7 @@ AOPacket *PacketMS::CreatePacket(AOClient &client) const{
     const int charid = l_incoming_args[8].toInt(&charid_ok);
 
     if (!charid_ok || charid != client.m_char_id)
-        return nullptr;
+        return QScopedPointer<AOPacket>();
     l_args.append(QString::number(charid));
     
     // sfx delay
@@ -301,23 +304,23 @@ AOPacket *PacketMS::CreatePacket(AOClient &client) const{
             l_args.append("0");
             break;
         case 1: case 2: case 3:
-            l_args.append(area->isShoutAllowed() ? GetObjection_param.size() >= 2 ? GetObjection_param.join("&") : QString::number(l_obj_mod) : "0");
+            l_args.append(area->isShoutAllowed() ? QString::number(l_obj_mod) : "0");
             break;
         case 4: /* custom shout includes text metadata if exist */
             l_args.append(area->isShoutAllowed() ? GetObjection_param.size() >= 2 ? GetObjection_param.join("&") : QString::number(l_obj_mod) : "0");
             break;
         default: // reject out-of-range..
-            return nullptr;
+            return QScopedPointer<AOPacket>();
         }
     }
     else
-        return nullptr;
+        return QScopedPointer<AOPacket>();
     
     // evidence
     bool evi_pass = false;
     const int evi_idx = l_incoming_args[11].toInt(&evi_pass);
     if (!evi_pass || evi_idx > area->evidence().length())
-        return nullptr;
+        return QScopedPointer<AOPacket>();
     
     l_args.append(QString::number(evi_idx));
     
@@ -325,7 +328,7 @@ AOPacket *PacketMS::CreatePacket(AOClient &client) const{
     bool l_filp_pass = false;
     const int l_flip = l_incoming_args[12].toInt(&l_filp_pass);
     if (!l_filp_pass || l_flip < 0 || l_flip > 1)
-        return nullptr;
+        return QScopedPointer<AOPacket>();
     client.m_flipping = QString::number(l_flip);
     l_args.append(client.m_flipping);
     
@@ -333,14 +336,14 @@ AOPacket *PacketMS::CreatePacket(AOClient &client) const{
     bool l_realization_pass = false;
     const int l_realization = l_incoming_args[13].toInt(&l_realization_pass);
     if (!l_realization_pass || l_realization < 0 || l_realization > 1)
-        return nullptr;
+        return QScopedPointer<AOPacket>();
     l_args.append(QString::number(l_realization));
     
     // text color
     bool l_text_color_pass = false;
     const int l_text_color = l_incoming_args[14].toInt(&l_text_color_pass);
     if (!l_text_color_pass || l_text_color < 0 || l_text_color > 11)
-        return nullptr;
+        return QScopedPointer<AOPacket>();
     l_args.append(QString::number(l_text_color));
     
     // 2.6 packet extensions
@@ -349,11 +352,11 @@ AOPacket *PacketMS::CreatePacket(AOClient &client) const{
         QString l_incoming_showname = NormalizeFormatting(client.dezalgo(l_incoming_args[15].toString()));
         if (!area->shownameAllowed() && !l_incoming_showname.isEmpty() && l_incoming_showname.compare(client.character(), Qt::CaseInsensitive) != 0) {
             client.sendServerMessage("Shownames are not allowed in this area!");
-            return nullptr;
+            return QScopedPointer<AOPacket>();
         }
         if (l_incoming_showname.length() > 30) {
             client.sendServerMessage("Your showname is too long! Please limit it to under 30 characters");
-            return nullptr;
+            return QScopedPointer<AOPacket>();
         }
         
         // if the raw input is not empty but the trimmed input is, use a single space
@@ -431,14 +434,14 @@ AOPacket *PacketMS::CreatePacket(AOClient &client) const{
             }
         }
         else
-            return nullptr;
+            return QScopedPointer<AOPacket>();
         l_args.append(QString::number(l_other_data.first));
         
         // immediate text processing
         bool l_immediate_pass = false;
         int l_immediate = l_incoming_args[18].toInt(&l_immediate_pass);
         if (!l_immediate_pass)
-            return nullptr;
+            return QScopedPointer<AOPacket>();
         else if (area->forceImmediate()) {
             if (l_args[7] == "1" || l_args[7] == "2") {
                 l_args[7] = "0";
@@ -455,7 +458,7 @@ AOPacket *PacketMS::CreatePacket(AOClient &client) const{
             l_args.append(QString::number(l_immediate));
             break;
         default:
-            return nullptr;
+            return QScopedPointer<AOPacket>();
         }
     }
     
@@ -465,14 +468,14 @@ AOPacket *PacketMS::CreatePacket(AOClient &client) const{
         bool l_sfx_loop_pass = false;
         int l_sfx_loop = l_incoming_args[19].toInt(&l_sfx_loop_pass);
         if (!l_sfx_loop_pass || l_sfx_loop < 0 || l_sfx_loop > 1)
-            return nullptr;
+            return QScopedPointer<AOPacket>();
         l_args.append(QString::number(l_sfx_loop));
         
         // screenshake
         bool l_screenshake_pass = false;
         int l_screenshake = l_incoming_args[20].toInt(&l_screenshake_pass);
         if (!l_screenshake_pass || l_screenshake < 0 || l_screenshake > 1)
-            return nullptr;
+            return QScopedPointer<AOPacket>();
         l_args.append(QString::number(l_screenshake));
         
         // frames shake
@@ -488,19 +491,22 @@ AOPacket *PacketMS::CreatePacket(AOClient &client) const{
         bool l_additive_pass = false;
         int l_additive = l_incoming_args[24].toInt(&l_additive_pass);
         if (!l_additive_pass)
-            return nullptr;
+            return QScopedPointer<AOPacket>();
         
         switch (l_additive){ /* use switch instead. . */
         case 0:
             break;
         case 1:
-            if (area->lastICMessage().isEmpty())
-                l_additive = 0;
-            else
-                l_args[4].insert(0, " ");
+            /* > akashi behavior < */
+//            if (area->lastICMessage().isEmpty())
+//                l_additive = 0;
+//            else
+//                l_args[4].insert(0, " ");
+            /* > tsu3 behavior < */
+            l_args[4].insert(0, " ");
             break;
         default:
-            return nullptr;
+            return QScopedPointer<AOPacket>();
         }
         l_args.append(QString::number(l_additive));
         
@@ -596,7 +602,7 @@ AOPacket *PacketMS::CreatePacket(AOClient &client) const{
         break;
     }
     
-    return PacketFactory::createPacket("MS", l_args);
+    return QScopedPointer<AOPacket>(PacketFactory::createPacket("MS", l_args));
 }
 
 QRegularExpressionMatch PacketMS::isTestimonyJumpCommand(QString message) const

@@ -2,6 +2,7 @@
 #define PACKET_MS_H
 
 #include "network/aopacket.h"
+#include <QScopedPointer>
 
 class PacketMS : public AOPacket
 {
@@ -15,7 +16,7 @@ class PacketMS : public AOPacket
      * @brief Create the packet of IC-Message object.
      * @return Valid pointer, Nullptr otherwise.
      */
-    AOPacket *CreatePacket(AOClient &client) const;
+    QScopedPointer<AOPacket> CreatePacket(AOClient &client) const;
     QRegularExpressionMatch isTestimonyJumpCommand(QString message) const;
 };
 #endif

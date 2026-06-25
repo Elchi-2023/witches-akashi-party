@@ -97,7 +97,7 @@ void Server::start()
 
     // Get characters from config file
     qInfo() << "[I][AKASHI]: Registering Characters..";
-    m_characters = ConfigManager::charlist(true, true);
+    m_characters = ConfigManager::characterlistVerbose();
 
     // Get backgrounds from config file
     qInfo() << "[I][AKASHI]: Registering Backgrounds..";
@@ -181,12 +181,12 @@ void Server::clientConnected(){
     else{ // otherwise.. client is about to joined..
         NetworkSocket *l_socket = new NetworkSocket(socket, socket);
         QPointer<AOClient> client(m_client_ips.insert(l_socket->peerAddress(), new AOClient(this, l_socket, l_socket, m_available_ids.pop(), music_manager)).value());
+        connect(l_socket, &NetworkSocket::clientDisconnected, l_socket, &NetworkSocket::deleteLater);
 
         if (m_client_ips.count(client->m_remote_ip) > ConfigManager::multiClientLimit() && !client->m_remote_ip.isLoopback()){ // check if this client is reached the multiclient-limter..
-            m_client_ips.count(client->m_remote_ip) > 1 ? m_client_ips.remove(client->m_remote_ip, client) : m_client_ips.remove(client->m_remote_ip);
+            m_client_ips.remove(client->m_remote_ip, client);
             m_available_ids.push(client->clientId());
             l_socket->close(QWebSocketProtocol::CloseCodeNormal);
-            l_socket->deleteLater();
         }
         else{ // otherwise.. let's registering the client in..
             /* > register the client < */
@@ -194,17 +194,6 @@ void Server::clientConnected(){
             m_player_state_observer.registerClient(m_clients.last());
 
             /* > connecting the client to signals < */
-#if __cplusplus < 202002L // stop the warning if compiler using c++ below 20
-            connect(l_socket, &NetworkSocket::clientDisconnected, this, [=]{
-#else
-            connect(l_socket, &NetworkSocket::clientDisconnected, this, [=, this]{
-#endif
-                if (client->hasJoined())
-                    decreasePlayerCount();
-
-                m_clients.removeAll(client);
-                l_socket->deleteLater();
-            });
             connect(l_socket, &NetworkSocket::handlePacket, client, &AOClient::handlePacket);
 
             /* === [Devs notes] ===
@@ -221,23 +210,31 @@ void Server::clientConnected(){
 }
 
 void Server::updateCharsTaken(AreaData *area){
-    QStringList chars_taken;
-    for (const QString &cur_char : qAsConst(m_characters))
-        chars_taken.append(area->charactersTaken().contains(getCharID(cur_char)) ? "-1" : "0");
+    QVector<QString> chars_taken;
+    chars_taken.reserve(m_characters.size());
+    chars_taken.fill("0", m_characters.size());
+
+    /* heavy loop characters [took] checker */
+    auto current_taken = area->charactersTaken();
+    current_taken.removeAll(-1);
+    for (int index : current_taken){
+        if (index >= 0 && index <= chars_taken.size() -1)
+            chars_taken[index] = "-1";
+    }
 
     for (int I : area->joinedIDs()){
         auto client = getClientByID(I);
         if (client.isNull())
             continue;
 
-        client->sendPacket("CharsCheck", Server::SetCCTaken(client, chars_taken));
+        client->sendPacket("CharsCheck", Server::SetCCTaken(client, chars_taken.toList()));
     }
 }
 QStringList Server::SetCCTaken(QPointer<AOClient> client, const QStringList &chars_taken){
     if (!client.isNull() && client->isCursed(AOClient::CCURSE)){
         QStringList cursed = QStringList(chars_taken).replaceInStrings("0", "-1");
         for (int I : client->m_charcurse_list){
-            if (I >= 1 && I <= cursed.size() -1)
+            if (I >= 0 && I <= cursed.size() -1)
                 cursed[I] = "0";
         }
         return cursed;
@@ -320,6 +317,11 @@ void Server::reloadSettings(){
     m_ipban_list = ConfigManager::iprangeBans();
     acl_roles_handler->loadFile("config/acl_roles.ini");
     command_extension_collection->loadFile("config/command_extensions.ini");
+    // === Voice ===
+    qInfo() << "[AKASHI]: reloading voice parameters..";
+    broadcast(PacketCT::CreateMessageS("internal reloading voice parameters.."), AOClient::AuthenticateType::ROOT);
+    static const QVariantList VCParams = ConfigManager::GetVoiceParameters();
+    broadcast(PacketFactory::createPacket("VS_CAPS", {QString::number(VCParams[ConfigManager::VoiceParameter::ENABLE].toBool()), QString::number(VCParams[ConfigManager::VoiceParameter::PTT].toBool()), VCParams[ConfigManager::VoiceParameter::MAXPEERSAREA].toString(), VCParams[ConfigManager::VoiceParameter::VCODEC].toString(), VCParams[ConfigManager::VoiceParameter::VHZ].toString(), VCParams[ConfigManager::VoiceParameter::VFRAME_MS].toString(), VCParams[ConfigManager::VoiceParameter::MAXBYTES].toString()}));
     // === Data ===
     qInfo() << "[AKASHI]: reloading data..";
     broadcast(PacketCT::CreateMessageS("internal reloading data.."), AOClient::AuthenticateType::ROOT);
@@ -369,7 +371,7 @@ void Server::reloadSettings(){
         qInfo() << "[INTERNAL][AKASHI][RELOAD]: reloaded musics..";
         broadcast(PacketCT::CreateMessageS("internal fetching the changes musics.."), AOClient::AuthenticateType::ROOT);
     }
-    const QStringList GetChangedCharacters = ConfigManager::charlist(true, false);
+    const QStringList GetChangedCharacters = ConfigManager::characterlist();
     if (m_characters != GetChangedCharacters){
         m_characters = GetChangedCharacters;
         broadcast(PacketCT::CreateMessageS("internal applying the changes characters.."), AOClient::AuthenticateType::ROOT);
@@ -697,15 +699,18 @@ void Server::handleDiscordIntegration()
 }
 
 void Server::markIDFree(AOClient *f_client){
-    if (m_player_state_observer.unregisterClient(f_client)){
-        /* QMultiHash checker
-        * remove current client from all of QMultiHash(s) */
-        m_client_ips.count(f_client->m_remote_ip) > 1 ? m_client_ips.remove(f_client->m_remote_ip, f_client) : m_client_ips.remove(f_client->m_remote_ip);
-        m_client_ipids.count(f_client->m_ipid) > 1 ? m_client_ipids.remove(f_client->m_ipid, f_client) : m_client_ipids.remove(f_client->m_ipid);
-        m_client_hwids.count(f_client->m_hwid) > 1 ? m_client_hwids.remove(f_client->m_hwid, f_client) : m_client_hwids.remove(f_client->m_hwid);
-        /* > freed ids < */
-        m_available_ids.push(m_clients_ids.insert(f_client->clientId(), nullptr).key());
-    }
+    if (f_client->m_joined)
+        decreasePlayerCount();
+    m_clients.removeAll(f_client);
+    m_player_state_observer.unregisterClient(f_client);
+    /* remove current client from all of QMultiHash(s) */
+    m_client_ips.remove(f_client->m_remote_ip, f_client);
+    m_client_ipids.remove(f_client->m_ipid, f_client);
+    if (!f_client->m_hwid.isEmpty())
+        m_client_hwids.remove(f_client->m_hwid, f_client);
+    /* > freed ids < */
+    m_available_ids.push(m_clients_ids.insert(f_client->clientId(), nullptr).key());
+    f_client->deleteLater();
 }
 
 void Server::hookupAOClient(AOClient *client){

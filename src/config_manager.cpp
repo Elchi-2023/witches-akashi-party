@@ -149,46 +149,58 @@ QString ConfigManager::bindIP()
     return m_settings->value("Options/bind_ip", "all").toString();
 }
 
-QStringList ConfigManager::charlist(const bool write, const bool print_to_console)
-{
-    QFile l_read("config/characters.txt");
-    l_read.open(QIODevice::ReadOnly | QIODevice::Text);
-    QStringList l_charlist = QString::fromUtf8(l_read.readAll()).split('\n', Qt::SkipEmptyParts); /* skip empty newline */
-    l_read.close();
+QStringList ConfigManager::characterlist(){
+    static QFile l_file("config/characters.txt");
 
-    if (write){
-        if (l_charlist.isEmpty()){
-            if (print_to_console)
-                qWarning() << "[CharLoader]: Loaded an empty contents.";
+    if (l_file.open(QIODevice::ReadOnly | QIODevice::Text)){
+        QStringList l_charlist = QTextStream(&l_file).readAll().split('\n', Qt::SkipEmptyParts);
+        l_charlist.removeDuplicates();
+        l_file.close();
+
+        if (l_file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)){
+            QTextStream(&l_file) << l_charlist.join('\n');
+            l_file.close();
         }
-        else{
-            QStringList l_currentlist = l_charlist;
-            if (print_to_console)
-                qInfo().nospace() << "[CharLoader]: Loaded an " << l_charlist.size() << " contexts..\n[CharLoader]: Scanning any of duplicated...";
-            const int duplicatedCount = l_currentlist.removeDuplicates();
-            if (duplicatedCount > 0){
-                QFile l_write("config/characters.txt");
-                l_write.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate);
+
+        return l_charlist;
+    }
+
+    return {};
+}
+
+QStringList ConfigManager::characterlistVerbose(const QString &cname){
+    static QFile l_file("config/characters.txt");
+    QStringList l_charlist;
+
+    if (l_file.open(QIODevice::ReadOnly | QIODevice::Text)){
+        QStringList l_currentlist = QTextStream(&l_file).readAll().split('\n', Qt::SkipEmptyParts); /* skip empty newline */
+        const int dupcount = l_currentlist.removeDuplicates();
+        l_file.close();
+
+        if (!cname.trimmed().isEmpty()){
+            qInfo().nospace().noquote() << cname << ": Loaded an " << l_currentlist.size() << " contexts, Scanning any of duplicated...";
+            if (dupcount > 0){
                 QVector<QPair<QString, int>> duplicatedList;
                 for (const auto& I : std::as_const(l_charlist)){ /* getting original list */
                     if (l_currentlist.count(I) == 1 && l_charlist.count(I) > 1 && !duplicatedList.contains(qMakePair(I, int(l_charlist.count(I) -1)))) /* comparing between og and current */
                         duplicatedList.append(qMakePair(I, l_charlist.count(I) -1));
                 }
-                if (print_to_console){
-                    qWarning().nospace() << "[CharLoader]: Found an " << duplicatedCount << " duplicated as follows:";
-                    for (auto& L : duplicatedList) /* better than shown "QVector<QPair<QString, int>>" */
-                        qWarning().nospace() << L.first << ": " << L.second;
-                    qInfo() << "[CharLoader]: Writing characters.txt..";
-                }
-                l_write.write(l_currentlist.join('\n').toUtf8());
-                if (print_to_console)
-                    qInfo() << "[CharLoader]: Done, Total now: " << l_currentlist.size();
-                l_charlist = l_currentlist;
-                l_write.close();
+                qWarning().nospace().noquote() << cname << ": Found an " << dupcount << " duplicated as follows:";
+                for (auto& L : duplicatedList) /* better than shown "QVector<QPair<QString, int>>" */
+                    qWarning().nospace() << L.first << ": " << L.second;
             }
-            else if (print_to_console)
-                qInfo() << "[CharLoader]: Nothing to be found, all good to go.";
+            else
+                qInfo().nospace().noquote() << cname << ": Found nothing of duplicates.";
         }
+        if (l_file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)){
+            QTextStream(&l_file) << l_currentlist.join('\n');
+            l_file.close();
+            if (dupcount > 0)
+                qInfo().nospace().noquote() << cname << ": Writed characters.txt and " << l_currentlist.size() << " context loaded.";
+        }
+        else if (dupcount > 0)
+            qInfo().nospace().noquote() << cname << ": cannot write characters.txt, " << l_currentlist.size() << " context loaded in (memory).";
+        l_charlist = l_currentlist;
     }
 
     return l_charlist;
@@ -457,7 +469,7 @@ QVariant ConfigManager::GetVoiceParameter(VoiceParameter type){
     }
     return QVariant();
 }
-QVariantList ConfigManager::GetVoiceParamters(){
+QVariantList ConfigManager::GetVoiceParameters(){
     QSettings read("config/config.ini", QSettings::IniFormat);
     QVariantList params;
     params << read.value("voice/enable", true).toBool() << read.value("voice/PTT", false).toBool() << read.value("voice/max_peers").toInt() << qMax(4000, read.value("voice/max_bytes", 4000).toInt()) << QString("opus") << qBound(8000, read.value("voice/voice_hz", 48000).toInt(), 48000) << qBound(5, read.value("voice/voice_tick", 20).toInt(), 60);;
@@ -511,14 +523,16 @@ QString ConfigManager::serverName()
     return m_settings->value("Options/server_name", "An Unnamed Server").toString();
 }
 
-QString ConfigManager::serverTag()
-{
-    return m_settings->value("Options/server_tag", serverName()).toString();
+QString ConfigManager::serverTag(){
+    QString server_tagname = m_settings->value("Options/server_tag").toString(); // old type..
+    if (server_tagname.trimmed().isEmpty())
+        server_tagname = m_settings->value("Options/server_nickname", serverName()).toString(); // new type..
+    return server_tagname;
 }
 
 QString ConfigManager::motd()
 {
-    return m_settings->value("Options/motd", "MOTD not set").toString();
+    return m_settings->value("Options/motd").toString();
 }
 
 bool ConfigManager::webaoEnabled()
@@ -631,7 +645,7 @@ int ConfigManager::packetRateLimitHard()
 }
 
 QUrl ConfigManager::assetUrl(){
-    const QUrl l_url = QUrl::fromStringList({QByteArray(m_settings->value("Options/asset_url", "").toString().toUtf8())}).first();
+    const QUrl l_url = QUrl::fromStringList({QByteArray(m_settings->value("Options/asset_url", "http://attorneyoffline.de/base/").toString().toUtf8())}).first();
     if (!l_url.isValid())
         qWarning("[W][AKASHI][CONFIG]: asset_url is not a valid url!");
 
@@ -758,10 +772,10 @@ QString ConfigManager::LogText(QString f_logtype)
 int ConfigManager::afkTimeout()
 {
     bool ok;
-    int l_afk = m_settings->value("Options/afk_timeout", 300).toInt(&ok);
+    int l_afk = m_settings->value("Options/afk_timeout", 600).toInt(&ok);
     if (!ok) {
         qWarning("[W][AKASHI][CONFIG]: afk_timeout is not an int!");
-        l_afk = 300;
+        l_afk = 600;
     }
     return l_afk;
 }

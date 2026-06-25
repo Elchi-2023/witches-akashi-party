@@ -176,7 +176,7 @@ const QMap<QString, AOClient::CommandInfo> AOClient::COMMANDS{
 }; // {[command], {{ALCRole(s)}, [min_argv], [category], &[AOClient-command]}
 
 void AOClient::clientDisconnected(){
-    qDebug().nospace() << "[I][AKASHI][NET-CLIENT][" << m_ipid << "]: disconnected.";
+    qDebug().nospace() << "[I][AKASHI][NET-CLIENT][" << calculateIpid() << "]: disconnected.";
     if (m_joined) {
         auto current_area = server->getAreaById(areaId());
         current_area->removeClient(clientId());
@@ -186,7 +186,7 @@ void AOClient::clientDisconnected(){
          */
         server->broadcastCAuth(PacketCT::CreateMessageS(QString("%1 disconnected.").arg(AOClient::NameWId(this))), AuthenticateType::NONE, current_area->index()); // [user]
         server->broadcastCAuth(PacketCT::CreateMessageS(QString("%1 %2").arg(AOClient::NameWId(this), QStringList({"disconnected.", "is went out!", "been send in #DOOM world!"})[m_disconnect_reason])), AuthenticateType::VIP, current_area->index()); // [vip]..
-        server->broadcastCAuth(PacketCT::CreateMessageS(QString("%1 %2").arg(AOClient::NameWId(this) + " (" + getIpid() + ")", QStringList({"disconnected", "disconnected: (kicked)", "disconnected (banned)"})[m_disconnect_reason])), AuthenticateType::MODERATOR, current_area->index()); // [moderator/root]..
+        server->broadcastCAuth(PacketCT::CreateMessageS(QString("%1 %2").arg(AOClient::NameWId(this) + " (" + getIpid() + ")", QStringList({"disconnected", "disconnected: (kicked)", "disconnected: (banned)"})[m_disconnect_reason])), AuthenticateType::MODERATOR, current_area->index()); // [moderator/root]..
 
         if (current_area->checkPairSync(clientId()) && current_area->checkPairSync(clientId(), true) && current_area->get_pair_sync_clientID(clientId()) == current_area->get_pair_sync_clientID(clientId(), true)){ /* > when someone actually pair-synced with this client < */
             if (!server->getClientByID(current_area->get_pair_sync_clientID(clientId(), true)).isNull()) // let's notify about this client not longer exist in pair-sync..
@@ -196,9 +196,6 @@ void AOClient::clientDisconnected(){
 
         if (current_area->checkPairSync(clientId())) /* double checks if user client id weren't on pairs sync list */
             current_area->removePairSync(clientId());
-
-        if (current_area->RegisterVoice(clientId(), true)) /* unregister user from vc.. */
-            server->broadcastVJoinLeave(clientId(), true, current_area->index());
 
         server->updateCharsTaken(current_area);
         server->RemoveDisconnectCA(clientId());
@@ -228,16 +225,17 @@ void AOClient::handlePacket(AOPacket *packet){
         packet_count = 0;
     }
 
-    ++packet_count;
-
-    if (ratelimts.second > 0 && packet_count >= ratelimts.second) {
-        sendPacket("BD", {"You have been disconnected for sending messages too quickly."});
-        m_socket->close();
-        qInfo().noquote() << QString("[I][AKASHI][NET-CLIENT]: Kicking an [%1] (%2) due of rate-limts reached.").arg(QString::number(clientId()), m_ipid);
-        return;
+    if (packet->getPacketInfo().header.compare("vs_frame", Qt::CaseInsensitive) != 0){ // skip tick checker for VS_FRAME (for now)...
+        ++packet_count;
+        if (ratelimts.second > 0 && packet_count >= ratelimts.second) {
+            sendPacket("BD", {"You have been disconnected for sending messages too quickly."});
+            m_socket->close();
+            qInfo().noquote() << QString("[I][AKASHI][NET-CLIENT]: Kicking an [%1] (%2) due of rate-limts reached.").arg(QString::number(clientId()), m_ipid);
+            return;
+        }
+        else if (ratelimts.first > 0 && packet_count >= ratelimts.first)
+            sendServerMessage("You are sending messages too quickly. Please slow down.");
     }
-    else if (ratelimts.first > 0 && packet_count >= ratelimts.first)
-        sendServerMessage("You are sending messages too quickly. Please slow down.");
 
     auto l_area = server->getAreaById(areaId());
 
@@ -295,9 +293,6 @@ void AOClient::changeArea(int new_area)
     }
 
     previous_area->removeClient(clientId());
-    if (previous_area->RegisterVoice(clientId(), true)) /* unregister user from vc.. */
-        server->broadcastVJoinLeave(clientId(), true, previous_area->index());
-
     server->updateCharsTaken(previous_area);
 
     if (target_area->charactersTaken().contains(server->getCharID(character()))){ /* our character is already being used here, so we'll have to spectate, until we pick a new one (or the other player leaves).. */
@@ -531,7 +526,7 @@ void AOClient::sendAudioFrame(const int c_from, const QByteArray &frame_byte, co
     if (!current_vc.contains(clientId()) || !current_vc[clientId()])
         return; // not in vc, reject..
 
-    sendPacket("VS_AUDIO", {QString::number(c_from), frame_byte});
+    sendPacket("VS_AUDIO", {QString::number(c_from), frame_byte.toBase64()});
 }
 void AOClient::sendAudioState(const int c_from, const bool state, const int area_id){
     const QPointer<AreaData> area = server->getAreaById(area_id);
@@ -799,7 +794,7 @@ QString AOClient::MessageToGimped(const QString Message){
     return GetCurrentGimps.isEmpty() ? Message : GetCurrentGimps[AOClient::genRand(0, GetCurrentGimps.size() -1)];
 }
 QString AOClient::MessageToMediveal(const QString Message){
-    auto GetMedievalParser = std::unique_ptr<MedievalParser>(new MedievalParser); // std smart pointer..
+    auto GetMedievalParser = std::make_unique<MedievalParser>(); // std smart pointer..
     return GetMedievalParser->degrootify(Message);
 }
 QString AOClient::MessageToUwU(const QString Message)
@@ -908,7 +903,7 @@ QString AOClient::MessageToPigify(const QString Message)
 QString AOClient::NameWId(const QPointer<AOClient> client){
     return client.isNull() ? "" : QString("[%1] %2").arg(QString::number(client->clientId()), client->isSpectator() ? "[Spectator]" : client->character());
 }
-QByteArray AOClient::calcutateHashid(const QPointer<AOClient> &client){
+QByteArray AOClient::calculateHashid(const QPointer<AOClient> &client){
     if (client.isNull())
         return {};
 
@@ -916,6 +911,13 @@ QByteArray AOClient::calcutateHashid(const QPointer<AOClient> &client){
     hash.addData(client->getIpid().toUtf8());
     hash.addData(client->getHwid().toUtf8());
     return hash.result().toHex().right(12);
+}
+
+QElapsedTimer &AOClient::GetRateTick(const QString &Packet){
+    if (!m_rate_tick.contains(Packet)){
+        m_rate_tick.insert(Packet, QElapsedTimer()).value().start();
+    }
+    return m_rate_tick[Packet];
 }
 
 AOClient::AOClient(Server *p_server, NetworkSocket *socket, QObject *parent, int user_id, MusicManager *p_manager) :
@@ -933,14 +935,15 @@ AOClient::AOClient(Server *p_server, NetworkSocket *socket, QObject *parent, int
     rate_limit_tick(0),
     packet_count(0)
 {
-    m_afk_timer = new QTimer;
+    m_afk_timer = new QTimer(this);
     m_afk_timer->setSingleShot(true);
     connect(m_afk_timer, &QTimer::timeout, this, &AOClient::onAfkTimeout);
-    m_global_reminder_timer = new QTimer;
+    m_global_reminder_timer = new QTimer(this);
     connect(m_global_reminder_timer, &QTimer::timeout, this, &AOClient::globalReminder);
     m_global_reminder_timer->start(7200000);
-    m_vcblock_left = new QTimer;
+    m_vcblock_left = new QTimer(this);
     m_vcblock_left->setSingleShot(true);
+    connect(m_socket, &NetworkSocket::clientDisconnected, this, &AOClient::clientDisconnected);
     connect(m_vcblock_left, &QTimer::timeout, this, [=]{
         if (isAccessBlocked(BlockType::VOICE)){
             SetAccessBlock(BlockType::VOICE, false);
@@ -955,6 +958,5 @@ AOClient::AOClient(Server *p_server, NetworkSocket *socket, QObject *parent, int
 
 AOClient::~AOClient()
 {
-    clientDisconnected();
     m_socket->deleteLater();
 }

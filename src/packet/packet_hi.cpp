@@ -30,7 +30,7 @@ void PacketHI::handlePacket(AreaData *area, AOClient &client) const
             client.m_socket->close(QWebSocketProtocol::CloseCodeProtocolError, "A protocol error has been encountered.");
         else{
             client.m_hwid = incoming_hwid;
-            const auto hashedid = AOClient::calcutateHashid(&client);
+            const auto hashedid = AOClient::calculateHashid(&client);
             emit client.getServer()->logConnectionAttempt(client.m_remote_ip.toString(), client.m_ipid, client.m_hwid);
             if (client.getServer()->ClientWhitelisted(hashedid)){
                 auto ban = client.getServer()->getDatabaseManager()->isHDIDBanned(client.m_hwid);
