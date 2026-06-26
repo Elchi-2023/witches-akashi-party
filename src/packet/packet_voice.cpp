@@ -112,8 +112,6 @@ void AudioFrame::handlePacket(AreaData *area, AOClient &client) const{
             return; // never pass if this <b64_encode> are empty or more than max..
         if (client.isAccessBlocked(AOClient::BlockType::VOICE))
             return; // never be excepting if this user can bypassing while they are in <vc_blocked> state..
-        if (current_rate.restart() < ConfigManager::GetVoiceParameter(ConfigManager::VFRAME_MS).toInt())
-            return // drop frame if it rate-limit tick below the config reached..
 
         Q_EMIT client.getServer()->broadcastVFrame(user_id, Data, area->index());
     }

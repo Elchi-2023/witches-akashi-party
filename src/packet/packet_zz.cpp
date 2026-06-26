@@ -28,7 +28,7 @@ void PacketZZ::handlePacket(AreaData *area, AOClient &client) const
         return;
     else if (!client.m_joined)
         client.m_socket->close(QWebSocketProtocol::CloseCode::CloseCodeProtocolError);
-    else if (client.GetRateTick("ZZ").restart() > 10){
+    else{
         QStringList PrintToOOC("──── MODCALL ───");
         QPair<QString, QString> l_name; // name & area..
         QStringList m_name({"[" + QString::number(client.clientId()) + "]", client.character().isEmpty() ? "[Spectator]" : client.character(), "[" + client.getIpid() + "]"});

@@ -134,7 +134,7 @@ bool AOClient::loginAttempt(QString message){
                 m_acl_role_id = GetDBManager->getACL(user_login.first);
                 m_moderator_name = user_login.first;
                 m_authenticated_type = roletype[GetDBManager->getUserType(user_login.first)];
-                sendPacket("AUTH", {QString::number(isAuthenticated())});
+                sendPacket("AUTH", {QString::number(isMAuthenticated())});
                 if (m_version.release <= 2 && m_version.major <= 9 && m_version.minor <= 0) // legecy client(?)..
                     sendServerMessage(QString("Logged in as a %1.").arg(QStringList({"VIP", "Moderator", "[ROOT]"})[m_authenticated_type]));
                 switch (m_authenticated_type){

@@ -36,11 +36,8 @@ void PacketMS::handlePacket(AreaData *area, AOClient &client) const{
     if (!area->isMessageAllowed() || !CurrentServer->isMessageAllowed())
         return;
     
-    auto current_rate = client.GetRateTick("MS");
     QScopedPointer<AOPacket> validated_packet = CreatePacket(client);
-    if (current_rate.restart() < 10)
-        client.sendServerMessage("Do not spamming IC Message, slow down..");
-    else if (!validated_packet.isNull()){ // only accepted valid pointer..
+    if (!validated_packet.isNull()){ // only accepted valid pointer..
         if (!client.m_pos.isEmpty())
             validated_packet->setContentField(5, client.m_pos);
 

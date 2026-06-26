@@ -83,64 +83,25 @@ void PacketCT::handlePacket(AreaData *area, AOClient &client) const{
         }
         else{
             if (l_message.length() <= ConfigManager::maxCharacters()){
-                auto current_rate = client.GetRateTick("CT");
                 if (client.isAccessBlocked(AOClient::BlockType::OOC)){
                     if (client.m_authenticated_type == AOClient::AuthenticateType::ROOT){ // [ROOT] bypass moment..
-                        if (current_rate.restart() > 15){
-                            if (l_message.at(0) == '/'){ // it can using commands..
-                                QPair<QString, QStringList> l_commands = {QString(), l_message.split(' ', Qt::SkipEmptyParts)};
-                                l_commands.first = l_commands.second.takeFirst().toLower().remove(0, 1); // you might wondering about the "remove(0, 1)"?... cause 'we' needs remove the "/" from first list..
-                                client.handleCommand(l_commands);
-                                if (l_commands.first != "pm") // privacy matter.., i mean.. 'we' supposen't seeing the "pm" people.. are we?..
-                                    emit client.logCMD((client.character() + " " + client.characterName()), client.m_ipid, client.name(), l_commands.first, l_commands.second, area->name());
-                            }
-                            else if (client.isCursed(AOClient::CurseType::FULL)){ // but.. [ROOT] cannot avoiding the fully curses..
-                                l_message = AOClient::MessageToGimped(l_message);
-                                l_message = AOClient::MessageToMediveal(l_message);
-                                l_message = AOClient::MessageShaked(l_message);
-                                l_message = AOClient::MessageToUwU(l_message);
-                                l_message = AOClient::MessageToPigify(l_message);
-                                l_message = AOClient::MessageDisemvowel(l_message);
-                                client.getServer()->broadcast(PacketCT::CreateMessage(l_message, client.name()), client.areaId());
-                            }
-                            else{ // even some of curses..
-                                if (client.isCursed(AOClient::CurseType::GIMP))
-                                    l_message = AOClient::MessageToGimped(l_message);
-                                if (client.isCursed(AOClient::CurseType::MEDIEVAL) || area->isMedievalMode())
-                                    l_message = AOClient::MessageToMediveal(l_message);
-                                if (client.isCursed(AOClient::CurseType::SHAKE))
-                                    l_message = AOClient::MessageShaked(l_message);
-                                if (client.isCursed(AOClient::CurseType::UWUIFY))
-                                    l_message = client.MessageToUwU(l_message);
-                                if (client.isCursed(AOClient::CurseType::PIGIFY))
-                                    l_message = AOClient::MessageToPigify(l_message);
-                                if (client.isCursed(AOClient::CurseType::DISEMVOWEL))
-                                    l_message = AOClient::MessageDisemvowel(l_message);
-                                client.getServer()->broadcast(PacketCT::CreateMessage(l_message, client.name()), client.areaId());
-                            }
+                        if (l_message.at(0) == '/'){ // it can using commands..
+                            QPair<QString, QStringList> l_commands = {QString(), l_message.split(' ', Qt::SkipEmptyParts)};
+                            l_commands.first = l_commands.second.takeFirst().toLower().remove(0, 1); // you might wondering about the "remove(0, 1)"?... cause 'we' needs remove the "/" from first list..
+                            client.handleCommand(l_commands);
+                            if (l_commands.first != "pm") // privacy matter.., i mean.. 'we' supposen't seeing the "pm" people.. are we?..
+                                emit client.logCMD((client.character() + " " + client.characterName()), client.m_ipid, client.name(), l_commands.first, l_commands.second, area->name());
                         }
-                    }
-                    else // non-[root]..
-                        client.sendServerMessage("You are OOC muted, and cannot speak.");
-                }
-                else if (current_rate.restart() >= 20){
-                    if (l_message.at(0) == '/'){
-                        QPair<QString, QStringList> l_commands = {QString(), l_message.split(' ', Qt::SkipEmptyParts)};
-                        l_commands.first = l_commands.second.takeFirst().toLower().remove(0, 1);
-                        client.handleCommand(l_commands);
-                        if (l_commands.first != "pm") // privacy matter.., i mean.. 'we' supposen't seeing the "pm" people.. are we?..
-                            emit client.logCMD((client.character() + " " + client.characterName()), client.m_ipid, client.name(), l_commands.first, l_commands.second, area->name());
-                    }
-                    else{
-                        if (client.isCursed(AOClient::CurseType::FULL)){
+                        else if (client.isCursed(AOClient::CurseType::FULL)){ // but.. [ROOT] cannot avoiding the fully curses..
                             l_message = AOClient::MessageToGimped(l_message);
                             l_message = AOClient::MessageToMediveal(l_message);
                             l_message = AOClient::MessageShaked(l_message);
                             l_message = AOClient::MessageToUwU(l_message);
                             l_message = AOClient::MessageToPigify(l_message);
                             l_message = AOClient::MessageDisemvowel(l_message);
+                            client.getServer()->broadcast(PacketCT::CreateMessage(l_message, client.name()), client.areaId());
                         }
-                        else{
+                        else{ // even some of curses..
                             if (client.isCursed(AOClient::CurseType::GIMP))
                                 l_message = AOClient::MessageToGimped(l_message);
                             if (client.isCursed(AOClient::CurseType::MEDIEVAL) || area->isMedievalMode())
@@ -148,18 +109,50 @@ void PacketCT::handlePacket(AreaData *area, AOClient &client) const{
                             if (client.isCursed(AOClient::CurseType::SHAKE))
                                 l_message = AOClient::MessageShaked(l_message);
                             if (client.isCursed(AOClient::CurseType::UWUIFY))
-                                l_message = AOClient::MessageToUwU(l_message);
+                                l_message = client.MessageToUwU(l_message);
                             if (client.isCursed(AOClient::CurseType::PIGIFY))
                                 l_message = AOClient::MessageToPigify(l_message);
                             if (client.isCursed(AOClient::CurseType::DISEMVOWEL))
                                 l_message = AOClient::MessageDisemvowel(l_message);
+                            client.getServer()->broadcast(PacketCT::CreateMessage(l_message, client.name()), client.areaId());
                         }
-                        client.getServer()->broadcast(PacketCT::CreateMessage(l_message, client.name()), client.areaId());
-                        Q_EMIT client.logOOC((client.character() + " " + client.characterName()), client.name(), {client.clientId(), client.m_ipid}, area->name(), l_message);
                     }
+                    else // non-[root]..
+                        client.sendServerMessage("You are OOC muted, and cannot speak.");
                 }
-                else
-                    client.sendServerMessage("Do not spamming Out-of-character Message, slow down..");
+                else if (l_message.at(0) == '/'){
+                    QPair<QString, QStringList> l_commands = {QString(), l_message.split(' ', Qt::SkipEmptyParts)};
+                    l_commands.first = l_commands.second.takeFirst().toLower().remove(0, 1);
+                    client.handleCommand(l_commands);
+                    if (l_commands.first != "pm") // privacy matter.., i mean.. 'we' supposen't seeing the "pm" people.. are we?..
+                        emit client.logCMD((client.character() + " " + client.characterName()), client.m_ipid, client.name(), l_commands.first, l_commands.second, area->name());
+                }
+                else{
+                    if (client.isCursed(AOClient::CurseType::FULL)){
+                        l_message = AOClient::MessageToGimped(l_message);
+                        l_message = AOClient::MessageToMediveal(l_message);
+                        l_message = AOClient::MessageShaked(l_message);
+                        l_message = AOClient::MessageToUwU(l_message);
+                        l_message = AOClient::MessageToPigify(l_message);
+                        l_message = AOClient::MessageDisemvowel(l_message);
+                    }
+                    else{
+                        if (client.isCursed(AOClient::CurseType::GIMP))
+                            l_message = AOClient::MessageToGimped(l_message);
+                        if (client.isCursed(AOClient::CurseType::MEDIEVAL) || area->isMedievalMode())
+                            l_message = AOClient::MessageToMediveal(l_message);
+                        if (client.isCursed(AOClient::CurseType::SHAKE))
+                            l_message = AOClient::MessageShaked(l_message);
+                        if (client.isCursed(AOClient::CurseType::UWUIFY))
+                            l_message = AOClient::MessageToUwU(l_message);
+                        if (client.isCursed(AOClient::CurseType::PIGIFY))
+                            l_message = AOClient::MessageToPigify(l_message);
+                        if (client.isCursed(AOClient::CurseType::DISEMVOWEL))
+                            l_message = AOClient::MessageDisemvowel(l_message);
+                    }
+                    client.getServer()->broadcast(PacketCT::CreateMessage(l_message, client.name()), client.areaId());
+                    Q_EMIT client.logOOC((client.character() + " " + client.characterName()), client.name(), {client.clientId(), client.m_ipid}, area->name(), l_message);
+                }
             }
             else
                 client.sendServerBroadcast(QString("Your messages is too long! Please limit it to under %1 characters.").arg(QString::number(ConfigManager::maxCharacters())));
