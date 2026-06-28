@@ -731,7 +731,7 @@ void AOClient::cmdBans(int argc, QStringList argv){
                     l_recent_bans << "├─ [👮|TYPE]: " + QStringList({"VIP", "Moderator", "ROOT"})[l_ban.m_type];
                 if (isMAuthenticated()){
                     if (!l_ban.hdid.isEmpty())
-                        l_recent_bans << "├─ [HDID]: " + l_ban.ipid;
+                        l_recent_bans << "├─ [HDID]: " + l_ban.hdid;
                     if (!l_ban.ipid.isEmpty())
                         l_recent_bans << "├─ [IPID]: " + l_ban.ipid;
                 }
@@ -1014,7 +1014,7 @@ void AOClient::cmdBanInfo(int argc, QStringList argv)
                     l_ban_info << "├─ [M-TYPE]: " + QStringList({"VIP", "Moderator", "ROOT"})[l_ban.m_type];
                 if (isMAuthenticated()){ // [ipid / hdid] only been seen by moderators..
                     if (!l_ban.hdid.isEmpty())
-                        l_ban_info << "├─ [HDID]: " + l_ban.ipid;
+                        l_ban_info << "├─ [HDID]: " + l_ban.hdid;
                     if (!l_ban.ipid.isEmpty())
                         l_ban_info << "├─ [IPID]: " + l_ban.ipid;
                 }
