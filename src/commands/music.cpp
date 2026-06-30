@@ -74,6 +74,21 @@ void AOClient::cmdPlay(int argc, QStringList argv){
         l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), l_song, true);
         sendServerPacketArea(PacketMC::CreateMusic(l_song, server->getCharID(character()), characterName(), true));
     }
+    else if (l_area->owners().contains(clientId())){ // [CM]s can also play when [free-music-play] disabled (still CDN-validated)..
+        switch (m_music_manager->ValidataSong(QUrl::fromUserInput(l_song, "", QUrl::UserInputResolutionOption::AssumeLocalFile), ConfigManager::cdnList())){
+        case -1:
+            sendServerMessage("Invalid URL.");
+            break;
+        case -2:
+            sendServerMessage(QString("That link/URL are not allowed, please follows the an allowed link/URL from:\n%1").arg(ConfigManager::cdnList().join('\n')));
+            break;
+        default:
+            l_area->clearJukeboxQueue();
+            l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), l_song, true);
+            sendServerPacketArea(PacketMC::CreateMusic(l_song, server->getCharID(character()), characterName(), true));
+            break;
+        }
+    }
     else
         sendServerMessage("Free music play is disabled in this area.");
 }
@@ -124,6 +139,21 @@ void AOClient::cmdPlayOnce(int argc, QStringList argv){
         l_area->clearJukeboxQueue();
         l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), l_song, false);
         sendServerPacketArea(PacketMC::CreateMusic(l_song, server->getCharID(character()), characterName(), false));
+    }
+    else if (l_area->owners().contains(clientId())){ // [CM]s can also play when [free-music-play] disabled (still CDN-validated)..
+        switch (m_music_manager->ValidataSong(QUrl::fromUserInput(l_song, "", QUrl::UserInputResolutionOption::AssumeLocalFile), ConfigManager::cdnList())){
+        case -1:
+            sendServerMessage("Invalid URL.");
+            break;
+        case -2:
+            sendServerMessage(QString("That link/URL are not allowed, please follows the an allowed CDN:\n%1").arg(ConfigManager::cdnList().join('\n')));
+            break;
+        default:
+            l_area->clearJukeboxQueue();
+            l_area->changeMusic(characterName().isEmpty() ? character() : characterName(), l_song, false);
+            sendServerPacketArea(PacketMC::CreateMusic(l_song, server->getCharID(character()), characterName(), false));
+            break;
+        }
     }
     else
         sendServerMessage("Free music play is disabled in this area.");
