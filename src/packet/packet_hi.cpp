@@ -40,7 +40,7 @@ void PacketHI::handlePacket(AreaData *area, AOClient &client) const
                     client.m_socket->close();
                 }
                 else // check if client are reached of client-limts by they hdid..
-                    client.getServer()->RegisterClienthwid(client.clientId()) ? client.sendPacket("ID", {QString::number(client.clientId()), "akashi", QCoreApplication::applicationVersion()}) : client.m_socket->close();
+                    client.getServer()->RegisterClienthwid(client.clientId()) ? client.sendPacket("ID", {QString::number(client.clientId()), "WAP-Akashi", QCoreApplication::applicationVersion()}) : client.m_socket->close();
             }
             else{
                 auto ld_timeout = client.getServer()->lockdown_timeout;
