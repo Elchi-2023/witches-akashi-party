@@ -68,6 +68,7 @@ void ULogger::logMusic(const QString &f_char_Name, const QString &f_ooc_name, co
             .replace("<ipid>", f_ids.second).replace("<track>", f_track);
     updateAreaBuffer(f_area_name, l_logEntry + "\n");
 }
+
 void ULogger::logLogin(const QString &f_char_name, const QString &f_ooc_name, const QString &f_moderator_name,const QString &f_ipid, const QString &f_area_name, const bool &f_success){
     const QString l_time = QDateTime::currentDateTime().toString("ddd MMMM d yyyy | hh:mm:ss");
     const QString l_logEntry = QString(m_logtext.value("login")).replace("<time>", l_time).replace("<area>", f_area_name)
@@ -85,7 +86,7 @@ void ULogger::logCMD(const QString &f_char_name, const QString &f_ipid, const QS
     else if (f_command == "rootpass")
         l_logEntry = QString(m_logtext.value("cmdrootpass")).replace("<time>", l_time).replace("<area>", f_area_name).replace("<char>", f_char_name).replace("<ooc>", f_ooc_name).replace("<ipid>", f_ipid);
     else if (f_command == "adduser")
-        l_logEntry = QString(m_logtext.value("cmdadduser")).replace("<time>", l_time).replace("<area>", f_area_name).replace("<char>", f_char_name).replace("<ooc>", f_ooc_name).replace("<ipid>", f_ipid).replace("<user>", f_args.at(0));
+        l_logEntry = QString(m_logtext.value("cmdadduser")).replace("<time>", l_time).replace("<area>", f_area_name).replace("<char>", f_char_name).replace("<ooc>", f_ooc_name).replace("<ipid>", f_ipid).replace("<user>", f_args.value(0));
     else /* > any cmd < */
         l_logEntry = QString(m_logtext.value("cmd")).replace("<time>", l_time).replace("<area>", f_area_name)
                 .replace("<char>", f_char_name).replace("<ooc>", f_ooc_name)
