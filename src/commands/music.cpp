@@ -52,7 +52,7 @@ void AOClient::cmdPlay(int argc, QStringList argv){
             sendServerPacketArea(PacketMC::CreateMusic(l_song, server->getCharID(character()), characterName(), true));
         }
         else if (l_area->owners().contains(clientId())){
-            switch (m_music_manager->ValidataSong(QUrl::fromUserInput(l_song, "", QUrl::UserInputResolutionOption::AssumeLocalFile), ConfigManager::cdnList())){
+            switch (m_music_manager->ValidataSong(QUrl::fromUserInput(l_song, ".", QUrl::UserInputResolutionOption::AssumeLocalFile), ConfigManager::cdnList())){
             case -1:
                 sendServerMessage("Invalid URL.");
                 break;
@@ -75,7 +75,7 @@ void AOClient::cmdPlay(int argc, QStringList argv){
         sendServerPacketArea(PacketMC::CreateMusic(l_song, server->getCharID(character()), characterName(), true));
     }
     else if (l_area->owners().contains(clientId())){ // [CM]s can also play when [free-music-play] disabled (still CDN-validated)..
-        switch (m_music_manager->ValidataSong(QUrl::fromUserInput(l_song, "", QUrl::UserInputResolutionOption::AssumeLocalFile), ConfigManager::cdnList())){
+        switch (m_music_manager->ValidataSong(QUrl::fromUserInput(l_song, ".", QUrl::UserInputResolutionOption::AssumeLocalFile), ConfigManager::cdnList())){
         case -1:
             sendServerMessage("Invalid URL.");
             break;
@@ -118,7 +118,7 @@ void AOClient::cmdPlayOnce(int argc, QStringList argv){
             sendServerPacketArea(PacketMC::CreateMusic(l_song, server->getCharID(character()), characterName(), false));
         }
         else if (l_area->owners().contains(clientId())){
-            switch (m_music_manager->ValidataSong(QUrl::fromUserInput(l_song, "", QUrl::UserInputResolutionOption::AssumeLocalFile), ConfigManager::cdnList())){
+            switch (m_music_manager->ValidataSong(QUrl::fromUserInput(l_song, ".", QUrl::UserInputResolutionOption::AssumeLocalFile), ConfigManager::cdnList())){
             case -1:
                 sendServerMessage("Invalid URL.");
                 break;
@@ -141,7 +141,7 @@ void AOClient::cmdPlayOnce(int argc, QStringList argv){
         sendServerPacketArea(PacketMC::CreateMusic(l_song, server->getCharID(character()), characterName(), false));
     }
     else if (l_area->owners().contains(clientId())){ // [CM]s can also play when [free-music-play] disabled (still CDN-validated)..
-        switch (m_music_manager->ValidataSong(QUrl::fromUserInput(l_song, "", QUrl::UserInputResolutionOption::AssumeLocalFile), ConfigManager::cdnList())){
+        switch (m_music_manager->ValidataSong(QUrl::fromUserInput(l_song, ".", QUrl::UserInputResolutionOption::AssumeLocalFile), ConfigManager::cdnList())){
         case -1:
             sendServerMessage("Invalid URL.");
             break;
@@ -220,7 +220,7 @@ void AOClient::cmdPlayAmbience(int argc, QStringList argv){
             sendServerMessage("Free ambience play is disabled in this area.");
         else{
             const QString l_song = argv.join(" ");
-            switch (m_music_manager->ValidataSong(QUrl::fromUserInput(l_song, "", QUrl::UserInputResolutionOption::AssumeLocalFile), ConfigManager::cdnList())){
+            switch (m_music_manager->ValidataSong(QUrl::fromUserInput(l_song, ".", QUrl::UserInputResolutionOption::AssumeLocalFile), ConfigManager::cdnList())){
             case -1:
                 sendServerMessage("Invalid URL.");
                 break;
@@ -501,7 +501,7 @@ void AOClient::cmdJukeboxAdd(int argc, QStringList argv){
                     continue;
                 const QString l_song = song.trimmed();
 
-                switch (m_music_manager->ValidataSong(QUrl::fromUserInput(l_song, "", QUrl::UserInputResolutionOption::AssumeLocalFile), ConfigManager::cdnList())){
+                switch (m_music_manager->ValidataSong(QUrl::fromUserInput(l_song, ".", QUrl::UserInputResolutionOption::AssumeLocalFile), ConfigManager::cdnList())){
                 case -1:
                     l_results << l_song + ": Invalid URL";
                     break;
