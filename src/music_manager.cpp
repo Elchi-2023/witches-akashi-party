@@ -103,9 +103,14 @@ int MusicManager::ValidataSong(const QUrl Url, const QStringList Approved_cdns){
         return 0;
     else if (!Url.isValid())
         return -1;
-    else if (!Approved_cdns.contains(Url.host()))
-        return -2;
-    return 1;
+
+    for (const QString &l_cdn : Approved_cdns){
+        // Entries may be bare hosts ("files.catbox.moe") or full URLs ("https://files.catbox.moe/").
+        const QString l_host = QUrl::fromUserInput(l_cdn.trimmed()).host();
+        if (!l_host.isEmpty() && Url.host().compare(l_host, Qt::CaseInsensitive) == 0)
+            return 1;
+    }
+    return -2;
 }
 
 bool MusicManager::RegisterCustomMusic(const QPair<QString, QString> &songdata, const int duration, const int areaId){
