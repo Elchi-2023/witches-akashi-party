@@ -599,7 +599,12 @@ bool AOClient::checkPermission(ACLRole::Permission f_permission) const{
     case ACLRole::NONE:
         return true;
     case ACLRole::CM: // hack moment..
-        return isAuthenticated() ? ConfigManager::authType() == DataTypes::AuthType::SIMPLE || m_authenticated_type == AuthenticateType::ROOT || l_role.checkPermission(ACLRole::SUPER) || l_role.checkPermission(f_permission) : (!l_area.isNull() && l_area->owners().contains(clientId()));
+        // An area owner (CM) always has CM permission, regardless of authentication state or ACL role.
+        // This check MUST come before the authentication branch, otherwise an authenticated user (VIP/mod)
+        // who became a CM but whose role lacks the raw CM permission bit would be wrongly denied.
+        if (!l_area.isNull() && l_area->owners().contains(clientId()))
+            return true;
+        return isAuthenticated() ? ConfigManager::authType() == DataTypes::AuthType::SIMPLE || m_authenticated_type == AuthenticateType::ROOT || l_role.checkPermission(ACLRole::SUPER) || l_role.checkPermission(f_permission) : false;
     case ACLRole::SUPER:
          return isAuthenticated() ? ConfigManager::authType() == DataTypes::AuthType::SIMPLE || m_authenticated_type == AuthenticateType::ROOT || l_role.checkPermission(ACLRole::SUPER) : false;
     default:
