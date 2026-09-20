@@ -10,13 +10,8 @@ PacketHP::PacketHP(QStringList &contents) :
 {
 }
 
-PacketInfo PacketHP::getPacketInfo() const
-{
-    PacketInfo info{
-        .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 2,
-        .header = "HP"};
-    return info;
+PacketInfo PacketHP::getPacketInfo() const{
+    return PacketInfo::CreateInfo("HP", 2);
 }
 
 void PacketHP::handlePacket(AreaData *area, AOClient &client) const{

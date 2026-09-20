@@ -11,21 +11,16 @@ PacketMC::PacketMC(QStringList &contents) :
 {
 }
 
-PacketInfo PacketMC::getPacketInfo() const
-{
-    PacketInfo info{
-        .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 2,
-        .header = "MC"};
-    return info;
+PacketInfo PacketMC::getPacketInfo() const{
+    return PacketInfo::CreateInfo("MC", 2);
 }
 
 void PacketMC::handlePacket(AreaData *area, AOClient &client) const{
-    /* ==== [Devs notes] ====
+    /* ==== [akashi devs notes] ====
      * Due to historical reasons, this
      * packet has two functions:
      * Change area, and set music.
-     * ====================== */
+     * =============================*/
 
     // First, we check if the provided
     // argument is a valid song

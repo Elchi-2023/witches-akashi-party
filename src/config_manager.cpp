@@ -36,7 +36,7 @@ bool ConfigManager::verifyServerConfig()
     QStringList l_directories{"config/", "config/text/"};
     for (const QString &l_directory : l_directories) {
         if (!dirExists(QFileInfo(l_directory))) {
-            qCritical() << "[C][AKASHI][CONFIG]: " << l_directory + " does not exist!";
+            qCritical() << "[C][WAP-AKASHI][CONFIG]: " << l_directory + " does not exist!";
             return false;
         }
     }
@@ -48,7 +48,7 @@ bool ConfigManager::verifyServerConfig()
                                "config/text/cdns.txt", "config/ipbans.json"};
     for (const QString &l_file : l_config_files) {
         if (!fileExists(QFileInfo(l_file))) {
-            qCritical() << "[C][AKASHI][CONFIG]: " << l_file + " does not exist!";
+            qCritical() << "[C][WAP-AKASHI][CONFIG]: " << l_file + " does not exist!";
             return false;
         }
     }
@@ -56,7 +56,7 @@ bool ConfigManager::verifyServerConfig()
     // Verify areas
     QSettings l_areas_ini("config/areas.ini", QSettings::IniFormat);
     if (l_areas_ini.childGroups().length() < 1) {
-        qCritical() << "[C][AKASHI][CONFIG]: areas.ini is invalid!";
+        qCritical() << "[C][WAP-AKASHI][CONFIG]: areas.ini is invalid!";
         return false;
     }
 
@@ -76,7 +76,7 @@ bool ConfigManager::verifyServerConfig()
                 faces.append(l_dice_ini.value(key).toString());
             }
             else {
-                qCritical() << "[W][AKASHI][CONFIG]: dice.ini max mismatch!";
+                qCritical() << "[W][WAP-AKASHI][CONFIG]: dice.ini max mismatch!";
                 break;
             }
         }
@@ -89,46 +89,46 @@ bool ConfigManager::verifyServerConfig()
     bool ok;
     m_settings->value("ms_port", 27016).toInt(&ok);
     if (!ok) {
-        qCritical("[C][AKASHI][CONFIG]: ms_port is not a valid port!");
+        qCritical("[C][WAP-AKASHI][CONFIG]: ms_port is not a valid port!");
         return false;
     }
     m_settings->value("port", 27016).toInt(&ok);
     if (!ok) {
-        qCritical("[C][AKASHI][CONFIG]: port is not a valid port!");
+        qCritical("[C][WAP-AKASHI][CONFIG]: port is not a valid port!");
         return false;
     }
     m_settings->value("secure_port", -1).toInt(&ok);
     if (!ok) {
-        qCritical("[C][AKASHI][CONFIG]: secure_port is not a valid port!");
+        qCritical("[C][WAP-AKASHI][CONFIG]: secure_port is not a valid port!");
         return false;
     }
 
     QString l_auth = m_settings->value("auth", "simple").toString().toLower();
     if (!(l_auth == "simple" || l_auth == "advanced")) {
-        qCritical("[W][AKASHI][CONFIG]: auth is not a valid auth type!");
+        qCritical("[W][WAP-AKASHI][CONFIG]: auth is not a valid auth type!");
         return false;
     }
 
     int l_soft_limit = m_settings->value("packet_rate_limit_soft", 10).toInt(&ok);
     if (!ok) {
-        qCritical("[W][AKASHI][CONFIG]: packet_rate_limit_soft is not a valid limit!");
+        qCritical("[W][WAP-AKASHI][CONFIG]: packet_rate_limit_soft is not a valid limit!");
         return false;
     }
     if (l_soft_limit <= 0) {
-        qWarning("[W][AKASHI][CONFIG]: packet_rate_limit_soft is 0 or less, warning threshold is disabled!");
+        qWarning("[W][WAP-AKASHI][CONFIG]: packet_rate_limit_soft is 0 or less, warning threshold is disabled!");
     }
 
     int l_hard_limit = m_settings->value("packet_rate_limit_hard", 20).toInt(&ok);
     if (!ok) {
-        qCritical("[C][AKASHI][CONFIG]:packet_rate_limit_hard is not a valid limit!");
+        qCritical("[C][WAP-AKASHI][CONFIG]:packet_rate_limit_hard is not a valid limit!");
         return false;
     }
     else if (l_soft_limit > 0 && l_hard_limit <= l_soft_limit) {
-        qCritical("[C][AKASHI][CONFIG]: packet_rate_limit_hard must be greater than packet_rate_limit_soft!");
+        qCritical("[C][WAP-AKASHI][CONFIG]: packet_rate_limit_hard must be greater than packet_rate_limit_soft!");
         return false;
     }
     if (l_hard_limit <= 0) {
-        qWarning("[W][AKASHI][CONFIG]: packet_rate_limit_hard is 0 or less, rate limiting is disabled!");
+        qWarning("[W][WAP-AKASHI][CONFIG]: packet_rate_limit_hard is 0 or less, rate limiting is disabled!");
     }
 
     m_settings->endGroup();
@@ -139,7 +139,7 @@ bool ConfigManager::verifyServerConfig()
     m_commands->filters = (loadConfigFile("filter"));
     m_commands->cdns = (loadConfigFile("cdns"));
     if (m_commands->cdns.isEmpty())
-        m_commands->cdns = QStringList{"cdn.discord.com"};
+        m_commands->cdns = QStringList{"cdn.discordapp.com", "filegarden.com", "media.discordapp.net", "files.catbox.moe", "litter.catbox.moe"};
 
     return true;
 }
@@ -153,7 +153,7 @@ QStringList ConfigManager::characterlist(){
     static QFile l_file("config/characters.txt");
 
     if (l_file.open(QIODevice::ReadOnly | QIODevice::Text)){
-        QStringList l_charlist = QTextStream(&l_file).readAll().split('\n', Qt::SkipEmptyParts);
+        QStringList l_charlist = QTextStream(&l_file).readAll().trimmed().split('\n', Qt::SkipEmptyParts);
         l_charlist.removeDuplicates();
         l_file.close();
 
@@ -173,33 +173,33 @@ QStringList ConfigManager::characterlistVerbose(const QString &cname){
     QStringList l_charlist;
 
     if (l_file.open(QIODevice::ReadOnly | QIODevice::Text)){
-        QStringList l_currentlist = QTextStream(&l_file).readAll().split('\n', Qt::SkipEmptyParts); /* skip empty newline */
+        QStringList l_currentlist = QTextStream(&l_file).readAll().trimmed().split('\n', Qt::SkipEmptyParts); /* skip empty newline */
         const int dupcount = l_currentlist.removeDuplicates();
         l_file.close();
 
-        if (!cname.trimmed().isEmpty()){
-            qInfo().nospace().noquote() << cname << ": Loaded an " << l_currentlist.size() << " contexts, Scanning any of duplicated...";
-            if (dupcount > 0){
-                QVector<QPair<QString, int>> duplicatedList;
-                for (const auto& I : std::as_const(l_charlist)){ /* getting original list */
-                    if (l_currentlist.count(I) == 1 && l_charlist.count(I) > 1 && !duplicatedList.contains(qMakePair(I, int(l_charlist.count(I) -1)))) /* comparing between og and current */
-                        duplicatedList.append(qMakePair(I, l_charlist.count(I) -1));
-                }
-                qWarning().nospace().noquote() << cname << ": Found an " << dupcount << " duplicated as follows:";
-                for (auto& L : duplicatedList) /* better than shown "QVector<QPair<QString, int>>" */
-                    qWarning().nospace() << L.first << ": " << L.second;
+        /* > contents load < */
+        qInfo().nospace().noquote() << (cname.trimmed().isEmpty() ? "[I][WAP-AKASHI][Charloader]" : cname) << ": Loaded an " << l_currentlist.size() << " contents, Scanning any of duplicated...";
+        if (dupcount > 0){
+            QVector<QPair<QString, int>> duplicatedList;
+            for (const auto& I : std::as_const(l_charlist)){ /* getting original list */
+                if (l_currentlist.count(I) == 1 && l_charlist.count(I) > 1 && !duplicatedList.contains(qMakePair(I, int(l_charlist.count(I) -1)))) /* comparing between og and current */
+                    duplicatedList.append(qMakePair(I, l_charlist.count(I) -1));
             }
-            else
-                qInfo().nospace().noquote() << cname << ": Found nothing of duplicates.";
+            qWarning().nospace().noquote() << (cname.trimmed().isEmpty() ? "[I][WAP-AKASHI][Charloader]" : cname) << ": Found an " << dupcount << " duplicated as follows:";
+            for (auto& L : duplicatedList) /* better than shown "QVector<QPair<QString, int>>" */
+                qWarning().nospace() << L.first << ": " << L.second;
         }
+        else
+            qInfo().nospace().noquote() << (cname.trimmed().isEmpty() ? "[I][WAP-AKASHI][Charloader]" : cname) << ": Found nothing of duplicates.";
+
         if (l_file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)){
             QTextStream(&l_file) << l_currentlist.join('\n');
             l_file.close();
             if (dupcount > 0)
-                qInfo().nospace().noquote() << cname << ": Writed characters.txt and " << l_currentlist.size() << " context loaded.";
+                qInfo().nospace().noquote() << (cname.trimmed().isEmpty() ? "[I][Charloader]" : cname) << ": Writed characters.txt and " << l_currentlist.size() << " contents loaded.";
         }
         else if (dupcount > 0)
-            qInfo().nospace().noquote() << cname << ": cannot write characters.txt, " << l_currentlist.size() << " context loaded in (memory).";
+            qInfo().nospace().noquote() << (cname.trimmed().isEmpty() ? "[I][Charloader]" : cname) << ": cannot write characters.txt, " << l_currentlist.size() << " contents loaded in (memory).";
         l_charlist = l_currentlist;
     }
 
@@ -227,7 +227,7 @@ MusicList ConfigManager::musiclist()
     QJsonParseError l_error;
     QJsonDocument l_music_list_json = QJsonDocument::fromJson(l_music_json.readAll(), &l_error);
     if (!(l_error.error == QJsonParseError::NoError)) { // Non-Terminating error.
-        qWarning() << "[W][AKASHI][CONFIG]: Unable to load musiclist. The following error was encounted : " + l_error.errorString();
+        qWarning() << "[W][WAP-AKASHI][CONFIG]: Unable to load musiclist. The following error was encounted : " + l_error.errorString();
         return QMap<QString, QPair<QString, int>>{}; // Server can still run without music.
     }
 
@@ -250,7 +250,7 @@ MusicList ConfigManager::musiclist()
             m_ordered_list->append(l_category_name);
         }
         else {
-            qWarning() << "[W][AKASHI][CONFIG]: Category name not set. This may cause the musiclist to be displayed incorrectly.";
+            qWarning() << "[W][WAP-AKASHI][CONFIG]: Category name not set. This may cause the musiclist to be displayed incorrectly.";
         }
 
         l_child_array = l_child_obj["songs"].toArray();
@@ -299,7 +299,7 @@ QPair<QStringList, MusicList> ConfigManager::Musiclist(){
             }
         }
         else
-            qWarning() << "[W][AKASHI][CONFIG]: Unable to load musiclist. The following error was encounted : " + l_error.errorString();
+            qWarning() << "[W][WAP-AKASHI][CONFIG]: Unable to load musiclist. The following error was encounted : " + l_error.errorString();
         l_music_json.close();
     } // Server can still run without music.
 
@@ -324,7 +324,7 @@ QMap<int, QPair<QString, QString>> ConfigManager::radiolist(){
             }
         }
         else
-            qWarning() << "[W][AKASHI][CONFIG]: Unable to load radiolist. The following error was encounted : " + l_error.errorString();
+            qWarning() << "[W][WAP-AKASHI][CONFIG]: Unable to load radiolist. The following error was encounted : " + l_error.errorString();
         l_radio_json.close();
     }
 
@@ -338,6 +338,7 @@ QStringList ConfigManager::ordered_songs()
 
 void ConfigManager::loadCommandHelp(){
     QFile l_help_json("config/text/commandhelp.json");
+    QHash<QString, ConfigManager::help> copy;
     if (l_help_json.open(QIODevice::ReadOnly | QIODevice::Text)){
         QJsonParseError l_error;
         const QJsonArray l_help_list_json = QJsonDocument::fromJson(l_help_json.readAll(), &l_error).array();
@@ -350,15 +351,18 @@ void ConfigManager::loadCommandHelp(){
                         continue;
 
                     const help l_help_information = {.usage = I.toObject()["usage"].toString(), .text = I.toObject()["text"].toString()};
-                    m_commands_help->insert(Name.toString(), l_help_information);
+                    copy.insert(Name.toString(), l_help_information);
                 }
             }
             break;
         default:
-            qWarning() << "[W][AKASHI][CONFIG]: Unable to load help information. The following error occurred: " + l_error.errorString();
+            qWarning() << "[W][WAP-AKASHI][CONFIG]: Unable to load help information. The following error occurred: " + l_error.errorString();
             break;
         }
     }
+
+    if ((*m_commands_help) != copy)
+        m_commands_help->swap(copy);
 }
 
 QSettings *ConfigManager::areaData()
@@ -406,10 +410,10 @@ QStringList ConfigManager::iprangeBans(){
                 asn_db.setDatabaseName("storage/asn.sqlite3");
                 asn_db.open();
 
-                /* ==== [Devs notes] ====
+                /* ==== [akashi devs notes] ====
                  * This is a dumb hack.
                  * Idk how else I can do this, but who gives a [s-word]?
-                 * ====================== */
+                 * ============================= */
                 QSqlQuery query("SELECT ip FROM maxmind WHERE asn in (" + l_ip_bans["asn"].toVariant().toStringList().join(",") + ")", asn_db);
                 query.exec();
                 while (query.next())
@@ -419,12 +423,12 @@ QStringList ConfigManager::iprangeBans(){
             l_range_bans.removeDuplicates();
             break;
         default:
-            qDebug() << "[E][AKASHI][CONFIG]: Unable to parse JSON file of \"config/ipbans.json\" . Error:" << l_error.errorString();
+            qDebug() << "[E][WAP-AKASHI][CONFIG]: Unable to parse JSON file of \"config/ipbans.json\" . Error:" << l_error.errorString();
             break;
         }
     }
     else
-        qWarning() << "[W][AKASHI][CONFIG]: Unable to open JSON file of \"config/ipbans.json\". Error:" << l_json_file.errorString();
+        qWarning() << "[W][WAP-AKASHI][CONFIG]: Unable to open JSON file of \"config/ipbans.json\". Error:" << l_json_file.errorString();
     return l_range_bans;
 }
 
@@ -442,7 +446,7 @@ void ConfigManager::reloadSettings(){
     m_commands->filters = (loadConfigFile("filter"));
     m_commands->cdns = (loadConfigFile("cdns"));
     if (m_commands->cdns.isEmpty())
-        m_commands->cdns = QStringList{"cdn.discord.com"};
+        m_commands->cdns = QStringList{"cdn.discordapp.com", "filegarden.com", "media.discordapp.net", "files.catbox.moe", "litter.catbox.moe"};
 
     auto ReloadedMusic = ConfigManager::Musiclist();
     m_ordered_list->swap(ReloadedMusic.first);
@@ -472,7 +476,7 @@ QVariant ConfigManager::GetVoiceParameter(VoiceParameter type){
 QVariantList ConfigManager::GetVoiceParameters(){
     QSettings read("config/config.ini", QSettings::IniFormat);
     QVariantList params;
-    params << read.value("voice/enable", true).toBool() << read.value("voice/PTT", false).toBool() << read.value("voice/max_peers").toInt() << qMax(4000, read.value("voice/max_bytes", 4000).toInt()) << QString("opus") << qBound(8000, read.value("voice/voice_hz", 48000).toInt(), 48000) << qBound(5, read.value("voice/voice_tick", 20).toInt(), 60);;
+    params << read.value("voice/enable", true).toBool() << read.value("voice/PTT", false).toBool() << read.value("voice/max_peers").toInt() << qMax(4000, read.value("voice/max_bytes", 4000).toInt()) << QString("opus") << qBound(8000, read.value("voice/voice_hz", 48000).toInt(), 48000) << qBound(5, read.value("voice/voice_tick", 20).toInt(), 60);
     return params;
 }
 
@@ -481,10 +485,9 @@ QStringList ConfigManager::loadConfigFile(const QString filename)
     QStringList stringlist;
     QFile l_file("config/text/" + filename + ".txt");
     if (l_file.open(QIODevice::ReadOnly | QIODevice::Text)){
-        while (!(l_file.atEnd())) {
-            if (!l_file.readLine().trimmed().isEmpty())
-                stringlist.append(l_file.readLine().trimmed());
-        }
+        stringlist = QString::fromUtf8(l_file.readAll()).trimmed().split('\n', Qt::SkipEmptyParts);
+        stringlist.removeDuplicates();
+        stringlist.removeAll("");
         l_file.close();
     }
     return stringlist;
@@ -494,14 +497,14 @@ int ConfigManager::maxPlayers(){
     bool ok;
     int l_players = m_settings->value("Options/max_players", 100).toInt(&ok);
     if (!ok)
-        qWarning("[W][AKASHI][CONFIG]: max_players is not an int!");
+        qWarning("[W][WAP-AKASHI][CONFIG]: max_players is not an int!");
     return qMax(1, ok ? l_players : 100);
 }
 
 int ConfigManager::serverPort()
 {
     if (m_settings->contains("Options/webao_port")) {
-        qWarning("[W][AKASHI][CONFIG]: webao_port is deprecated, use port instead");
+        qWarning("[W][WAP-AKASHI][CONFIG]: webao_port is deprecated, use port instead");
         return m_settings->value("Options/webao_port", 27016).toInt();
     }
 
@@ -556,7 +559,7 @@ int ConfigManager::logBuffer()
     bool ok;
     int l_buffer = m_settings->value("Options/logbuffer", 500).toInt(&ok);
     if (!ok) {
-        qWarning("[W][AKASHI][CONFIG]: logbuffer is not an int!");
+        qWarning("[W][WAP-AKASHI][CONFIG]: logbuffer is not an int!");
         l_buffer = 500;
     }
     return l_buffer;
@@ -573,7 +576,7 @@ int ConfigManager::maxStatements()
     bool ok;
     int l_max = m_settings->value("Options/maximum_statements", 10).toInt(&ok);
     if (!ok) {
-        qWarning("[W][AKASHI][CONFIG]: maximum_statements is not an int!");
+        qWarning("[W][WAP-AKASHI][CONFIG]: maximum_statements is not an int!");
         l_max = 10;
     }
     return l_max;
@@ -583,7 +586,7 @@ int ConfigManager::multiClientLimit()
     bool ok;
     int l_limit = m_settings->value("Options/multiclient_limit", 15).toInt(&ok);
     if (!ok) {
-        qWarning("[W][AKASHI][CONFIG]: multiclient_limit is not an int!");
+        qWarning("[W][WAP-AKASHI][CONFIG]: multiclient_limit is not an int!");
         l_limit = 15;
     }
     return l_limit;
@@ -594,7 +597,7 @@ int ConfigManager::maxCharacters()
     bool ok;
     int l_max = m_settings->value("Options/maximum_characters", 256).toInt(&ok);
     if (!ok) {
-        qWarning("[W][AKASHI][CONFIG]: maximum_characters is not an int!");
+        qWarning("[W][WAP-AKASHI][CONFIG]: maximum_characters is not an int!");
         l_max = 256;
     }
     return l_max;
@@ -605,7 +608,7 @@ int ConfigManager::messageFloodguard()
     bool ok;
     int l_flood = m_settings->value("Options/message_floodguard", 250).toInt(&ok);
     if (!ok) {
-        qWarning("[W][AKASHI][CONFIG]: message_floodguard is not an int!");
+        qWarning("[W][WAP-AKASHI][CONFIG]: message_floodguard is not an int!");
         l_flood = 250;
     }
     return l_flood;
@@ -616,7 +619,7 @@ int ConfigManager::globalMessageFloodguard()
     bool ok;
     int l_flood = m_settings->value("Options/global_message_floodguard", 0).toInt(&ok);
     if (!ok) {
-        qWarning("[W][AKASHI][CONFIG]: global_message_floodguard is not an int!");
+        qWarning("[W][WAP-AKASHI][CONFIG]: global_message_floodguard is not an int!");
         l_flood = 0;
     }
     return l_flood;
@@ -627,7 +630,7 @@ int ConfigManager::packetRateLimitSoft()
     bool ok;
     int l_limit = m_settings->value("Options/packet_rate_limit_soft", 10).toInt(&ok);
     if (!ok) {
-        qWarning("[W][AKASHI][CONFIG]: packet_rate_limit_soft is not an int!");
+        qWarning("[W][WAP-AKASHI][CONFIG]: packet_rate_limit_soft is not an int!");
         l_limit = 10;
     }
     return l_limit;
@@ -638,7 +641,7 @@ int ConfigManager::packetRateLimitHard()
     bool ok;
     int l_limit = m_settings->value("Options/packet_rate_limit_hard", 20).toInt(&ok);
     if (!ok) {
-        qWarning("[W][AKASHI][CONFIG]: packet_rate_limit_hard is not an int!");
+        qWarning("[W][WAP-AKASHI][CONFIG]: packet_rate_limit_hard is not an int!");
         l_limit = 20;
     }
     return l_limit;
@@ -647,7 +650,7 @@ int ConfigManager::packetRateLimitHard()
 QUrl ConfigManager::assetUrl(){
     const QUrl l_url = QUrl::fromStringList({QByteArray(m_settings->value("Options/asset_url", "http://attorneyoffline.de/base/").toString().toUtf8())}).first();
     if (!l_url.isValid())
-        qWarning("[W][AKASHI][CONFIG]: asset_url is not a valid url!");
+        qWarning("[W][WAP-AKASHI][CONFIG]: asset_url is not a valid url!");
 
     return l_url.isValid() ? l_url : QUrl();
 }
@@ -657,7 +660,7 @@ int ConfigManager::diceMaxValue()
     bool ok;
     int l_value = m_settings->value("Dice/max_value", 100).toInt(&ok);
     if (!ok) {
-        qWarning("[W][AKASHI][CONFIG]: max_value is not an int!");
+        qWarning("[W][WAP-AKASHI][CONFIG]: max_value is not an int!");
         l_value = 100;
     }
     return l_value;
@@ -668,7 +671,7 @@ int ConfigManager::diceMaxDice()
     bool ok;
     int l_dice = m_settings->value("Dice/max_dice", 100).toInt(&ok);
     if (!ok) {
-        qWarning("[W][AKASHI][CONFIG]: max_dice is not an int!");
+        qWarning("[W][WAP-AKASHI][CONFIG]: max_dice is not an int!");
         l_dice = 100;
     }
     return l_dice;
@@ -727,7 +730,7 @@ int ConfigManager::passwordMinLength()
     bool ok;
     int l_min = m_settings->value("Password/pass_min_length", 8).toInt(&ok);
     if (!ok) {
-        qWarning("[W][AKASHI][CONFIG]: pass_min_length is not an int!");
+        qWarning("[W][WAP-AKASHI][CONFIG]: pass_min_length is not an int!");
         l_min = 8;
     }
     return l_min;
@@ -738,7 +741,7 @@ int ConfigManager::passwordMaxLength()
     bool ok;
     int l_max = m_settings->value("Password/pass_max_length", 0).toInt(&ok);
     if (!ok) {
-        qWarning("[W][AKASHI][CONFIG]:pass_max_length is not an int!");
+        qWarning("[W][WAP-AKASHI][CONFIG]:pass_max_length is not an int!");
         l_max = 0;
     }
     return l_max;
@@ -774,7 +777,7 @@ int ConfigManager::afkTimeout()
     bool ok;
     int l_afk = m_settings->value("Options/afk_timeout", 600).toInt(&ok);
     if (!ok) {
-        qWarning("[W][AKASHI][CONFIG]: afk_timeout is not an int!");
+        qWarning("[W][WAP-AKASHI][CONFIG]: afk_timeout is not an int!");
         l_afk = 600;
     }
     return l_afk;
@@ -845,7 +848,7 @@ QMap<QString, ConfigManager::HolidaysDesc> ConfigManager::holidaylist(){
             }
         }
         else
-            qWarning() << "[W][AKASHI]: Unable to load holidaylist. The following error was encounted : " + l_error.errorString();
+            qWarning() << "[W][WAP-AKASHI]: Unable to load holidaylist. The following error was encounted : " + l_error.errorString();
         l_holiday_json.close();
     }
     return (*m_holidayList);
@@ -858,6 +861,7 @@ QStringList ConfigManager::CustomReminder(){
             c_reminderlist << l_custom_reminder.readLine().trimmed();
         c_reminderlist.removeDuplicates(); // remove dups..
         c_reminderlist.removeAll(""); // remove empty..
+        l_custom_reminder.close();
     }
     return c_reminderlist;
 }

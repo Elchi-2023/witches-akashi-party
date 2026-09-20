@@ -3,6 +3,11 @@
 
 #include "network/aopacket.h"
 #include <QScopedPointer>
+/* MS Json?? */
+#include <QJsonDocument>
+#include <QJsonParseError>
+#include <QJsonArray>
+#include <QJsonObject>
 
 class PacketMS : public AOPacket
 {
@@ -16,7 +21,7 @@ class PacketMS : public AOPacket
      * @brief Create the packet of IC-Message object.
      * @return Valid pointer, Nullptr otherwise.
      */
-    QScopedPointer<AOPacket> CreatePacket(AOClient &client) const;
+    QScopedPointer<AOPacket> CreatePacket(AOClient &client, AreaData *area, Server *server) const;
     QRegularExpressionMatch isTestimonyJumpCommand(QString message) const;
 };
 #endif

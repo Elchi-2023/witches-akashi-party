@@ -10,13 +10,8 @@ PacketCC::PacketCC(QStringList &contents) :
 {
 }
 
-PacketInfo PacketCC::getPacketInfo() const
-{
-    PacketInfo info{
-        .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 2,
-        .header = "CC"};
-    return info;
+PacketInfo PacketCC::getPacketInfo() const{
+    return PacketInfo::CreateInfo("CC", 2);
 }
 
 void PacketCC::handlePacket(AreaData *area, AOClient &client) const{

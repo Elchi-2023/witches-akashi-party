@@ -74,20 +74,20 @@ void Server::start()
     const QHostAddress bind_addr = bind_ip == "all" ? QHostAddress::Any : QHostAddress(bind_ip);
 
     if (bind_addr != QHostAddress::Any && bind_addr.protocol() == QAbstractSocket::NetworkLayerProtocol::UnknownNetworkLayerProtocol)
-        qDebug() << "[W][AKASHI]: " << bind_ip << "is an invalid IP address to listen on! Server not starting, check your config.";
+        qDebug() << "[W][WAP-AKASHI]: " << bind_ip << "is an invalid IP address to listen on! Server not starting, check your config.";
 
     server = new QWebSocketServer("Akashi", QWebSocketServer::NonSecureMode, this);
     if (server->listen(bind_addr, m_port)){
         connect(server, &QWebSocketServer::newConnection, this, &Server::clientConnected);
-        qInfo().noquote() << "[I][AKASHI][Socket]: Server listening on"  << (server->serverAddress() == QHostAddress::Any ? "(ALL of)" : server->serverAddress().toString()) << server->serverPort();
+        qInfo().noquote() << "[I][WAP-AKASHI][Socket]: Server listening on"  << (server->serverAddress() == QHostAddress::Any ? "(ALL of)" : server->serverAddress().toString()) << server->serverPort();
         connect(server, &QWebSocketServer::acceptError, this, [=](QAbstractSocket::SocketError socketError){
-            qDebug() << "[D][AKASHI][Socket]: Server error:" << socketError << ":" << server->errorString();
+            qDebug() << "[D][WAP-AKASHI][Socket]: Server error:" << socketError << ":" << server->errorString();
         });connect(server, &QWebSocketServer::peerVerifyError, this, [=](const QSslError &error){
-            qDebug() << "[D][AKASHI][Socket]: Server peer error:" << error.errorString();
+            qDebug() << "[D][WAP-AKASHI][Socket]: Server peer error:" << error.errorString();
         });
     }
     else
-        qDebug() << "[D][AKASHI][Socket]: Server error:" << server->errorString();
+        qDebug() << "[D][WAP-AKASHI][Socket]: Server error:" << server->errorString();
 
     // Checks if any Discord webhooks are enabled.
     handleDiscordIntegration();
@@ -96,15 +96,15 @@ void Server::start()
     server_publisher = new ServerPublisher(server->serverPort(), &m_player_count, this);
 
     // Get characters from config file
-    qInfo() << "[I][AKASHI]: Registering Characters..";
+    qInfo() << "[I][WAP-AKASHI]: Registering Characters..";
     m_characters = ConfigManager::characterlistVerbose();
 
     // Get backgrounds from config file
-    qInfo() << "[I][AKASHI]: Registering Backgrounds..";
+    qInfo() << "[I][WAP-AKASHI]: Registering Backgrounds..";
     m_backgrounds = ConfigManager::backgrounds();
 
     // Build our music manager.
-    qInfo() << "[I][AKASHI]: Registering Music..";
+    qInfo() << "[I][WAP-AKASHI]: Registering Music..";
     MusicList l_musiclist = ConfigManager::musiclist();
     music_manager = new MusicManager(ConfigManager::cdnList(), l_musiclist, ConfigManager::ordered_songs(), this);
     connect(music_manager, &MusicManager::sendFMPacket, this, &Server::unicast);
@@ -114,7 +114,7 @@ void Server::start()
     m_music_list = music_manager->rootMusiclist();
 
     // Assembles the area list
-    qInfo() << "[I][AKASHI]: Registering & Assembles Areas..";
+    qInfo() << "[I][WAP-AKASHI]: Registering & Assembles Areas..";
     m_area_names = ConfigManager::sanitizedAreaNames();
     for (int i = 0; i < m_area_names.length(); i++) {
         QString area_name = QString::number(i) + ":" + m_area_names[i];
@@ -129,11 +129,11 @@ void Server::start()
     }
 
     // Loads the command help information. This is not stored inside the server.
-    qInfo() << "[I][AKASHI]: Registering & Assembles command-help (commandhelp.json)..";
+    qInfo() << "[I][WAP-AKASHI]: Registering & Assembles command-help (commandhelp.json)..";
     ConfigManager::loadCommandHelp();
 
     // Get IP bans
-    qInfo() << "[I][AKASHI]: Registering IPBans..";
+    qInfo() << "[I][WAP-AKASHI]: Registering IPBans..";
     m_ipban_list = ConfigManager::iprangeBans();
 
     // Rate-Limiter for IC-Chat
@@ -146,7 +146,7 @@ void Server::start()
     while (m_available_ids.size() != GetMaxPlayer)
         m_available_ids.push(m_clients_ids.insert(m_available_ids.size(), nullptr).key());
     std::reverse(m_available_ids.begin(), m_available_ids.end()); // reversing order from 0..1..2.. to like 100.. 99.. 98.. and so on..
-    qInfo() << "[I][AKASHI]: Software started.";
+    qInfo() << "[I][WAP-AKASHI]: Software started.";
 }
 
 QVector<QPointer<AOClient>> Server::getClients()
@@ -171,12 +171,12 @@ void Server::clientConnected(){
 
         socket->sendTextMessage(PacketFactory::createPacket("BD", {"Reason: " + Getban.second.reason + "\nBan ID: " + QString::number(Getban.second.id) + "\nUntil: " + ban_duration})->toUtf8());
         socket->close(QWebSocketProtocol::CloseCodeNormal);
-        qInfo().noquote() << QString("[I][AKASHI][NET-BAN]: an client %1 attempting to connecting when the client are banned by ipids for %2, rejected.").arg(AOClient::calculateIpid(socket->peerAddress()), ban_duration);
+        qInfo().noquote() << QString("[I][WAP-AKASHI][NET-BAN]: an client %1 attempting to connecting when the client are banned by ipids for %2, rejected.").arg(AOClient::calculateIpid(socket->peerAddress()), ban_duration);
     }
     else if (isIPBanned(parseToIPv4(socket->peerAddress()))){ // check if this client are in ban list by [IPs]..
         socket->sendTextMessage(PacketFactory::createPacket("BD", {"Your IP has been banned by a moderator."})->toUtf8());
         socket->close();
-        qInfo().noquote() << QString("[I][AKASHI][NET-BAN]: an client %1 attempting to connecting when the client are banned by ip-range, rejected.").arg(AOClient::calculateIpid(parseToIPv4(socket->peerAddress())));
+        qInfo().noquote() << QString("[I][WAP-AKASHI][NET-BAN]: an client %1 attempting to connecting when the client are banned by ip-range, rejected.").arg(AOClient::calculateIpid(parseToIPv4(socket->peerAddress())));
     }
     else{ // otherwise.. client is about to joined..
         NetworkSocket *l_socket = new NetworkSocket(socket, socket);
@@ -196,14 +196,14 @@ void Server::clientConnected(){
             /* > connecting the client to signals < */
             connect(l_socket, &NetworkSocket::handlePacket, client, &AOClient::handlePacket);
 
-            /* === [Devs notes] ===
+            /* === [akashi devs notes] ===
              * This is the infamous workaround for tsuserver4.
              * It should disable fantacrypt completely in any client 2.4.3 or newer
-             * ==================== */
+             * =========================== */
             client->sendPacket(PacketFactory::createPacket("decryptor", {"NOENCRYPT"}));
             hookupAOClient(client);
 #ifdef NET_DEBUG
-            qInfo().noquote() << QString("[I][AKASHI][NET-CLIENT]: %1 connected and registered as ID %2.").arg(client->m_ipid, QString::number(client->clientId()));
+            qInfo().noquote() << QString("[I][WAP-AKASHI][NET-CLIENT]: %1 connected and registered as ID %2.").arg(client->m_ipid, QString::number(client->clientId()));
 #endif
         }
     }
@@ -306,7 +306,7 @@ bool Server::RegisterClienthwid(const int c_index){
 }
 
 void Server::reloadSettings(){
-    qInfo() << "[AKASHI]: reloading settings..";
+    qInfo() << "[WAP-AKASHI]: reloading settings..";
     broadcast(PacketCT::CreateMessageS("internal reloading settings.."), AOClient::AuthenticateType::ROOT);
     ConfigManager::reloadSettings();
     ConfigManager::loadCommandHelp();
@@ -318,17 +318,17 @@ void Server::reloadSettings(){
     acl_roles_handler->loadFile("config/acl_roles.ini");
     command_extension_collection->loadFile("config/command_extensions.ini");
     // === Voice ===
-    qInfo() << "[AKASHI]: reloading voice parameters..";
+    qInfo() << "[WAP-AKASHI]: reloading voice parameters..";
     broadcast(PacketCT::CreateMessageS("internal reloading voice parameters.."), AOClient::AuthenticateType::ROOT);
     static const QVariantList VCParams = ConfigManager::GetVoiceParameters();
     broadcast(PacketFactory::createPacket("VS_CAPS", {QString::number(VCParams[ConfigManager::VoiceParameter::ENABLE].toBool()), QString::number(VCParams[ConfigManager::VoiceParameter::PTT].toBool()), VCParams[ConfigManager::VoiceParameter::MAXPEERSAREA].toString(), VCParams[ConfigManager::VoiceParameter::VCODEC].toString(), VCParams[ConfigManager::VoiceParameter::VHZ].toString(), VCParams[ConfigManager::VoiceParameter::VFRAME_MS].toString(), VCParams[ConfigManager::VoiceParameter::MAXBYTES].toString()}));
     // === Data ===
-    qInfo() << "[AKASHI]: reloading data..";
+    qInfo() << "[WAP-AKASHI]: reloading data..";
     broadcast(PacketCT::CreateMessageS("internal reloading data.."), AOClient::AuthenticateType::ROOT);
     auto GetArea = ConfigManager::sanitizedAreaNames();
     if (m_area_names != GetArea){
         m_area_names = GetArea;
-        qInfo() << "[INTERNAL][AKASHI][RELOAD]: reloading areas..";
+        qInfo() << "[INTERNAL][WAP-AKASHI][RELOAD]: reloading areas..";
 
         Q_EMIT this->ReloadAreas(m_area_names); // update names of area by qstringlist[area-index]..
 
@@ -360,15 +360,15 @@ void Server::reloadSettings(){
         broadcast(PacketFactory::createPacket("FA", m_area_names));
         Q_EMIT this->ArupClient();
         broadcast(PacketCT::CreateMessageS("internal fetching the changes areas.."), AOClient::AuthenticateType::ROOT);
-        qInfo() << "[INTERNAL][AKASHI][RELOAD]: reloaded areas..";
+        qInfo() << "[INTERNAL][WAP-AKASHI][RELOAD]: reloaded areas..";
     }
     music_manager->reloadRequest();
     if (m_music_list != music_manager->rootMusiclist()){
         m_music_list = music_manager->rootMusiclist();
-        qInfo() << "[INTERNAL][AKASHI][RELOAD]: reloading musics..";
+        qInfo() << "[INTERNAL][WAP-AKASHI][RELOAD]: reloading musics..";
         for (auto area : m_areas)
             broadcast(PacketFactory::createPacket("FM", music_manager->musiclist(area->index())), area->index()); // based from the [/toggleroot]..
-        qInfo() << "[INTERNAL][AKASHI][RELOAD]: reloaded musics..";
+        qInfo() << "[INTERNAL][WAP-AKASHI][RELOAD]: reloaded musics..";
         broadcast(PacketCT::CreateMessageS("internal fetching the changes musics.."), AOClient::AuthenticateType::ROOT);
     }
     const QStringList GetChangedCharacters = ConfigManager::characterlist();
@@ -376,11 +376,11 @@ void Server::reloadSettings(){
         m_characters = GetChangedCharacters;
         broadcast(PacketCT::CreateMessageS("internal applying the changes characters.."), AOClient::AuthenticateType::ROOT);
         Q_EMIT this->Forcedcloseclients("The server characters now are updated.\nYou can re-joining the server.");
-        qInfo() << "[INTERNAL][AKASHI][RELOAD]: reloading characters..";
+        qInfo() << "[INTERNAL][WAP-AKASHI][RELOAD]: reloading characters..";
     }
     else
         broadcast(PacketCT::CreateMessageS("Server reloaded settings & data."), AOClient::AuthenticateType::ROOT);
-    qInfo() << "[AKASHI]: reloaded settings & data..";
+    qInfo() << "[WAP-AKASHI]: reloaded settings & data..";
 }
 
 void Server::broadcast(AOPacket *packet, int area_index)
@@ -605,7 +605,7 @@ int Server::getCharacterCount()
 }
 
 QString Server::getCharacterById(int f_chr_id){
-    return f_chr_id >= 0 && f_chr_id < m_characters.size() -1 ? m_characters[f_chr_id] : QString();
+    return f_chr_id >= 0 && f_chr_id < m_characters.size() ? m_characters[f_chr_id] : QString();
 }
 
 int Server::getCharID(QString char_name)

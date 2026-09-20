@@ -8,13 +8,8 @@ PacketPW::PacketPW(QStringList &contents) :
 {
 }
 
-PacketInfo PacketPW::getPacketInfo() const
-{
-    PacketInfo info{
-        .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 1,
-        .header = "PW"};
-    return info;
+PacketInfo PacketPW::getPacketInfo() const{
+    return PacketInfo::CreateInfo("RW", 1);
 }
 
 void PacketPW::handlePacket(AreaData *area, AOClient &client) const

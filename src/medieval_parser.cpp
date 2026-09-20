@@ -64,13 +64,13 @@ void MedievalParser::parseDataFile(){
                     }
 
                     if (!(datafile_valid = !word_replacements.isEmpty())) // set and check..
-                        qWarning() << "[W][AKASHI][Medieval]: word_replacements is empty after parsing; disabling medieval mode"; // send the warning if <true>..
+                        qWarning() << "[W][WAP-AKASHI][Medieval]: word_replacements is empty after parsing; disabling medieval mode"; // send the warning if <true>..
                 }
                 else
-                    qWarning() << "[W][AKASHI][Medieval]: appended_words is empty after parsing; disabling medieval mode";
+                    qWarning() << "[W][WAP-AKASHI][Medieval]: appended_words is empty after parsing; disabling medieval mode";
             }
             else
-                qWarning() << "[W][AKASHI][Medieval]: prepended_words is empty after parsing; disabling medieval mode";
+                qWarning() << "[W][WAP-AKASHI][Medieval]: prepended_words is empty after parsing; disabling medieval mode";
             break;
         default:
             qWarning() << "Unable to load Medieval Mode data file. The following error occurred: " + l_error.errorString();
@@ -79,7 +79,7 @@ void MedievalParser::parseDataFile(){
 
     }
     else
-        qWarning() << "[D][AKASHI][Medieval]: Could not open" << QFileInfo(l_datafile_json).absoluteFilePath() << "-" << l_datafile_json.errorString();
+        qWarning() << "[D][WAP-AKASHI][Medieval]: Could not open" << QFileInfo(l_datafile_json).absoluteFilePath() << "-" << l_datafile_json.errorString();
 }
 
 QString MedievalParser::getRandomPre(){

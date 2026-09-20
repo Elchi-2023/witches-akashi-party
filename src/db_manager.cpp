@@ -167,7 +167,7 @@ QList<DBManager::BanInfo> DBManager::getRecentBans()
     return return_list;
 }
 
-void DBManager::addBan(const BanInfo &ban)
+int DBManager::addBan(const BanInfo &ban)
 {
     QSqlQuery query;
     query.prepare("INSERT INTO BANS(IPID, HDID, IP, TIME, REASON, DURATION, MODERATOR, \"M-TYPE\") VALUES(?, ?, ?, ?, ?, ?, ?, ?)");
@@ -179,8 +179,10 @@ void DBManager::addBan(const BanInfo &ban)
     query.addBindValue(ban.duration);
     query.addBindValue(ban.moderator);
     query.addBindValue(ban.m_type);
-    if (!query.exec())
+    const bool executed = query.exec();
+    if (!executed)
         qDebug() << "SQL Error:" << query.lastError().text();
+    return executed ? query.lastInsertId().toInt() : -1;
 }
 
 bool DBManager::invalidateBan(int id)
@@ -190,7 +192,7 @@ bool DBManager::invalidateBan(int id)
     ban_exists.addBindValue(id);
     ban_exists.exec();
 
-    if (!ban_exists.first()|| ban_exists.value(0).toInt() < 1)
+    if (!ban_exists.first())
         return false;
 
     QSqlQuery query;

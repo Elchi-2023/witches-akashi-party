@@ -25,35 +25,31 @@
 // This file is for commands under the roleplay category in aoclient.h
 // Be sure to register the command in the header before adding it here!
 
-void AOClient::cmdFlip(int argc, QStringList argv){
+void AOClient::cmdFlip(const int argc, const QStringList &argv){
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
-    sendServerMessageArea(QString("[%1] %2 filpped a coin and got %3.").arg(QString::number(clientId()), character().isEmpty() ? name() : character(), QStringList({"heads", "tails"})[AOClient::genRand(0, 2)]));
+    sendServerMessageArea(QString("[%1] %2 filpped a coin and got %3.").arg(QString::number(clientId()), character().isEmpty() ? name() : character(), QStringList({"heads", "tails"})[AOClient::genRand(0, 1)]));
 }
 
-void AOClient::cmdRoll(int argc, QStringList argv){
+void AOClient::cmdRoll(const int argc, const QStringList &argv){
     switch (argc){
     case 0:
         diceThrower(6, 1);
         break;
     case 1:
-        if (argv[0].toLower().contains(QRegularExpression("(\\d+)([+-])(\\d+)d(\\d+)"))){ // check if modifier persent, like "10+2d6", "3-1d20"..
-            const auto Matcher = QRegularExpression("(\\d+)([+-])(\\d+)d(\\d+)").match(argv[0].toLower());
-            diceThrower(Matcher.captured(4).toInt(), Matcher.captured(1).toInt(), Matcher.captured(2) == "+" ? Matcher.captured(3).toInt() : -Matcher.captured(3).toInt());
+        if (argv[0].toLower().contains(QRegularExpression(R"((\d*)d(\d+)([+-]\d+)?)"))){
+            const auto Matcher = QRegularExpression(R"((\d*)d(\d+)([+-]\d+)?)").match(argv[0].toLower());
+            diceThrower(Matcher.captured(2).toInt(), Matcher.captured(1).isEmpty() ? 1 : Matcher.captured(1).toInt(), Matcher.captured(3).isEmpty() ? 0 : Matcher.captured(3).toInt(), false);
         }
-        else if (argv[0].toLower().contains(QRegularExpression("(\\d+)d(\\d+)"))){ // plain XdY mostly like "2d6", "1d20"..
-            const auto Matcher = QRegularExpression("(\\d+)d(\\d+)").match(argv[0].toLower());
-            diceThrower(Matcher.captured(2).toInt(), Matcher.captured(1).toInt());
+        else if (argv[0].toLower().contains(QRegularExpression(R"(d(\d+))"))){
+            const auto Matcher = QRegularExpression(R"(d(\d+))").match(argv[0].toLower());
+            diceThrower(Matcher.captured(1).toInt(), 1, 0, false);
         }
-        else if (argv[0].toLower().contains(QRegularExpression("d(\\d+)"))){ // single die be like "d6", "d20"..
-            const auto Matcher = QRegularExpression("d(\\d+)").match(argv[0].toLower());
-            diceThrower(Matcher.captured(1).toInt(), 1);
-        }
-        else{
+        else {
             bool sides_ok;
             const int sides = argv[0].toInt(&sides_ok);
-            sides_ok ? diceThrower(sides, 1) : sendServerMessage("Invalid dice param.");
+            sides_ok ? diceThrower(sides, 1, 0, false) : sendServerMessage("Invalid dice param.");
         }
         break;
     default:
@@ -68,39 +64,35 @@ void AOClient::cmdRoll(int argc, QStringList argv){
     }
 }
 
-void AOClient::cmdRollA(int argc, QStringList argv)
+void AOClient::cmdRollA(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
 
     const QString l_dice_name = argv.join(" ");
-
-    if (ConfigManager::diceFaces(l_dice_name).isEmpty()) {
+    const QStringList l_dice = ConfigManager::diceFaces(l_dice_name);
+    if (l_dice.isEmpty()) {
         qWarning() << "Unknown dice.";
         sendServerMessage("Unknown dice.");
     }
     else
-        sendServerMessageArea("[" + QString::number(clientId()) + "] " + QString(character().isEmpty() ? name() : character()) + " rolled from the \"" + l_dice_name + "\" set and got: " + ConfigManager::diceFaces(l_dice_name).at((genRand(0, ConfigManager::diceFaces(l_dice_name).size() - 1))));
+        sendServerMessageArea(QString("%1 rolled from the \"%2\" set and got: %3").arg(NameWId(this, true), l_dice_name, l_dice.at((genRand(0, l_dice.size() - 1)))));
 }
 
-void AOClient::cmdRollP(int argc, QStringList argv){
+void AOClient::cmdRollP(const int argc, const QStringList &argv){
     switch (argc){
     case 0:
         diceThrower(6, 1, 0, true);
         break;
     case 1:
-        if (argv[0].toLower().contains(QRegularExpression("(\\d+)([+-])(\\d+)d(\\d+)"))){ // check if modifier persent, like "10+2d6", "3-1d20"..
-            const auto Matcher = QRegularExpression("(\\d+)([+-])(\\d+)d(\\d+)").match(argv[0].toLower());
-            diceThrower(Matcher.captured(4).toInt(), Matcher.captured(1).toInt(), Matcher.captured(2) == "+" ? Matcher.captured(3).toInt() : -Matcher.captured(3).toInt(), true);
+        if (argv[0].toLower().contains(QRegularExpression(R"((\d*)d(\d+)([+-]\d+)?)"))){
+            const auto Matcher = QRegularExpression(R"((\d*)d(\d+)([+-]\d+)?)").match(argv[0].toLower());
+            diceThrower(Matcher.captured(2).toInt(), Matcher.captured(1).isEmpty() ? 1 : Matcher.captured(1).toInt(), Matcher.captured(3).isEmpty() ? 0 : Matcher.captured(3).toInt(), true);
         }
-        else if (argv[0].toLower().contains(QRegularExpression("(\\d+)d(\\d+)"))){ // plain XdY mostly like "2d6", "1d20"..
-            const auto Matcher = QRegularExpression("(\\d+)d(\\d+)").match(argv[0].toLower());
-            diceThrower(Matcher.captured(2).toInt(), Matcher.captured(1).toInt(), 0 , true);
-        }
-        else if (argv[0].toLower().contains(QRegularExpression("d(\\d+)"))){ // single die be like "d6", "d20"..
-            const auto Matcher = QRegularExpression("d(\\d+)").match(argv[0].toLower());
+        else if (argv[0].toLower().contains(QRegularExpression(R"(d(\d+))"))){
+            const auto Matcher = QRegularExpression(R"(d(\d+))").match(argv[0].toLower());
             diceThrower(Matcher.captured(1).toInt(), 1, 0, true);
         }
-        else{
+        else {
             bool sides_ok;
             const int sides = argv[0].toInt(&sides_ok);
             sides_ok ? diceThrower(sides, 1, 0, true) : sendServerMessage("Invalid dice param.");
@@ -118,7 +110,7 @@ void AOClient::cmdRollP(int argc, QStringList argv){
     }
 }
 
-void AOClient::cmdWheel(int argc, QStringList argv)
+void AOClient::cmdWheel(const int argc, const QStringList &argv)
 {
     switch (argc) {
     case 0:
@@ -138,7 +130,7 @@ void AOClient::cmdWheel(int argc, QStringList argv)
     }
 }
 
-void AOClient::cmdWheelP(int argc, QStringList argv)
+void AOClient::cmdWheelP(const int argc, const QStringList &argv)
 {
     switch (argc) {
     case 0:
@@ -156,7 +148,7 @@ void AOClient::cmdWheelP(int argc, QStringList argv)
     }
 }
 
-void AOClient::cmdRps(int argc, QStringList argv){
+void AOClient::cmdRps(const int argc, const QStringList &argv){
     auto l_area = server->getAreaById(areaId());
     if (l_area.isNull())
         return;
@@ -201,7 +193,7 @@ void AOClient::cmdRps(int argc, QStringList argv){
 
                     // Announce results
                     sendServerMessageArea(QString("%1 (%2) ⚔️ (%4) %3.").arg(fighter_name, choiceToEmote[l_area->GetRPSFighter().second], user_challenger, choiceToEmote[l_choice]), "[Rock-Paper-Scissors]");
-                    sendServerMessage(l_area->GetRPSFighter().second == l_choice ? "👔 It's a tie 👔" : QString("👑 %1 winner(s) 👑").arg((l_choice == "rock" && l_area->GetRPSFighter().second == "scissors") || (l_choice == "paper" && l_area->GetRPSFighter().second == "rock") || (l_choice == "scissors" && l_area->GetRPSFighter().second == "paper") ? user_challenger : fighter_name));
+                    sendServerMessageArea(l_area->GetRPSFighter().second == l_choice ? "👔 It's a tie 👔" : QString("👑 %1 winner(s) 👑").arg((l_choice == "rock" && l_area->GetRPSFighter().second == "scissors") || (l_choice == "paper" && l_area->GetRPSFighter().second == "rock") || (l_choice == "scissors" && l_area->GetRPSFighter().second == "paper") ? user_challenger : fighter_name), "[Rock-Paper-Scissors]");
                     l_area->SetRPSFighter(-1);
                 }
                 break;
@@ -217,7 +209,7 @@ void AOClient::cmdRps(int argc, QStringList argv){
     }
 }
 
-void AOClient::cmdTimer(int argc, QStringList argv){
+void AOClient::cmdTimer(const int argc, const QStringList &argv){
     Q_UNUSED(argc)
 
     auto l_area = server->getAreaById(areaId());
@@ -310,7 +302,7 @@ void AOClient::cmdTimer(int argc, QStringList argv){
     }
 }
 
-void AOClient::cmdNoteCard(int argc, QStringList argv){
+void AOClient::cmdNoteCard(const int argc, const QStringList &argv){
     Q_UNUSED(argc);
 
     auto l_area = server->getAreaById(areaId());
@@ -319,10 +311,10 @@ void AOClient::cmdNoteCard(int argc, QStringList argv){
 
     QString l_notecard = argv.join(" ");
     l_area->addNotecard(QString(character().isEmpty() ? "[Spectator]" : character()), l_notecard);
-    sendServerMessageArea("[" + QString::number(clientId()) + "] " + QString(character().isEmpty() ? "[Spectator]" : character()) + " wrote a note card.");
+    sendServerMessageArea(AOClient::NameWId(this) + " wrote a note card.");
 }
 
-void AOClient::cmdNoteCardClear(int argc, QStringList argv)
+void AOClient::cmdNoteCardClear(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
     Q_UNUSED(argv);
@@ -335,7 +327,7 @@ void AOClient::cmdNoteCardClear(int argc, QStringList argv)
         sendServerMessageArea("[" + QString::number(clientId()) + "] " + QString(character().isEmpty() ? "[Spectator]" : character()) + " erased their note card.");
 }
 
-void AOClient::cmdNoteCardReveal(int argc, QStringList argv)
+void AOClient::cmdNoteCardReveal(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
     Q_UNUSED(argv);
@@ -346,26 +338,22 @@ void AOClient::cmdNoteCardReveal(int argc, QStringList argv)
 
     const QStringList l_notecards = l_area->getNotecards();
 
-    if (l_notecards.isEmpty())
-        sendServerMessage("There are no cards to reveal in this area.");
-    else
-        sendServerMessageArea("Note cards have been revealed.\n · " + l_notecards.join("\n · "));
+    l_notecards.isEmpty() ? sendServerMessage("There are no cards to reveal in this area.") : sendServerMessageArea("Note cards have been revealed.\n · " + l_notecards.join("\n · "));
 }
 
-void AOClient::cmd8Ball(int argc, QStringList argv){
+void AOClient::cmd8Ball(const int argc, const QStringList &argv){
     Q_UNUSED(argc);
 
-    if (ConfigManager::magic8BallAnswers().isEmpty()) {
+    const QStringList current_8ball = ConfigManager::magic8BallAnswers();
+    if (current_8ball.isEmpty()) {
         qWarning().noquote().nospace() << "An client id " << clientId() << "tried to using /8ball but 8ball.txt is empty!";
         sendServerMessage("8ball are unavailable due of 8ball-list (aka 8ball.txt) empty.");
     }
-    else{
-        const QString l_sender_message = argv.join(" ");
-        sendServerMessageArea("[" + QString::number(clientId()) + "] " + QString(character().isEmpty() ? name() : character()) + " asked the magic 8-ball, \"" + l_sender_message + "\" and the answer is: " + ConfigManager::magic8BallAnswers().at((genRand(1, ConfigManager::magic8BallAnswers().size() - 1))));
-    }
+    else
+        sendServerMessageArea(QString("%1 asked the magic 80ball, \"%2\" and the answer is: %3").arg(AOClient::NameWId(this), argv.join(" "), current_8ball.at(genRand(0, current_8ball.size() - 1))));
 }
 
-void AOClient::cmdSubTheme(int argc, QStringList argv)
+void AOClient::cmdSubTheme(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
 

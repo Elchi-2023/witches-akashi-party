@@ -98,14 +98,24 @@ bool MusicManager::validateSong(QString f_song_name, QStringList f_approved_cdns
     return true;
 }
 
-int MusicManager::ValidataSong(const QUrl Url, const QStringList Approved_cdns){
-    if (Url.isLocalFile())
-        return 0;
-    else if (!Url.isValid())
-        return -1;
-    else if (!Approved_cdns.contains(Url.host()))
-        return -2;
-    return 1;
+MusicManager::MusicType MusicManager::ValidataSong(const QString &Url, const QStringList &Approved_cdns){
+    static const QUrl url_check = QUrl::fromUserInput(Url, ".", QUrl::UserInputResolutionOption::AssumeLocalFile);
+    if (url_check.isValid()){
+        if (url_check.isLocalFile())
+            return MusicManager::MusicType::LOCAL;
+
+        if (Approved_cdns.isEmpty())
+            return MusicManager::MusicType::VALID;
+        else{
+            for (auto l_cdn : Approved_cdns){
+                if (l_cdn.trimmed().isEmpty() || QUrl::fromUserInput(l_cdn.trimmed()).host().compare(url_check.host(), Qt::CaseInsensitive) != 0)
+                    continue;
+                return MusicManager::MusicType::VALID;
+            }
+            return MusicManager::MusicType::BLACKLISTURL;
+        }
+    }
+    return MusicManager::MusicType::INVALID;
 }
 
 bool MusicManager::RegisterCustomMusic(const QPair<QString, QString> &songdata, const int duration, const int areaId){

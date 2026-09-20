@@ -252,6 +252,12 @@ public:
     QList<int> owners() const;
 
     /**
+     * @brief (un)registering a client to the list of owners for the area.
+     * @param c_id The target client ID of the client who should be (un)registered of owners area.
+     * @param remove true if unregistering target, otherwise registering target.
+     */
+    bool RegisterOwner(const int c_id, const bool remove = false);
+    /**
      * @brief Adds a client to the list of onwers for the area.
      *
      * @details Also automatically adds them to the list of invited people.
@@ -260,7 +266,7 @@ public:
      *
      * @see #m_owners
      */
-    void addOwner(int f_clientId);
+    bool addOwner(int f_clientId);
 
     /**
      * @brief Removes the target client from the list of owners.
@@ -1087,7 +1093,14 @@ public:
      *
      * @return gives client id if success, -1 otherwise.
      */
-    int get_pair_sync_clientID(const int client_id, const bool target = true);
+    int GetPairSyncID(const int client_id, const bool target = true);
+
+    /**
+     * @brief Get targets of client from specifc of /pair sync list.
+     * @param tclientId Client id, must not < 0 or valid.
+     * @return gives clients id if success, otherwise empty.
+     */
+    QVector<int> GetPairSyncIDList(const int tclientId);
 
     /**
      * @brief [RPS] Set the fighter.

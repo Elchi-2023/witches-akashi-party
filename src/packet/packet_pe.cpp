@@ -9,13 +9,8 @@ PacketPE::PacketPE(QStringList &contents) :
 {
 }
 
-PacketInfo PacketPE::getPacketInfo() const
-{
-    PacketInfo info{
-        .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 3,
-        .header = "PE"};
-    return info;
+PacketInfo PacketPE::getPacketInfo() const{
+    return PacketInfo::CreateInfo("PE", 3);
 }
 
 void PacketPE::handlePacket(AreaData *area, AOClient &client) const

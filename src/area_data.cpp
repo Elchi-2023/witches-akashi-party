@@ -63,7 +63,7 @@ AreaData::AreaData(QString p_name, int p_index, MusicManager *p_music_manager = 
     m_shownameAllowed = areas_ini->value("shownames_allowed", "true").toBool();
     m_ignoreBgList = areas_ini->value("ignore_bglist", "false").toBool();
     m_jukebox = areas_ini->value("jukebox_enabled", "false").toBool();
-    m_playcmd = areas_ini->value("playcmd_enabled", "false").toBool();
+    m_playcmd = areas_ini->value("playcmd_enabled", true).toBool();
     m_can_send_wtce = areas_ini->value("wtce_enabled", "true").toBool();
     m_can_use_shouts = areas_ini->value("shouts_enabled", "true").toBool();
     m_can_use_voicechat = areas_ini->value("voice_enable", "true").toBool();
@@ -114,7 +114,7 @@ void AreaData::addClient(const int f_userId, const int f_charId){
     emit sendAreaPacketClient(PacketMC::CreateMusic(m_currentAmbience, -1, ConfigManager::serverName(), true, 1), f_userId);
     // The name will never be shown as we are using a spectator ID. Still nice for people who network sniff.
     // We auto-loop this so you'll never sit in silence unless wanted.
-    emit sendAreaPacketClient(PacketMC::CreateMusic(m_currentAmbience, -1, ConfigManager::serverName(), m_music_loop && QFileInfo(m_currentMusic).fileName().compare("~stop.mp3") != 0), f_userId);
+    emit sendAreaPacketClient(PacketMC::CreateMusic(m_currentMusic, -1, ConfigManager::serverName(), m_music_loop && QFileInfo(m_currentMusic).fileName().compare("~stop.mp3") != 0), f_userId);
 }
 
 void AreaData::removeClient(const int f_userId){
@@ -132,6 +132,7 @@ void AreaData::removeClient(const int f_userId){
     }
 
     if (RegisterVoice(f_userId, true)){
+        emit sendAreaPacketClient(PacketFactory::createPacket("VS_LEAVE", {QString::number(f_userId)}), f_userId);
         const auto current_user = m_voice_peers.keys();
         for (const int peerid : current_user){
             emit sendAreaPacketClient(PacketFactory::createPacket("VS_LEAVE", {QString::number(f_userId)}), peerid);
@@ -145,10 +146,36 @@ QList<int> AreaData::owners() const
     return m_owners;
 }
 
-void AreaData::addOwner(int f_clientId)
-{
+bool AreaData::RegisterOwner(const int c_id, const bool remove){
+    if (remove && m_owners.contains(c_id)){
+        m_owners.removeAll(c_id);
+        m_invited.removeAll(c_id);
+        if (m_owners.isEmpty() && m_locked > AreaData::FREE)
+            unlock();
+        return true;
+    }
+    else if (!remove){
+        if (m_owners.contains(c_id) && !m_invited.contains(c_id))
+            m_invited.append(c_id);
+        else if (!m_owners.contains(c_id)){
+            m_owners.append(c_id);
+            if (!m_invited.contains(c_id))
+                m_invited.append(c_id);
+            return true;
+        }
+    }
+
+    return false;
+}
+bool AreaData::addOwner(int f_clientId){
+    if (m_owners.contains(f_clientId)){
+        if (!m_invited.contains(f_clientId))
+            m_invited.append(f_clientId);
+        return false;
+    }
     m_owners.append(f_clientId);
     m_invited.append(f_clientId);
+    return true;
 }
 
 bool AreaData::removeOwner(int f_clientId)
@@ -165,7 +192,7 @@ bool AreaData::removeOwner(int f_clientId)
 }
 
 void AreaData::RemoveDClient(const int id){
-    removeOwner(id);
+    RegisterOwner(id, true);
     if (m_joined_ids.isEmpty() && m_locked > AreaData::FREE)
         unlock();
 }
@@ -273,8 +300,19 @@ QHash<int, int> AreaData::PlayerCharacterMap() const{
 
 bool AreaData::changeCharacter(const int f_clientid, const int f_target_charid){
     const int targetCID = qMax(-1, f_target_charid);
-    if (!m_joined_ids.contains(f_clientid) || (targetCID > -1 && m_joined_ids.values().contains(targetCID)))
+    if (!m_joined_ids.contains(f_clientid))
         return false;
+
+    switch (targetCID){
+    case -1:
+        if (m_joined_ids[f_clientid] != -1)
+            m_joined_ids[f_clientid] = -1;
+        return true;
+    default:
+        if (f_target_charid != m_joined_ids[f_clientid] && !m_joined_ids.values().contains(targetCID))
+            m_joined_ids[f_clientid] = targetCID;
+        break;
+    }
 
     m_joined_ids[f_clientid] = targetCID;
     return true;
@@ -405,7 +443,7 @@ bool AreaData::removePairSync(const int self, const int other){
         return false;
 
     if (m_clients_pairing_sync.contains(self)){
-        if (other >= 0 && checkPairSync(other) && get_pair_sync_clientID(self) == self)
+        if (other >= 0 && checkPairSync(other) && GetPairSyncID(self) == self)
             m_clients_pairing_sync.remove(other);
         m_clients_pairing_sync.remove(self);
         return true;
@@ -431,8 +469,14 @@ QMap<int, int> AreaData::getPairSyncList(){
     return m_clients_pairing_sync;
 }
 
-int AreaData::get_pair_sync_clientID(const int client_id, const bool target){
+int AreaData::GetPairSyncID(const int client_id, const bool target){
     return target ? m_clients_pairing_sync.value(client_id, -1) : m_clients_pairing_sync.key(client_id, -1);
+}
+QVector<int> AreaData::GetPairSyncIDList(const int tclientId){
+    QVector<int> targetID;
+    if (tclientId >= 0)
+        targetID = QVector<int>::fromList(m_clients_pairing_sync.keys(tclientId));
+    return targetID;
 }
 
 void AreaData::toggleMusic()
@@ -786,7 +830,7 @@ QString AreaData::addJukeboxSong(QString f_song)
             return "Song added to Jukebox.";
         }
         else{
-            qInfo() << QString("[I][AKASHI][Jukebox]: someone attempting an nill durations (%1) songs to jukebox queues.").arg(l_song.first);
+            qInfo() << QString("[I][WAP-AKASHI][Jukebox]: someone attempting an nill durations (%1) songs to jukebox queues.").arg(l_song.first);
             return "Unable to add song. Duration shorter than 1.";
         }
     }
@@ -811,7 +855,7 @@ QString AreaData::addJukeboxSong(QString f_song, float f_duration){
             return "Song added to Jukebox.";
         }
         else{
-            qInfo() << QString("[I][AKASHI][Jukebox]: someone attempting an nill durations (%1) songs to jukebox queues.").arg(l_song.first);
+            qInfo() << QString("[I][WAP-AKASHI][Jukebox]: someone attempting an nill durations (%1) songs to jukebox queues.").arg(l_song.first);
             return "Unable to add song. Duration shorter than 1.";
         }
     }

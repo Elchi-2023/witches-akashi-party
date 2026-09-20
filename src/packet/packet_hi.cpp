@@ -11,20 +11,15 @@ PacketHI::PacketHI(QStringList &contents) :
 {
 }
 
-PacketInfo PacketHI::getPacketInfo() const
-{
-    PacketInfo info{
-        .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 1,
-        .header = "HI"};
-    return info;
+PacketInfo PacketHI::getPacketInfo() const{
+    return PacketInfo::CreateInfo("HI", 1);
 }
 
 void PacketHI::handlePacket(AreaData *area, AOClient &client) const
 {
     Q_UNUSED(area)
 
-    const QString incoming_hwid = m_content[0];
+    const QString incoming_hwid = m_content[0].trimmed();
     if (client.m_hwid.isEmpty()){ // check if this client are 'new'..
         if (incoming_hwid.isEmpty()) // reject an <empty> hwids..
             client.m_socket->close(QWebSocketProtocol::CloseCodeProtocolError, "A protocol error has been encountered.");
@@ -40,7 +35,7 @@ void PacketHI::handlePacket(AreaData *area, AOClient &client) const
                     client.m_socket->close();
                 }
                 else // check if client are reached of client-limts by they hdid..
-                    client.getServer()->RegisterClienthwid(client.clientId()) ? client.sendPacket("ID", {QString::number(client.clientId()), "akashi", QCoreApplication::applicationVersion()}) : client.m_socket->close();
+                    client.getServer()->RegisterClienthwid(client.clientId()) ? client.sendPacket("ID", {QString::number(client.clientId()), "WAP-akashi", QCoreApplication::applicationVersion()}) : client.m_socket->close();
             }
             else{
                 auto ld_timeout = client.getServer()->lockdown_timeout;

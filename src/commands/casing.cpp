@@ -25,7 +25,7 @@
 // This file is for commands under the casing category in aoclient.h
 // Be sure to register the command in the header before adding it here!
 
-void AOClient::cmdDoc(int argc, QStringList argv){
+void AOClient::cmdDoc(const int argc, const QStringList &argv){
     auto l_area = server->getAreaById(areaId());
     if (l_area.isNull())
         return;
@@ -37,7 +37,7 @@ void AOClient::cmdDoc(int argc, QStringList argv){
     }
 }
 
-void AOClient::cmdClearDoc(int argc, QStringList argv){
+void AOClient::cmdClearDoc(const int argc, const QStringList &argv){
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
@@ -52,7 +52,7 @@ void AOClient::cmdClearDoc(int argc, QStringList argv){
     }
 }
 
-void AOClient::cmdEvidenceMod(int argc, QStringList argv){
+void AOClient::cmdEvidenceMod(const int argc, const QStringList &argv){
     Q_UNUSED(argc);
 
     auto l_area = server->getAreaById(areaId());
@@ -70,7 +70,7 @@ void AOClient::cmdEvidenceMod(int argc, QStringList argv){
         sendServerMessage("Invalid evidence mod.");
 }
 
-void AOClient::cmdEvidence_Swap(int argc, QStringList argv){
+void AOClient::cmdEvidence_Swap(const int argc, const QStringList &argv){
     Q_UNUSED(argc);
 
     auto l_area = server->getAreaById(areaId());
@@ -105,7 +105,7 @@ void AOClient::cmdEvidence_Swap(int argc, QStringList argv){
     }
 }
 
-void AOClient::cmdTestify(int argc, QStringList argv){
+void AOClient::cmdTestify(const int argc, const QStringList &argv){
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
@@ -124,7 +124,7 @@ void AOClient::cmdTestify(int argc, QStringList argv){
     }
 }
 
-void AOClient::cmdExamine(int argc, QStringList argv){
+void AOClient::cmdExamine(const int argc, const QStringList &argv){
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
@@ -144,7 +144,7 @@ void AOClient::cmdExamine(int argc, QStringList argv){
     }
 }
 
-void AOClient::cmdTestimony(int argc, QStringList argv){
+void AOClient::cmdTestimony(const int argc, const QStringList &argv){
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
@@ -172,7 +172,7 @@ void AOClient::cmdTestimony(int argc, QStringList argv){
     }
 }
 
-void AOClient::cmdDeleteStatement(int argc, QStringList argv)
+void AOClient::cmdDeleteStatement(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
     Q_UNUSED(argv);
@@ -190,7 +190,7 @@ void AOClient::cmdDeleteStatement(int argc, QStringList argv)
     }
 }
 
-void AOClient::cmdUpdateStatement(int argc, QStringList argv)
+void AOClient::cmdUpdateStatement(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
     Q_UNUSED(argv);
@@ -199,7 +199,7 @@ void AOClient::cmdUpdateStatement(int argc, QStringList argv)
     sendServerMessage("The next IC-Message will replace the currently selected testimony line.");
 }
 
-void AOClient::cmdPauseTestimony(int argc, QStringList argv)
+void AOClient::cmdPauseTestimony(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
     Q_UNUSED(argv);
@@ -213,7 +213,7 @@ void AOClient::cmdPauseTestimony(int argc, QStringList argv)
     sendServerMessage("Testimony has been stopped. Use /examine to begin cross-examination.");
 }
 
-void AOClient::cmdAddStatement(int argc, QStringList argv)
+void AOClient::cmdAddStatement(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
     Q_UNUSED(argv);
@@ -226,7 +226,7 @@ void AOClient::cmdAddStatement(int argc, QStringList argv)
         sendServerMessage("Unable to add anymore statements. Please remove any unused ones.");
 }
 
-void AOClient::cmdSaveTestimony(int argc, QStringList argv){
+void AOClient::cmdSaveTestimony(const int argc, const QStringList &argv){
     Q_UNUSED(argc);
 
     if (checkPermission(ACLRole::SAVETEST) || m_testimony_saving){
@@ -262,7 +262,7 @@ void AOClient::cmdSaveTestimony(int argc, QStringList argv){
         sendServerMessage("You don't have permission to save a testimony. Please contact a moderator for permission.");
 }
 
-void AOClient::cmdLoadTestimony(int argc, QStringList argv)
+void AOClient::cmdLoadTestimony(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
 

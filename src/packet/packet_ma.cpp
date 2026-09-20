@@ -11,13 +11,8 @@ PacketMA::PacketMA(QStringList &contents) :
 {
 }
 
-PacketInfo PacketMA::getPacketInfo() const
-{
-    PacketInfo info{
-        .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 3,
-        .header = "MA"};
-    return info;
+PacketInfo PacketMA::getPacketInfo() const{
+    return PacketInfo::CreateInfo("MA", 3);
 }
 
 void PacketMA::handlePacket(AreaData *area, AOClient &client) const

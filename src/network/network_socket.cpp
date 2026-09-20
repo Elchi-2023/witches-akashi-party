@@ -65,6 +65,7 @@ void NetworkSocket::handleMessage(QString f_data)
 
     if (l_data.toUtf8().size() > 30720) {
         m_client_socket->close(QWebSocketProtocol::CloseCodeTooMuchData);
+        return;
     }
 
     QStringList l_all_packets = l_data.split("%");
@@ -78,7 +79,7 @@ void NetworkSocket::handleMessage(QString f_data)
     for (const QString &l_single_packet : qAsConst(l_all_packets)) {
         AOPacket *l_packet = PacketFactory::createPacket(l_single_packet);
         if (!l_packet) {
-            qDebug() << "[AKASHI][NET-Packet]: Unimplemented packet: " << l_single_packet;
+            qDebug() << "[WAP-AKASHI][NET-Packet]: Unimplemented packet: " << l_single_packet;
             continue;
         }
 

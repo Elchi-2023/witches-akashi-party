@@ -109,12 +109,13 @@ ACLRole::Permissions ACLRole::getPermissions() const
     return m_permissions;
 }
 
-bool ACLRole::checkPermission(Permission f_permission) const
-{
-    if (f_permission == ACLRole::NONE) {
+bool ACLRole::checkPermission(Permission f_permission) const{
+    switch (f_permission){
+    case ACLRole::NONE:
         return true;
+    default:
+        return m_permissions.testFlag(f_permission);
     }
-    return m_permissions.testFlag(f_permission);
 }
 
 void ACLRole::setPermissions(ACLRole::Permissions f_permissions)
@@ -155,17 +156,8 @@ bool ACLRolesHandler::insertRole(QString f_id, ACLRole f_role)
     return true;
 }
 
-bool ACLRolesHandler::removeRole(QString f_id)
-{
-    f_id = f_id.toUpper();
-    if (readonly_roles.contains(f_id)) {
-        return false;
-    }
-    else if (!m_roles.contains(f_id)) {
-        return false;
-    }
-    m_roles.remove(f_id);
-    return true;
+bool ACLRolesHandler::removeRole(QString f_id){
+    return readonly_roles.contains(f_id.toUpper()) ? false : m_roles.remove(f_id) > 0;
 }
 
 void ACLRolesHandler::clearRoles()

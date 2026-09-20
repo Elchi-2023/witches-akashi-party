@@ -9,17 +9,11 @@ PacketDE::PacketDE(QStringList &contents) :
 {
 }
 
-PacketInfo PacketDE::getPacketInfo() const
-{
-    PacketInfo info{
-        .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 1,
-        .header = "DE"};
-    return info;
+PacketInfo PacketDE::getPacketInfo() const{
+    return PacketInfo::CreateInfo("DE", 1);
 }
 
-void PacketDE::handlePacket(AreaData *area, AOClient &client) const
-{
+void PacketDE::handlePacket(AreaData *area, AOClient &client) const{
     if (client.checkEvidenceAccess(area)){
         bool isIndex;
         const int Index = m_content[0].toInt(&isIndex);

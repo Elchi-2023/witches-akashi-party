@@ -54,7 +54,7 @@ public:
         QVector<ACLRole::Permission> acl_permissions; //!< The permissions necessary to be able to run the command. @see ACLRole::Permission.
         int minArgs;                                  //!< The minimum mandatory arguments needed for the command to function.
         QString category;                             //!< The category for the command.
-        void (AOClient::*action)(int, QStringList);
+        void (AOClient::*action)(const int, const QStringList &);
     };
 
     /**
@@ -863,7 +863,7 @@ public:
      */
     static QString MessageToPigify(const QString Message);
 
-    static QString NameWId(const QPointer<AOClient> client);
+    static QString NameWId(const QPointer<AOClient> client, const bool include_ooc = false);
 
     QElapsedTimer &GetRateTick(const QString &Packet);
 
@@ -948,6 +948,20 @@ public slots:
      */
     void onAfkTimeout();
 
+    /**
+     * @brief A slot from PlayerStateObserver player update state.
+     * @param c_from The client_id from.
+     * @param type The type of param between (0: name, 1: character, 2: showname, 3: areaId)
+     * @param value The variant of value.
+     */
+    void sendPlayerStateUpdate(const int c_from, const int type, const QVariant &value);
+    /**
+     * @brief A slot from PlayerStateObserver player (un)registered state.
+     * @param c_from The client_id from.
+     * @param remove true if the client is unregistered, otherwise.. false if the client is registered.
+     */
+    void sendPlayerStateRegister(const int c_from, const bool remove);
+
 signals:
     /**
      * @brief This signal is emitted when the client has completed the participation handshake.
@@ -1030,7 +1044,7 @@ private:
      *
      * @iscommand
      */
-    void cmdLogin(int argc, QStringList argv);
+    void cmdLogin(const int argc, const QStringList &argv);
 
     /**
      * @brief Starts the authorisation type change from `"simple"` to `"advanced"`.
@@ -1039,7 +1053,7 @@ private:
      *
      * @iscommand
      */
-    void cmdChangeAuth(int argc, QStringList argv);
+    void cmdChangeAuth(const int argc, const QStringList &argv);
 
     /**
      * @brief Sets the root user's password.
@@ -1050,7 +1064,7 @@ private:
      *
      * @pre AOClient::cmdChangeAuth()
      */
-    void cmdSetRootPass(int argc, QStringList argv);
+    void cmdSetRootPass(const int argc, const QStringList &argv);
     /**
      * @brief Set/changes the root user's name.
      *
@@ -1060,7 +1074,7 @@ private:
      *
      * @pre AOClient::cmdChangeAuth()
      */
-    void cmdChangeRootName(int argc, QStringList argv);
+    void cmdChangeRootName(const int argc, const QStringList &argv);
 
     /**
      * @brief Adds a user to the moderators in `"advanced"` authorisation type.
@@ -1069,7 +1083,7 @@ private:
      *
      * @iscommand
      */
-    void cmdAddUser(int argc, QStringList argv);
+    void cmdAddUser(const int argc, const QStringList &argv);
 
     /**
      * @brief Removes a user from the moderators in `"advanced"` authorisation type.
@@ -1078,7 +1092,7 @@ private:
      *
      * @iscommand
      */
-    void cmdRemoveUser(int argc, QStringList argv);
+    void cmdRemoveUser(const int argc, const QStringList &argv);
 
     /**
      * @brief Lists the permission of a given user.
@@ -1089,7 +1103,7 @@ private:
      *
      * @iscommand
      */
-    void cmdListPerms(int argc, QStringList argv);
+    void cmdListPerms(const int argc, const QStringList &argv);
 
     /**
      * @brief Sets the role of the user.
@@ -1098,7 +1112,7 @@ private:
      *
      * @iscommand
      */
-    void cmdSetPerms(int argc, QStringList argv);
+    void cmdSetPerms(const int argc, const QStringList &argv);
 
     /**
      * @brief Removes the role from a given user.
@@ -1107,7 +1121,7 @@ private:
      *
      * @iscommand
      */
-    void cmdRemovePerms(int argc, QStringList argv);
+    void cmdRemovePerms(const int argc, const QStringList &argv);
 
     /**
      * @brief Lists all users in the server's database.
@@ -1116,7 +1130,7 @@ private:
      *
      * @iscommand
      */
-    void cmdListUsers(int argc, QStringList argv);
+    void cmdListUsers(const int argc, const QStringList &argv);
 
     /**
      * @brief Logs the caller out from their moderator user.
@@ -1125,7 +1139,7 @@ private:
      *
      * @iscommand
      */
-    void cmdLogout(int argc, QStringList argv);
+    void cmdLogout(const int argc, const QStringList &argv);
 
     /**
      * @brief Changes a moderator's password.
@@ -1135,7 +1149,7 @@ private:
      * If it is called with **two arguments**, the first argument is the **new password** to change to,
      * and the second argument is the **username** of the moderator to change the password of.
      */
-    void cmdChangePassword(int argc, QStringList argv);
+    void cmdChangePassword(const int argc, const QStringList &argv);
 
     ///@}
 
@@ -1156,7 +1170,7 @@ private:
      *
      * @iscommand
      */
-    void cmdCM(int argc, QStringList argv);
+    void cmdCM(const int argc, const QStringList &argv);
 
     /**
      * @brief Removes the CM status from the caller.
@@ -1165,7 +1179,7 @@ private:
      *
      * @iscommand
      */
-    void cmdUnCM(int argc, QStringList argv);
+    void cmdUnCM(const int argc, const QStringList &argv);
 
     /**
      * @brief Invites a client to the area.
@@ -1176,7 +1190,7 @@ private:
      *
      * @see AreaData::LOCKED and AreaData::SPECTATABLE for the benefits of being invited.
      */
-    void cmdInvite(int argc, QStringList argv);
+    void cmdInvite(const int argc, const QStringList &argv);
 
     /**
      * @brief Uninvites a client to the area.
@@ -1187,7 +1201,7 @@ private:
      *
      * @see AreaData::LOCKED and AreaData::SPECTATABLE for the benefits of being invited.
      */
-    void cmdUnInvite(int argc, QStringList argv);
+    void cmdUnInvite(const int argc, const QStringList &argv);
 
     /**
      * @brief Locks the area.
@@ -1198,7 +1212,7 @@ private:
      *
      * @see AreaData::LOCKED
      */
-    void cmdLock(int argc, QStringList argv);
+    void cmdLock(const int argc, const QStringList &argv);
 
     /**
      * @brief Sets the area to spectatable.
@@ -1209,7 +1223,7 @@ private:
      *
      * @see AreaData::SPECTATABLE
      */
-    void cmdSpectatable(int argc, QStringList argv);
+    void cmdSpectatable(const int argc, const QStringList &argv);
 
     /**
      * @brief Unlocks the area.
@@ -1220,7 +1234,7 @@ private:
      *
      * @see AreaData::FREE
      */
-    void cmdUnLock(int argc, QStringList argv);
+    void cmdUnLock(const int argc, const QStringList &argv);
 
     /**
      * @brief Lists all clients in all areas.
@@ -1229,7 +1243,7 @@ private:
      *
      * @iscommand
      */
-    void cmdGetAreas(int argc, QStringList argv);
+    void cmdGetAreas(const int argc, const QStringList &argv);
 
     /**
      * @brief Lists all clients in the area the caller is in.
@@ -1238,7 +1252,7 @@ private:
      *
      * @iscommand
      */
-    void cmdGetArea(int argc, QStringList argv);
+    void cmdGetArea(const int argc, const QStringList &argv);
 
     /**
      * @brief Moves the caller to the area with the given ID.
@@ -1247,7 +1261,7 @@ private:
      *
      * @iscommand
      */
-    void cmdArea(int argc, QStringList argv);
+    void cmdArea(const int argc, const QStringList &argv);
 
     /**
      * @brief Kicks a client from the area, moving them back to the default area.
@@ -1256,7 +1270,7 @@ private:
      *
      * @iscommand
      */
-    void cmdAreaKick(int argc, QStringList argv);
+    void cmdAreaKick(const int argc, const QStringList &argv);
 
     /**
      * @brief Changes the background of the current area.
@@ -1265,7 +1279,7 @@ private:
      *
      * @iscommand
      */
-    void cmdSetBackground(int argc, QStringList argv);
+    void cmdSetBackground(const int argc, const QStringList &argv);
 
     /**
      * @brief Fixes the background side of the current area.
@@ -1274,7 +1288,7 @@ private:
      *
      * @iscommand
      */
-    void cmdSetSide(int argc, QStringList argv);
+    void cmdSetSide(const int argc, const QStringList &argv);
 
     /**
      * @brief Locks the background, preventing it from being changed.
@@ -1283,7 +1297,7 @@ private:
      *
      * @iscommand
      */
-    void cmdBgLock(int argc, QStringList argv);
+    void cmdBgLock(const int argc, const QStringList &argv);
 
     /**
      * @brief Unlocks the background, allowing it to be changed again.
@@ -1292,7 +1306,7 @@ private:
      *
      * @iscommand
      */
-    void cmdBgUnlock(int argc, QStringList argv);
+    void cmdBgUnlock(const int argc, const QStringList &argv);
 
     /**
      * @brief Changes the status of the current area.
@@ -1301,7 +1315,7 @@ private:
      *
      * @iscommand
      */
-    void cmdStatus(int argc, QStringList argv);
+    void cmdStatus(const int argc, const QStringList &argv);
 
     /**
      * @brief Sends an out-of-character message with the judgelog of an area.
@@ -1310,7 +1324,7 @@ private:
      *
      * @iscommand
      */
-    void cmdJudgeLog(int argc, QStringList argv);
+    void cmdJudgeLog(const int argc, const QStringList &argv);
 
     /**
      * @brief Toggles whether the BG list is ignored in an area.
@@ -1319,7 +1333,7 @@ private:
      *
      * @iscommand
      */
-    void cmdIgnoreBgList(int argc, QStringList argv);
+    void cmdIgnoreBgList(const int argc, const QStringList &argv);
 
     /**
      * @brief Returns the area message in OOC. Double to set the current area message.
@@ -1328,7 +1342,7 @@ private:
      *
      * @iscommand
      */
-    void cmdAreaMessage(int argc, QStringList argv);
+    void cmdAreaMessage(const int argc, const QStringList &argv);
 
     /**
      * @brief Clears the areas message and disables automatic sending.
@@ -1337,7 +1351,7 @@ private:
      *
      * @iscommand
      */
-    void cmdClearAreaMessage(int argc, QStringList argv);
+    void cmdClearAreaMessage(const int argc, const QStringList &argv);
 
     /**
      * @brief Toggles wether the client shows the area message when joining the current area.
@@ -1346,7 +1360,7 @@ private:
      *
      * @iscommand
      */
-    void cmdToggleAreaMessageOnJoin(int argc, QStringList argv);
+    void cmdToggleAreaMessageOnJoin(const int argc, const QStringList &argv);
 
     /**
      * @brief Toggles wether the client can use testimony animations in the area.
@@ -1355,7 +1369,7 @@ private:
      *
      * @iscommand
      */
-    void cmdToggleWtce(int argc, QStringList argv);
+    void cmdToggleWtce(const int argc, const QStringList &argv);
 
     /**
      * @brief Toggles wether the client can send game shouts in the area.
@@ -1364,7 +1378,7 @@ private:
      *
      * @iscommand
      */
-    void cmdToggleShouts(int argc, QStringList argv);
+    void cmdToggleShouts(const int argc, const QStringList &argv);
 
     /**
      * @brief Generates a download link for characters who are iniswapping
@@ -1373,7 +1387,7 @@ private:
      *
      * @iscommand
      */
-    void cmdWebfiles(int argc, QStringList argv);
+    void cmdWebfiles(const int argc, const QStringList &argv);
 
     /**
      * @brief Toggles Medieval Mode for the current area.
@@ -1382,7 +1396,7 @@ private:
      *
      * @iscommand
      */
-    void cmdMedievalMode(int argc, QStringList argv);
+    void cmdMedievalMode(const int argc, const QStringList &argv);
 
     ///@}
 
@@ -1401,28 +1415,28 @@ private:
      *
      * @iscommand
      */
-    void cmdCommands(int argc, QStringList argv);
+    void cmdCommands(const int argc, const QStringList &argv);
 
     /**
      * @brief Lists help information to the command requested. Includes syntax and brief explanation.
      *
      * @details Takes the command name as an argument.
      */
-    void cmdHelp(int argc, QStringList argv);
+    void cmdHelp(const int argc, const QStringList &argv);
 
     /**
      * @brief Gets the server's Message Of The Day.
      *
      * @iscommand
      */
-    void cmdMOTD(int argc, QStringList argv);
+    void cmdMOTD(const int argc, const QStringList &argv);
 
     /**
      * @brief Sets the server's Message Of The Day.
      *
      * @iscommand
      */
-    void cmdSetMOTD(int argc, QStringList argv);
+    void cmdSetMOTD(const int argc, const QStringList &argv);
 
     /**
      * @brief Gives a very brief description of Akashi.
@@ -1431,7 +1445,7 @@ private:
      *
      * @iscommand
      */
-    void cmdAbout(int argc, QStringList argv);
+    void cmdAbout(const int argc, const QStringList &argv);
 
     /**
      * @brief Lists the currently logged-in moderators on the server.
@@ -1440,7 +1454,7 @@ private:
      *
      * @iscommand
      */
-    void cmdMods(int argc, QStringList argv);
+    void cmdMods(const int argc, const QStringList &argv);
 
     /**
      * @brief Bans a client from the server, forcibly severing its connection to the server,
@@ -1461,7 +1475,7 @@ private:
      *
      * @iscommand
      */
-    void cmdBan(int argc, QStringList argv);
+    void cmdBan(const int argc, const QStringList &argv);
 
     /**
      * @brief Removes a ban from the database.
@@ -1470,7 +1484,7 @@ private:
      *
      * @iscommand
      */
-    void cmdUnBan(int argc, QStringList argv);
+    void cmdUnBan(const int argc, const QStringList &argv);
 
     /**
      * @brief Kicks a client from the server, forcibly severing its connection to the server.
@@ -1485,7 +1499,7 @@ private:
      *
      * @iscommand
      */
-    void cmdKick(int argc, QStringList argv);
+    void cmdKick(const int argc, const QStringList &argv);
 
     /**
      * @brief [IC / OOC] Mutes a client.
@@ -1496,7 +1510,7 @@ private:
      *
      * @see #is_muted
      */
-    void cmdMute(int argc, QStringList argv);
+    void cmdMute(const int argc, const QStringList &argv);
 
     /**
      * @brief Removes the [IC / OOC] muted status from a client.
@@ -1507,7 +1521,7 @@ private:
      *
      * @see #is_muted
      */
-    void cmdUnMute(int argc, QStringList argv);
+    void cmdUnMute(const int argc, const QStringList &argv);
 
     /**
      * @brief WTCE-blocks a client.
@@ -1518,7 +1532,7 @@ private:
      *
      * @see #is_wtce_blocked
      */
-    void cmdBlockWtce(int argc, QStringList argv);
+    void cmdBlockWtce(const int argc, const QStringList &argv);
 
     /**
      * @brief Removes the WTCE-blocked status from a client.
@@ -1529,7 +1543,7 @@ private:
      *
      * @see #is_wtce_blocked
      */
-    void cmdUnBlockWtce(int argc, QStringList argv);
+    void cmdUnBlockWtce(const int argc, const QStringList &argv);
 
     /**
      * @brief Lists the last five bans made on the server.
@@ -1538,7 +1552,7 @@ private:
      *
      * @iscommand
      */
-    void cmdBans(int argc, QStringList argv);
+    void cmdBans(const int argc, const QStringList &argv);
 
     /**
      * @brief Toggle whether or not in-character messages purely consisting of spaces are allowed.
@@ -1547,7 +1561,7 @@ private:
      *
      * @iscommand
      */
-    void cmdAllowBlankposting(int argc, QStringList argv);
+    void cmdAllowBlankposting(const int argc, const QStringList &argv);
 
     /**
      * @brief Looks up info on a ban.
@@ -1559,7 +1573,7 @@ private:
      *
      * @iscommand
      */
-    void cmdBanInfo(int argc, QStringList argv);
+    void cmdBanInfo(const int argc, const QStringList &argv);
 
     /**
      * @brief Reloads all server configuration files.
@@ -1568,7 +1582,7 @@ private:
      *
      * @iscommand
      */
-    void cmdReload(int argc, QStringList argv);
+    void cmdReload(const int argc, const QStringList &argv);
 
     /**
      * @brief Toggles immediate text processing in the current area.
@@ -1577,7 +1591,7 @@ private:
      *
      * @iscommand
      */
-    void cmdForceImmediate(int argc, QStringList argv);
+    void cmdForceImmediate(const int argc, const QStringList &argv);
 
     /**
      * @brief Toggles whether iniswaps are allowed in the current area.
@@ -1586,7 +1600,7 @@ private:
      *
      * @iscommand
      */
-    void cmdAllowIniswap(int argc, QStringList argv);
+    void cmdAllowIniswap(const int argc, const QStringList &argv);
 
     /**
      * @brief Grants a client the temporary permission to save a testimony.
@@ -1596,7 +1610,7 @@ private:
      * @iscommand
      *
      */
-    void cmdPermitSaving(int argc, QStringList argv);
+    void cmdPermitSaving(const int argc, const QStringList &argv);
 
     /**
      * @brief Updates a ban in the database, changing either its reason or duration.
@@ -1607,7 +1621,7 @@ private:
      *
      * @iscommand
      */
-    void cmdUpdateBan(int argc, QStringList argv);
+    void cmdUpdateBan(const int argc, const QStringList &argv);
 
     /**
      * @brief Pops up a notice for all clients in the targeted area with a given message.
@@ -1620,7 +1634,7 @@ private:
      *
      * @iscommand
      */
-    void cmdNotice(int argc, QStringList argv);
+    void cmdNotice(const int argc, const QStringList &argv);
 
     /**
      * @brief Pops up a notice for all clients in the server with a given message.
@@ -1631,7 +1645,7 @@ private:
      *
      * @iscommand
      */
-    void cmdNoticeGlobal(int argc, QStringList argv);
+    void cmdNoticeGlobal(const int argc, const QStringList &argv);
 
     /**
      * @brief Removes all CMs from the current area.
@@ -1640,7 +1654,7 @@ private:
      *
      * @iscommand
      */
-    void cmdClearCM(int argc, QStringList argv);
+    void cmdClearCM(const int argc, const QStringList &argv);
 
     /**
      * @brief Removes all multiclient instances of a client on the server, excluding the one using the command.
@@ -1652,7 +1666,7 @@ private:
      *
      * @iscommand
      */
-    void cmdKickOther(int argc, QStringList argv);
+    void cmdKickOther(const int argc, const QStringList &argv);
 
     /**
      * @brief The server lockdown emergency.
@@ -1661,7 +1675,7 @@ private:
      *
      * @iscommand
      */
-    void cmdlockdown(int argc, QStringList argv);
+    void cmdlockdown(const int argc, const QStringList &argv);
     /**
      * @brief The list of whitelist <hashid> client of server lockdown.
      *
@@ -1669,7 +1683,7 @@ private:
      *
      * @iscommand
      */
-    void cmdlockdownlist(int argc, QStringList argv);
+    void cmdlockdownlist(const int argc, const QStringList &argv);
 
     ///@}
 
@@ -1688,7 +1702,7 @@ private:
      *
      * @iscommand
      */
-    void cmdFlip(int argc, QStringList argv);
+    void cmdFlip(const int argc, const QStringList &argv);
 
     /**
      * @brief Rolls dice and sends the results.
@@ -1702,7 +1716,7 @@ private:
      *
      * @see AOClient::diceThrower
      */
-    void cmdRoll(int argc, QStringList argv);
+    void cmdRoll(const int argc, const QStringList &argv);
 
     /**
      * @brief Rolls custom dice and sends the results.
@@ -1711,14 +1725,14 @@ private:
      *
      * @copydetails AOClient::cmdRollA
      */
-    void cmdRollA(int argc, QStringList argv);
+    void cmdRollA(const int argc, const QStringList &argv);
 
     /**
      * @brief Rolls dice, but sends the results in private to the roller.
      *
      * @copydetails AOClient::cmdRoll
      */
-    void cmdRollP(int argc, QStringList argv);
+    void cmdRollP(const int argc, const QStringList &argv);
 
     /**
      * @brief Choose one option out of multiple things sent.
@@ -1727,7 +1741,7 @@ private:
      *
      * @iscommand
      */
-    void cmdWheel(int argc, QStringList argv);
+    void cmdWheel(const int argc, const QStringList &argv);
 
     /**
      * @brief Choose one option out of multiple things sent, and send result privately
@@ -1736,7 +1750,7 @@ private:
      *
      * @iscommand
      */
-    void cmdWheelP(int argc, QStringList argv);
+    void cmdWheelP(const int argc, const QStringList &argv);
 
     /**
      * @brief Rock Paper Scissors game
@@ -1745,7 +1759,7 @@ private:
      *
      * @iscommand
      */
-    void cmdRps(int argc, QStringList argv);
+    void cmdRps(const int argc, const QStringList &argv);
 
     /**
      * @brief Gets or sets the global or one of the area-specific timers.
@@ -1766,7 +1780,7 @@ private:
      *
      * @iscommand
      */
-    void cmdTimer(int argc, QStringList argv);
+    void cmdTimer(const int argc, const QStringList &argv);
 
     /**
      * @brief Changes the subtheme of the clients in the current area.
@@ -1776,7 +1790,7 @@ private:
      * @iscommand
      */
 
-    void cmdSubTheme(int argc, QStringList argv);
+    void cmdSubTheme(const int argc, const QStringList &argv);
 
     /**
      * @brief Writes a "note card" in the current area.
@@ -1786,14 +1800,14 @@ private:
      *
      * @iscommand
      */
-    void cmdNoteCard(int argc, QStringList argv);
+    void cmdNoteCard(const int argc, const QStringList &argv);
 
     /**
      * @brief Reveals all note cards in the current area.
      *
      * @iscommand
      */
-    void cmdNoteCardReveal(int argc, QStringList argv);
+    void cmdNoteCardReveal(const int argc, const QStringList &argv);
 
     /**
      * @brief Erases the client's note card from the area's list of cards.
@@ -1802,7 +1816,7 @@ private:
      *
      * @iscommand
      */
-    void cmdNoteCardClear(int argc, QStringList argv);
+    void cmdNoteCardClear(const int argc, const QStringList &argv);
 
     /**
      * @brief Randomly selects an answer from 8ball.txt to a question.
@@ -1811,7 +1825,7 @@ private:
      *
      * @iscommand
      */
-    void cmd8Ball(int argc, QStringList argv);
+    void cmd8Ball(const int argc, const QStringList &argv);
 
     ///@}
 
@@ -1830,7 +1844,7 @@ private:
      *
      * @iscommand
      */
-    void cmdHoliday(int argc, QStringList argv);
+    void cmdHoliday(const int argc, const QStringList &argv);
 
     /**
      * @brief Disable holiday mode.
@@ -1839,7 +1853,7 @@ private:
      *
      * @iscommand
      */
-    void cmdUnHoliday(int argc, QStringList argv);
+    void cmdUnHoliday(const int argc, const QStringList &argv);
 
     /**
      * @brief Pairs with someone.
@@ -1848,7 +1862,7 @@ private:
      *
      * @iscommand
      */
-    void cmdPair(int argc, QStringList argv);
+    void cmdPair(const int argc, const QStringList &argv);
 
     /**
      * @brief Stop Pairing with someone.
@@ -1857,7 +1871,7 @@ private:
      *
      * @iscommand
      */
-    void cmdUnPair(int argc, QStringList argv);
+    void cmdUnPair(const int argc, const QStringList &argv);
 
     /**
      * @brief Change the pairing order (front or behind).
@@ -1866,7 +1880,7 @@ private:
      *
      * @iscommand
      */
-    void cmdPairOrder(int argc, QStringList argv);
+    void cmdPairOrder(const int argc, const QStringList &argv);
 
     /**
      * @brief Change your offset (x offset and y offset).
@@ -1876,7 +1890,7 @@ private:
      *
      * @iscommand
      */
-    void cmdOffset(int argc, QStringList argv);
+    void cmdOffset(const int argc, const QStringList &argv);
 
     /**
      * @brief Changes the client's position.
@@ -1885,7 +1899,7 @@ private:
      *
      * @iscommand
      */
-    void cmdPos(int argc, QStringList argv);
+    void cmdPos(const int argc, const QStringList &argv);
 
     /**
      * @brief Forces a client, or all clients in the area, to a specific position.
@@ -1900,7 +1914,7 @@ private:
      *
      * @iscommand
      */
-    void cmdForcePos(int argc, QStringList argv);
+    void cmdForcePos(const int argc, const QStringList &argv);
 
     /**
      * @brief Switches to a different character based on character ID.
@@ -1909,7 +1923,7 @@ private:
      *
      * @iscommand
      */
-    void cmdSwitch(int argc, QStringList argv);
+    void cmdSwitch(const int argc, const QStringList &argv);
 
     /**
      * @brief Picks a new random character for the client.
@@ -1918,7 +1932,7 @@ private:
      *
      * @iscommand
      */
-    void cmdRandomChar(int argc, QStringList argv);
+    void cmdRandomChar(const int argc, const QStringList &argv);
 
     /**
      * @brief Sends a global message (i.e., all clients in the server will be able to see it).
@@ -1927,7 +1941,7 @@ private:
      *
      * @iscommand
      */
-    void cmdG(int argc, QStringList argv);
+    void cmdG(const int argc, const QStringList &argv);
 
     /**
      * @brief Toggles whether the client will ignore @ref cmdG "global" messages or not.
@@ -1936,7 +1950,7 @@ private:
      *
      * @iscommand
      */
-    void cmdToggleGlobal(int argc, QStringList argv);
+    void cmdToggleGlobal(const int argc, const QStringList &argv);
 
     /**
      * @brief Sends a direct message to another client on the server based on ID.
@@ -1948,7 +1962,7 @@ private:
      *
      * @iscommand
      */
-    void cmdPM(int argc, QStringList argv);
+    void cmdPM(const int argc, const QStringList &argv);
 
     /**
      * @brief A global message expressing that the client needs something (generally: players for something).
@@ -1957,7 +1971,7 @@ private:
      *
      * @iscommand
      */
-    void cmdNeed(int argc, QStringList argv);
+    void cmdNeed(const int argc, const QStringList &argv);
 
     /**
      * @brief Sends out a decorated global message, for announcements.
@@ -1968,7 +1982,7 @@ private:
      *
      * @see AOClient::cmdG()
      */
-    void cmdAnnounce(int argc, QStringList argv);
+    void cmdAnnounce(const int argc, const QStringList &argv);
 
     /**
      * @brief Sends corn to area.
@@ -1977,7 +1991,7 @@ private:
      *
      * @iscommand
      */
-    void cmdCorn(int argc, QStringList argv);
+    void cmdCorn(const int argc, const QStringList &argv);
 
     /**
      * @brief Sends a message in the server-wide, moderator only chat.
@@ -1986,7 +2000,7 @@ private:
      *
      * @iscommand
      */
-    void cmdM(int argc, QStringList argv);
+    void cmdM(const int argc, const QStringList &argv);
 
     /**
      * @brief Sends out a global message that is marked with an `[M]` to mean it is coming from a moderator.
@@ -1997,7 +2011,7 @@ private:
      *
      * @see AOClient::cmdG()
      */
-    void cmdGM(int argc, QStringList argv);
+    void cmdGM(const int argc, const QStringList &argv);
 
     /**
      * @brief Sends out a local message that is marked with an `[M]` to mean it is coming from a moderator.
@@ -2008,7 +2022,7 @@ private:
      *
      * @see AOClient::cmdLM()
      */
-    void cmdLM(int argc, QStringList argv);
+    void cmdLM(const int argc, const QStringList &argv);
 
     /**
      * @brief this commands gives **target id** an curses.
@@ -2017,7 +2031,7 @@ private:
      *
      * @iscommand
      */
-    void cmdCurses(int argc, QStringList argv);
+    void cmdCurses(const int argc, const QStringList &argv);
 
     /**
      * @brief this commands removes **target id** from an curses.
@@ -2026,7 +2040,7 @@ private:
      *
      * @iscommand
      */
-    void cmdUnCurses(int argc, QStringList argv);
+    void cmdUnCurses(const int argc, const QStringList &argv);
 
     /**
      * @brief Toggles whether a client will recieve @ref cmdPM private messages or not.
@@ -2035,7 +2049,7 @@ private:
      *
      * @iscommand
      */
-    void cmdMutePM(int argc, QStringList argv);
+    void cmdMutePM(const int argc, const QStringList &argv);
 
     /**
      * @brief Toggles whether a client will recieve @ref cmdNeed "advertisement" messages.
@@ -2044,7 +2058,7 @@ private:
      *
      * @iscommand
      */
-    void cmdToggleAdverts(int argc, QStringList argv);
+    void cmdToggleAdverts(const int argc, const QStringList &argv);
 
     /**
      * @brief Toggles whether a client will recieve ooc messsages about people sent afk by timeout.
@@ -2053,7 +2067,7 @@ private:
      *
      * @iscommand
      */
-    void cmdToggleAfkMute(int argc, QStringList argv);
+    void cmdToggleAfkMute(const int argc, const QStringList &argv);
 
     /**
      * @brief Toggles whether a client will/n't sending about client is AFK or not.
@@ -2062,7 +2076,7 @@ private:
      *
      * @iscommand
      */
-    void cmdToggleAfkannounce(int argc, QStringList argv);
+    void cmdToggleAfkannounce(const int argc, const QStringList &argv);
 
     /**
      * @brief Toggles whether this client is considered AFK.
@@ -2071,7 +2085,7 @@ private:
      *
      * @iscommand
      */
-    void cmdAfk(int argc, QStringList argv);
+    void cmdAfk(const int argc, const QStringList &argv);
 
     /**
      * @brief Restricts a target client to a set of characters that they can switch from, blocking them from other characters.
@@ -2082,7 +2096,7 @@ private:
      *
      * @iscommand
      */
-    void cmdCharCurse(int argc, QStringList argv);
+    void cmdCharCurse(const int argc, const QStringList &argv);
 
     /**
      * @brief Removes the charcurse status from a client.
@@ -2091,14 +2105,14 @@ private:
      *
      * @iscommand
      */
-    void cmdUnCharCurse(int argc, QStringList argv);
+    void cmdUnCharCurse(const int argc, const QStringList &argv);
 
     /**
      * @brief Forces the caller's client into the charselect screen.
      *
      * @iscommand
      */
-    void cmdCharSelect(int argc, QStringList argv);
+    void cmdCharSelect(const int argc, const QStringList &argv);
 
     /**
      * @brief Forces the target's client into the charselect screen.
@@ -2107,7 +2121,7 @@ private:
      *
      * @iscommand
      */
-    void cmdForceCharSelect(int argc, QStringList argv);
+    void cmdForceCharSelect(const int argc, const QStringList &argv);
 
     /**
      * @brief Sends a message to an area that you a CM in.
@@ -2116,7 +2130,7 @@ private:
      *
      * @iscommand
      */
-    void cmdA(int argc, QStringList argv);
+    void cmdA(const int argc, const QStringList &argv);
 
     /**
      * @brief Send a message to all areas that you are a CM in.
@@ -2125,7 +2139,7 @@ private:
      *
      * @iscommand
      */
-    void cmdS(int argc, QStringList argv);
+    void cmdS(const int argc, const QStringList &argv);
 
     /**
      * @brief Toggle whether the client's messages will be sent in first person mode.
@@ -2134,7 +2148,7 @@ private:
      *
      * @iscommand
      */
-    void cmdFirstPerson(int argc, QStringList argv);
+    void cmdFirstPerson(const int argc, const QStringList &argv);
 
     ///@}
 
@@ -2153,7 +2167,7 @@ private:
      *
      * @iscommand
      */
-    void cmdDoc(int argc, QStringList argv);
+    void cmdDoc(const int argc, const QStringList &argv);
 
     /**
      * @brief Sets the `/doc` to `"No document."`.
@@ -2162,7 +2176,7 @@ private:
      *
      * @iscommand
      */
-    void cmdClearDoc(int argc, QStringList argv);
+    void cmdClearDoc(const int argc, const QStringList &argv);
 
     /**
      * @brief Changes the evidence mod in the area.
@@ -2173,7 +2187,7 @@ private:
      *
      * @see AreaData::EvidenceMod
      */
-    void cmdEvidenceMod(int argc, QStringList argv);
+    void cmdEvidenceMod(const int argc, const QStringList &argv);
 
     /**
      * @brief Changes position of two pieces of evidence in the area.
@@ -2185,7 +2199,7 @@ private:
      * @see Area::Evidence_Swap
      *
      */
-    void cmdEvidence_Swap(int argc, QStringList argv);
+    void cmdEvidence_Swap(const int argc, const QStringList &argv);
 
     /**
      * @brief Sets are to PLAYBACK mode
@@ -2193,35 +2207,35 @@ private:
      * @details Enables control over the stored testimony, prevent new messages to be added and
      * allows people to navigate trough it using > and <.
      */
-    void cmdExamine(int argc, QStringList argv);
+    void cmdExamine(const int argc, const QStringList &argv);
 
     /**
      * @brief Enables the testimony recording functionality.
      *
      * @details Any IC-Message send after this command is issues will be recorded by the testimony recorder.
      */
-    void cmdTestify(int argc, QStringList argv);
+    void cmdTestify(const int argc, const QStringList &argv);
 
     /**
      * @brief Allows user to update the currently displayed IC-Message from the testimony replay.
      *
      * @details Using this command replaces the content of the current statement entirely. It does not append information.
      */
-    void cmdUpdateStatement(int argc, QStringList argv);
+    void cmdUpdateStatement(const int argc, const QStringList &argv);
 
     /**
      * @brief Deletes a statement from the testimony.
      *
      * @details Using this deletes the entire entry in the QVector and resizes it appropriately to prevent empty record indices.
      */
-    void cmdDeleteStatement(int argc, QStringList argv);
+    void cmdDeleteStatement(const int argc, const QStringList &argv);
 
     /**
      * @brief Pauses testimony playback.
      *
      * @details Disables the testimony playback controls.
      */
-    void cmdPauseTestimony(int argc, QStringList argv);
+    void cmdPauseTestimony(const int argc, const QStringList &argv);
 
     /**
      * @brief Adds a statement to an existing testimony.
@@ -2229,7 +2243,7 @@ private:
      * @details Inserts new statement after the currently displayed recorded message. Increases the index by 1.
      *
      */
-    void cmdAddStatement(int argc, QStringList argv);
+    void cmdAddStatement(const int argc, const QStringList &argv);
 
     /**
      * @brief Sends a list of the testimony to OOC of the requesting client
@@ -2237,7 +2251,7 @@ private:
      * @details Retrieves all stored IC-Messages of the area and dumps them into OOC with some formatting.
      *
      */
-    void cmdTestimony(int argc, QStringList argv);
+    void cmdTestimony(const int argc, const QStringList &argv);
 
     /**
      * @brief Saves a testimony recording to the servers storage.
@@ -2246,7 +2260,7 @@ private:
      *          The filename will always be lowercase.
      *
      */
-    void cmdSaveTestimony(int argc, QStringList argv);
+    void cmdSaveTestimony(const int argc, const QStringList &argv);
 
     /**
      * @brief Loads testimony for the testimony replay. Argument is the testimony name.
@@ -2256,7 +2270,7 @@ private:
      *          Testimony name will always be converted to lowercase.
      *
      */
-    void cmdLoadTestimony(int argc, QStringList argv);
+    void cmdLoadTestimony(const int argc, const QStringList &argv);
 
     ///@}
 
@@ -2279,7 +2293,7 @@ private:
      *
      * @iscommand
      */
-    void cmdPlay(int argc, QStringList argv);
+    void cmdPlay(const int argc, const QStringList &argv);
 
     /**
      * @brief Plays music once in the area.
@@ -2292,7 +2306,7 @@ private:
      *
      * @iscommand
      */
-    void cmdPlayOnce(int argc, QStringList argv);
+    void cmdPlayOnce(const int argc, const QStringList &argv);
 
     /**
      * @brief shows radio list or play a radio url.
@@ -2303,7 +2317,7 @@ private:
      *
      * @iscommand
      */
-    void cmdRadio(int argc, QStringList argv);
+    void cmdRadio(const int argc, const QStringList &argv);
 
     /**
      * @brief Plays ambience in the area.
@@ -2316,7 +2330,7 @@ private:
      *
      * @iscommand
      */
-    void cmdPlayAmbience(int argc, QStringList argv);
+    void cmdPlayAmbience(const int argc, const QStringList &argv);
 
     /**
      * @brief DJ-blocks a client.
@@ -2327,7 +2341,7 @@ private:
      *
      * @see #is_dj_blocked
      */
-    void cmdBlockDj(int argc, QStringList argv);
+    void cmdBlockDj(const int argc, const QStringList &argv);
 
     /**
      * @brief Removes the DJ-blocked status from a client.
@@ -2338,7 +2352,7 @@ private:
      *
      * @see #is_dj_blocked
      */
-    void cmdUnBlockDj(int argc, QStringList argv);
+    void cmdUnBlockDj(const int argc, const QStringList &argv);
 
     /**
      * @brief Returns the currently playing music in the area, and who played it.
@@ -2347,52 +2361,52 @@ private:
      *
      * @iscommand
      */
-    void cmdCurrentMusic(int argc, QStringList argv);
+    void cmdCurrentMusic(const int argc, const QStringList &argv);
 
     /**
      * @brief Returns the currently playing music in the area, and play it to user.
      *
      */
-    void cmdGetMusic(int argc, QStringList argv);
+    void cmdGetMusic(const int argc, const QStringList &argv);
 
     /**
      * @brief Toggles music playing in the current area.
      *
      * @details No arguments.
      */
-    void cmdToggleMusic(int argc, QStringList argv);
+    void cmdToggleMusic(const int argc, const QStringList &argv);
 
     /**
      * @brief Toggles jukebox status in the current area.
      *
      * @details No arguments.
      */
-    void cmdToggleJukebox(int argc, QStringList argv);
+    void cmdToggleJukebox(const int argc, const QStringList &argv);
 
     /**
      * @brief Adds a song to the custom list.
      */
-    void cmdAddSong(int argc, QStringList argv);
+    void cmdAddSong(const int argc, const QStringList &argv);
 
     /**
      * @brief Adds a category to the areas custom music list.
      */
-    void cmdAddCategory(int argc, QStringList argv);
+    void cmdAddCategory(const int argc, const QStringList &argv);
 
     /**
      * @brief Removes any matching song or category from the custom area.
      */
-    void cmdRemoveCategorySong(int argc, QStringList argv);
+    void cmdRemoveCategorySong(const int argc, const QStringList &argv);
 
     /**
      * @brief Toggles the prepending behaviour of the servers root musiclist.
      */
-    void cmdToggleRootlist(int argc, QStringList argv);
+    void cmdToggleRootlist(const int argc, const QStringList &argv);
 
     /**
      * @brief Clears the entire custom list of this area.
      */
-    void cmdClearCustom(int argc, QStringList argv);
+    void cmdClearCustom(const int argc, const QStringList &argv);
 
     /**
      * @brief Forces the jukebox to skip the currently playing song and start the next queued track.
@@ -2403,7 +2417,7 @@ private:
      *
      * @iscommand
      */
-    void cmdJukeboxSkip(int argc, QStringList argv);
+    void cmdJukeboxSkip(const int argc, const QStringList &argv);
 
     /**
      * @brief Picks a random song from the root music list and plays it immediately via the jukebox.
@@ -2413,7 +2427,7 @@ private:
      *
      * @iscommand
      */
-    void cmdRandomSong(int argc, QStringList argv);
+    void cmdRandomSong(const int argc, const QStringList &argv);
 
     /**
      * @brief Shuffles all available songs and fills the jukebox queue with them in random order.
@@ -2423,7 +2437,7 @@ private:
      *
      * @iscommand
      */
-    void cmdJukeboxShuffle(int argc, QStringList argv);
+    void cmdJukeboxShuffle(const int argc, const QStringList &argv);
 
     /**
      * @brief Adds one or more songs to the jukebox queue.
@@ -2434,7 +2448,7 @@ private:
      *
      * @iscommand
      */
-    void cmdJukeboxAdd(int argc, QStringList argv);
+    void cmdJukeboxAdd(const int argc, const QStringList &argv);
 
     /**
      * @brief Removes a song from the jukebox queue by its index.
@@ -2444,7 +2458,7 @@ private:
      *
      * @iscommand
      */
-    void cmdJukeboxRemove(int argc, QStringList argv);
+    void cmdJukeboxRemove(const int argc, const QStringList &argv);
 
     /**
      * @brief Lists all songs currently in the jukebox queue.
@@ -2454,7 +2468,7 @@ private:
      *
      * @iscommand
      */
-    void cmdJukeboxQueues(int argc, QStringList argv);
+    void cmdJukeboxQueues(const int argc, const QStringList &argv);
 
     ///@}
 
@@ -2474,22 +2488,22 @@ private:
      *
      * @iscommand
      */
-    void cmdDefault(int argc, QStringList argv);
+    void cmdDefault(const int argc, const QStringList &argv);
 
     /* > voice-chat command < */
 
     /**
      * @brief voice-chat block/mute client vc.
      */
-    void cmdVBlock(int argc, QStringList argv);
+    void cmdVBlock(const int argc, const QStringList &argv);
     /**
      * @brief voice-chat ublock client vc.
      */
-    void cmdVUBlock(int argc, QStringList argv);
+    void cmdVUBlock(const int argc, const QStringList &argv);
     /**
      * @brief voice-chat kick client from vc.
      */
-    void cmdVKick(int argc, QStringList argv);
+    void cmdVKick(const int argc, const QStringList &argv);
 
     /**
      * @brief Returns a textual representation of the time left in an area's Timer.

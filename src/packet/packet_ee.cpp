@@ -10,13 +10,8 @@ PacketEE::PacketEE(QStringList &contents) :
 {
 }
 
-PacketInfo PacketEE::getPacketInfo() const
-{
-    PacketInfo info{
-        .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 4,
-        .header = "EE"};
-    return info;
+PacketInfo PacketEE::getPacketInfo() const{
+    return PacketInfo::CreateInfo("EE", 4);
 }
 
 void PacketEE::handlePacket(AreaData *area, AOClient &client) const

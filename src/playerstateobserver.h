@@ -9,40 +9,30 @@
 
 class PlayerStateObserver : public QObject
 {
-  public:
+    Q_OBJECT
+public:
     explicit PlayerStateObserver(QObject *parent = nullptr);
     virtual ~PlayerStateObserver();
 
-    void registerClient(AOClient *client);
+    void registerClient(QPointer<AOClient> client);
     bool unregisterClient(QPointer<AOClient> client);
 
-  private:
+Q_SIGNALS:
+    /**
+     * @brief The broadcasing the target client state to every registered clients.
+     */
+    void BroadcastUpdate(const int c_from, const int type, const QVariant &value);
+    /**
+     * @brief The broadcasing the target client (un)registering state to every registered clients.
+     */
+    void BroadcastRegister(const int c_from, const bool remove);
+private:
+    /**
+     * @brief The registered client list of playerstate observer.
+     */
     QList<AOClient *> m_client_list;
 
-    /**
-     * @brief broadcasting Packet to listed clients
-     *
-     * @param Packet
-     */
-    void sendToClientList(const AOPacket &packet);
-    /**
-     * @brief same like sendToClientList but PacketPR only (and mods can receiving ipid when PacketPR::ADD)
-     *
-     * @param target client
-     *
-     * @param PacketPR
-     */
-    void UploadListStateToClients(const AOClient *client, const PacketPR &State);
-    /**
-     * @brief same like sendToClientList but mods can receiving ipid.
-     *
-     * @param sender client.
-     *
-     * @param AOPacket.
-     */
-    void UploadStateToClients(const AOClient *client, const AOPacket &packet);
-
-  private Q_SLOTS:
+private Q_SLOTS:
     /**
      * @brief broadcasing the sender client state to everyone..
      */

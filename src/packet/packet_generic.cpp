@@ -8,13 +8,8 @@ PacketGeneric::PacketGeneric(QString header, QStringList contents) :
 {
 }
 
-PacketInfo PacketGeneric::getPacketInfo() const
-{
-    PacketInfo info{
-        .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 0,
-        .header = header};
-    return info;
+PacketInfo PacketGeneric::getPacketInfo() const{
+    return PacketInfo::CreateInfo(header);
 }
 
 void PacketGeneric::handlePacket(AreaData *area, AOClient &client) const

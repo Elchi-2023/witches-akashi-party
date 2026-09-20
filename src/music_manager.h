@@ -85,7 +85,18 @@ class MusicManager : public QObject
      * @return Wether or not the song can be played or added.
      */
     bool validateSong(QString f_song_name, QStringList f_approved_cdns); /* untouched */
-    int ValidataSong(const QUrl Url, const QStringList Approved_cdns);
+
+    /**
+     * @brief The music type (validate only)
+     */
+    enum MusicType{
+        INVALID = -1,
+        BLACKLISTURL,
+        LOCAL,
+        VALID
+    };
+
+    MusicType ValidataSong(const QString &Url, const QStringList &Approved_cdns);
 
     /**
      * @brief Registering an the new song to the custom musiclist.

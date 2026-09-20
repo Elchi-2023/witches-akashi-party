@@ -9,13 +9,8 @@ PacketID::PacketID(QStringList &contents) :
     AOPacket(contents){
 }
 
-PacketInfo PacketID::getPacketInfo() const
-{
-    PacketInfo info{
-        .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 2,
-        .header = "ID"};
-    return info;
+PacketInfo PacketID::getPacketInfo() const{
+    return PacketInfo::CreateInfo("ID", 2);
 }
 
 bool isRealBrowser(const QString &userAgent){

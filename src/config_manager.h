@@ -402,6 +402,14 @@ class ConfigManager
     {
         QString usage;
         QString text;
+
+        bool operator==(const help &other) const{
+            return usage == other.usage && text == other.text;
+        }
+
+        bool operator!=(const help &other) const{
+            return !(*this == other);
+        }
     };
 
     /**

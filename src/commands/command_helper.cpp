@@ -25,7 +25,7 @@
 // This file is for functions used by various commands, defined in the command helper function category in aoclient.h
 // Be sure to register the command in the header before adding it here!
 
-void AOClient::cmdDefault(int argc, QStringList argv)
+void AOClient::cmdDefault(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
     Q_UNUSED(argv);
@@ -364,10 +364,12 @@ void AOClient::sendNotice(QString f_notice, bool f_global)
     if (f_global)
         l_message += "server-wide ";
     l_message += "notice:\n\n" + f_notice;
-    sendServerMessageArea(l_message);
+
     AOPacket *l_packet = PacketFactory::createPacket("BB", {l_message});
     if (f_global)
         server->broadcast(l_packet);
-    else
+    else{
+        sendServerMessageArea(l_message);
         server->broadcast(l_packet, areaId());
+    }
 }

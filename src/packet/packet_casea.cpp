@@ -10,59 +10,41 @@ PacketCasea::PacketCasea(QStringList &contents) :
 {
 }
 
-PacketInfo PacketCasea::getPacketInfo() const
-{
-    PacketInfo info{
-        .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 6,
-        .header = "CASEA"};
-    return info;
+PacketInfo PacketCasea::getPacketInfo() const{
+    return PacketInfo::CreateInfo("CASEA", 6);
 }
 
-void PacketCasea::handlePacket(AreaData *area, AOClient &client) const
-{
-    Q_UNUSED(area)
-
-    QString l_case_title = m_content[0];
-    QStringList l_needed_roles;
-    QList<bool> l_needs_list;
-    for (int i = 1; i <= 5; i++) {
-        bool is_int = false;
-        bool need = m_content[i].toInt(&is_int);
-        if (!is_int)
+void PacketCasea::handlePacket(AreaData *area, AOClient &client) const{
+    static QVector<QString> Param = m_content.toVector(); // why convert to vector?.. cause m_content is in "protected" type..
+    const QString casetitle = Param.takeFirst();
+    const QStringList ListedRoles = {"defense attorney", "prosecutor", "judge", "jurors", "stenographer"};
+    QStringList RequestedRoles;
+    QVector<bool> MarkedRoles;
+    for (int I = 0; I < Param.size(); ++I){
+        const QVariant Var = QVariant::fromValue(Param[I]);
+        if (!Var.canConvert(QMetaType::Bool))
             return;
-        l_needs_list.append(need);
-    }
-    QStringList l_roles = {"defense attorney", "prosecutor", "judge", "jurors", "stenographer"};
-    for (int i = 0; i < 5; i++) {
-        if (l_needs_list[i])
-            l_needed_roles.append(l_roles[i]);
-    }
-    if (l_needed_roles.isEmpty())
-        return;
 
-    QString l_message = "=== Case Announcement ===\r\n" + (client.name() == "" ? client.character() : client.name()) + " needs " + l_needed_roles.join(", ") + " for " + (l_case_title == "" ? "a case" : l_case_title) + "!";
-
-    QList<AOClient *> l_clients_to_alert;
-    QSet<bool> l_needs_set(l_needs_list.begin(), l_needs_list.end());
-
-    const QVector< QPointer<AOClient>> l_clients = client.getServer()->getClients();
-    for (auto l_client : l_clients){
-        QSet<bool> l_matches(l_client->m_casing_preferences.begin(), l_client->m_casing_preferences.end());
-        l_matches.intersect(l_needs_set);
-
-        if (!l_matches.isEmpty() && !l_clients_to_alert.contains(l_client))
-            l_clients_to_alert.append(l_client);
+        MarkedRoles.append(Var.toBool());
+        if (MarkedRoles.last())
+            RequestedRoles.append(ListedRoles[I]);
     }
 
-    for (AOClient *l_client : l_clients_to_alert){
-        if (QPointer<AOClient>(l_client).isNull())
-            continue;
+    if (!RequestedRoles.isEmpty()){ /* only if there's a roles needs */
+        const QString Message = QString("=== Case Announcement ===\r\n%1 needs [%2]\nfor %3%4").arg(AOClient::NameWId(&client), RequestedRoles.join(", "), casetitle.trimmed().isEmpty() ? "a case." : casetitle.trimmed() + "!", QPointer<AreaData>(area).isNull() ? "" : QString("\nin [%1] %2").arg(QString::number(area->index()), area->name()));
+        const QVector<QPointer<AOClient>> l_clients = client.getServer()->getClients();
 
-        l_client->sendPacket(PacketFactory::createPacket("CASEA", {l_message, m_content[1], m_content[2], m_content[3], m_content[4], m_content[5], "1"}));
-        // you may be thinking, "hey wait a minute the network protocol documentation doesn't mention that last argument!"
-        // if you are in fact thinking that, you are correct! it is not in the documentation!
-        // however for some inscrutable reason Attorney Online 2 will outright reject a CASEA packet that does not have
-        // at least 7 arguments despite only using the first 6. Cera, i kneel. you have truly broken me.
+        /* heavy for-loop event here if much of clients.. */
+        for (auto client : l_clients){
+            if (client.isNull() || !client->hasJoined() || QSet<bool>(client->m_casing_preferences.begin(), client->m_casing_preferences.end()).intersect(QSet<bool>(MarkedRoles.begin(), MarkedRoles.end())).isEmpty())
+                continue;
+            client->sendPacket(PacketFactory::createPacket("CASEA", {Message, Param[0], Param[1], Param[2], Param[3], Param[4], "1"}));
+            /* ======= [akashi devs note] =======
+             * you may be thinking, "hey wait a minute the network protocol documentation doesn't mention that last argument!"
+             * if you are in fact thinking that, you are correct! it is not in the documentation!
+             * however for some inscrutable reason Attorney Online 2 will outright reject a CASEA packet that does not have
+             * at least 7 arguments despite only using the first 6. Cera, i kneel. you have truly broken me.
+             * ================================== */
+        }
     }
 }

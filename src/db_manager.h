@@ -129,7 +129,7 @@ class DBManager : public QObject
      *
      * @param ban The details of the ban.
      */
-    void addBan(const BanInfo &ban);
+    int addBan(const BanInfo &ban);
 
     /**
      * @brief Sets the duration of a given ban to 0, effectively removing the ban the associated user.

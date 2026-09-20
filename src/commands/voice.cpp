@@ -22,7 +22,7 @@
 #include "packet/packet_factory.h"
 #include "server.h"
 
-void AOClient::cmdVBlock(int argc, QStringList argv){
+void AOClient::cmdVBlock(const int argc, const QStringList &argv){
     bool cid_ok;
     auto target = server->getClientByID(argv[0].toInt(&cid_ok));
     if (cid_ok && target){
@@ -81,7 +81,7 @@ void AOClient::cmdVBlock(int argc, QStringList argv){
     else
         sendServerMessage("Invalid client target.");
 }
-void AOClient::cmdVUBlock(int argc, QStringList argv){
+void AOClient::cmdVUBlock(const int argc, const QStringList &argv){
     Q_UNUSED(argc)
 
     if (isVAuthenticated()) // even <vip> have perms.. still tho..
@@ -102,7 +102,7 @@ void AOClient::cmdVUBlock(int argc, QStringList argv){
             sendServerMessage("Invalid client target.");
     }
 }
-void AOClient::cmdVKick(int argc, QStringList argv){
+void AOClient::cmdVKick(const int argc, const QStringList &argv){
     bool cid_ok;
     auto target = server->getClientByID(argv[0].toInt(&cid_ok));
     if (cid_ok && target){

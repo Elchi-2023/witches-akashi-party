@@ -9,11 +9,7 @@ PacketTT::PacketTT(QStringList &contents) : AOPacket(contents){
 }
 
 PacketInfo PacketTT::getPacketInfo() const{
-    PacketInfo info{
-        .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 3,
-        .header = "TT"};
-    return info;
+    return PacketInfo::CreateInfo("TT", 3);
 }
 
 void PacketTT::handlePacket(AreaData *area, AOClient &client) const{

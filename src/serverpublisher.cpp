@@ -52,7 +52,6 @@ void ServerPublisher::publishServer(){
 #if QT_VERSION_MAJOR < 6 // using this compiler <check-if> instead..
             request.setAttribute(QNetworkRequest::Attribute::Http2AllowedAttribute, false);
 #endif
-
             QJsonObject serverinfo;
             if (!ConfigManager::serverDomainName().trimmed().isEmpty())
                 serverinfo["ip"] = ConfigManager::serverDomainName();
@@ -68,24 +67,24 @@ void ServerPublisher::publishServer(){
             m_manager->post(request, QJsonDocument(serverinfo).toJson());
         }
         else
-            qWarning() << "[W][AKASHI][SERVER-PUBLISHER]: Failed to advertise server. Serverlist URL is not valid. URL:" << serverlist.toString();
+            qWarning() << "[W][WAP-AKASHI][SERVER-PUBLISHER]: Failed to advertise server. Serverlist URL is not valid. URL:" << serverlist.toString();
     }
 }
 
 void ServerPublisher::finished(QNetworkReply *f_reply){
     const QScopedPointer<QNetworkReply, QScopedPointerDeleteLater> reply(f_reply);
     if (reply.isNull()) // safely first..
-        qWarning() << "[W][AKASHI][PUBLISHER]: The qnetworkreply object is null, cannot progress the advertises (otherwise segfaults).";
+        qWarning() << "[W][WAP-AKASHI][PUBLISHER]: The qnetworkreply object is null, cannot progress the advertises (otherwise segfaults).";
     else{
         switch (reply->error()){
         default: // [ERROR] types..
-            qWarning() << "[W][AKASHI][PUBLISHER]:Unable to connect to serverlist due to the following error:" << reply->errorString();
-            qWarning() << "[W][AKASHI][PUBLISHER]:Remote URL:" << reply->url().toString();
+            qWarning() << "[W][WAP-AKASHI][PUBLISHER]:Unable to connect to serverlist due to the following error:" << reply->errorString();
+            qWarning() << "[W][WAP-AKASHI][PUBLISHER]:Remote URL:" << reply->url().toString();
             break;
         case QNetworkReply::NetworkError::NoError:
             switch (reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt()){ // status code..
             case 200: // [HTTP_OK]..
-                qInfo() << "[I][AKASHI][SERVER-PUBLISHER]: Sucessfully advertised server to serverlist.";
+                qInfo() << "[I][WAP-AKASHI][SERVER-PUBLISHER]: Sucessfully advertised server to serverlist.";
                 break;
             default:
                 QJsonParseError error;
@@ -105,16 +104,16 @@ void ServerPublisher::finished(QNetworkReply *f_reply){
                                 }
                             }
 
-                            error_records.isEmpty() ? qWarning() << "[W][AKASHI][SERVER-PUBLISHER]: Failed to advertise to the serverlist due to the unknowns errors." : qWarning().noquote() << "[W][AKASHI][SERVER-PUBLISHER]: Failed to advertise to the serverlist due to the following errors:\n" << error_records.join('\n');
+                            error_records.isEmpty() ? qWarning() << "[W][WAP-AKASHI][SERVER-PUBLISHER]: Failed to advertise to the serverlist due to the unknowns errors." : qWarning().noquote() << "[W][WAP-AKASHI][SERVER-PUBLISHER]: Failed to advertise to the serverlist due to the following errors:\n" << error_records.join('\n');
                         }
                         else
-                            qWarning() << "[W][AKASHI][SERVER-PUBLISHER]: Sucessfully(?) advertised server to serverlist.";
+                            qWarning() << "[W][WAP-AKASHI][SERVER-PUBLISHER]: Sucessfully(?) advertised server to serverlist.";
                     }
                     else
-                        qWarning().noquote() << QString("[W][AKASHI][SERVER-PUBLISHER]: Received malformed response from MS ([%1] %2 of offset(%3)): %4").arg(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toString(), error.errorString(), QString::number(error.offset), Data);
+                        qWarning().noquote() << QString("[W][WAP-AKASHI][SERVER-PUBLISHER]: Received malformed response from MS ([%1] %2 of offset(%3)): %4").arg(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toString(), error.errorString(), QString::number(error.offset), Data);
                     break;
                 default:
-                    qWarning().noquote() << QString("[W][AKASHI][SERVER-PUBLISHER]: Received malformed response from MS ([%1] %2 of offset(%3)): %4").arg(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toString(), error.errorString(), QString::number(error.offset), Data);
+                    qWarning().noquote() << QString("[W][WAP-AKASHI][SERVER-PUBLISHER]: Received malformed response from MS ([%1] %2 of offset(%3)): %4").arg(reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toString(), error.errorString(), QString::number(error.offset), Data);
                     break;
                 }
             }

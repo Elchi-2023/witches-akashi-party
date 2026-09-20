@@ -176,7 +176,7 @@ const QMap<QString, AOClient::CommandInfo> AOClient::COMMANDS{
 }; // {[command], {{ALCRole(s)}, [min_argv], [category], &[AOClient-command]}
 
 void AOClient::clientDisconnected(){
-    qDebug().nospace() << "[I][AKASHI][NET-CLIENT][" << calculateIpid() << "]: disconnected.";
+    qDebug().nospace() << "[I][WAP-AKASHI][NET-CLIENT][" << calculateIpid() << "]: disconnected.";
     if (m_joined) {
         auto current_area = server->getAreaById(areaId());
         current_area->removeClient(clientId());
@@ -187,11 +187,18 @@ void AOClient::clientDisconnected(){
         server->broadcastCAuth(PacketCT::CreateMessageS(QString("%1 disconnected.").arg(AOClient::NameWId(this))), AuthenticateType::NONE, current_area->index()); // [user]
         server->broadcastCAuth(PacketCT::CreateMessageS(QString("%1 %2").arg(AOClient::NameWId(this), QStringList({"disconnected.", "is went out!", "been send in #DOOM world!"})[m_disconnect_reason])), AuthenticateType::VIP, current_area->index()); // [vip]..
         server->broadcastCAuth(PacketCT::CreateMessageS(QString("%1 %2").arg(AOClient::NameWId(this) + " (" + getIpid() + ")", QStringList({"disconnected", "disconnected: (kicked)", "disconnected: (banned)"})[m_disconnect_reason])), AuthenticateType::MODERATOR, current_area->index()); // [moderator/root]..
-
-        if (current_area->checkPairSync(clientId()) && current_area->checkPairSync(clientId(), true) && current_area->get_pair_sync_clientID(clientId()) == current_area->get_pair_sync_clientID(clientId(), true)){ /* > when someone actually pair-synced with this client < */
-            if (!server->getClientByID(current_area->get_pair_sync_clientID(clientId(), true)).isNull()) // let's notify about this client not longer exist in pair-sync..
-                server->getClientByID(current_area->get_pair_sync_clientID(clientId(), true))->sendServerMessageArea(QString("You aren't pair synced with %1, reseting..").arg(AOClient::NameWId(this)));
-            current_area->removePairSync(clientId(), current_area->get_pair_sync_clientID(clientId(), true)); /* freed both ids from pairs sync list.. */
+        
+        QVector<int> currentPSync = current_area->GetPairSyncIDList(clientId());
+        while (!currentPSync.isEmpty()){
+            const int I = currentPSync.takeFirst();
+            auto p_client = server->getClientByID(I);
+            if (p_client){
+                if (current_area->checkPairSync(clientId(), I))
+                    p_client->sendServerMessage(QString("You aren't pair synced with %1, reseting..").arg(AOClient::NameWId(this)));
+                else
+                    p_client->sendServerMessage("Your pair sync reseted.");
+            }
+            current_area->removePairSync(I);
         }
 
         if (current_area->checkPairSync(clientId())) /* double checks if user client id weren't on pairs sync list */
@@ -214,9 +221,9 @@ void AOClient::ForcedDisconnected(const QString &reason){
 
 void AOClient::handlePacket(AOPacket *packet){
 #ifdef NET_DEBUG
-    /* well.. the output will be like this "[D][AKASHI][NET-PACKET][<client_id>:<client_ipid>]: [<header>] (<data/content (if persent)>)" but.. it'll much outputing in console.. */
+    /* well.. the output will be like this "[D][WAP-AKASHI][NET-PACKET][<client_id>:<client_ipid>]: [<header>] (<data/content (if persent)>)" but.. it'll much outputing in console.. */
     if (packet->getPacketInfo().header.compare("ch", Qt::CaseInsensitive) != 0 /* preventing outputing the <CH> packet from client.. (otherwise it'll bloating the console..) */)
-        qDebug().noquote() << QString("[D][AKASHI][NET-PACKET][%1:%2]: [%3] %4").arg(QString::number(clientId()), getIpid(), packet->getPacketInfo().header, packet->getContent().isEmpty() ? "" : "(" + packet->getContent().join(", ") + ")");
+        qDebug().noquote() << QString("[D][WAP-AKASHI][NET-PACKET][%1:%2]: [%3] %4").arg(QString::number(clientId()), getIpid(), packet->getPacketInfo().header, packet->getContent().isEmpty() ? "" : "(" + packet->getContent().join(", ") + ")");
 #endif
     const QPair<int, int> ratelimts{ConfigManager::packetRateLimitSoft(), ConfigManager::packetRateLimitHard()};
     qint64 current_tick = QDateTime::currentSecsSinceEpoch();
@@ -230,7 +237,7 @@ void AOClient::handlePacket(AOPacket *packet){
         if (ratelimts.second > 0 && packet_count >= ratelimts.second) {
             sendPacket("BD", {"You have been disconnected for sending messages too quickly."});
             m_socket->close();
-            qInfo().noquote() << QString("[I][AKASHI][NET-CLIENT]: Kicking an [%1] (%2) due of rate-limts reached.").arg(QString::number(clientId()), m_ipid);
+            qInfo().noquote() << QString("[I][WAP-AKASHI][NET-CLIENT]: Kicking an [%1] (%2) due of rate-limts reached.").arg(QString::number(clientId()), m_ipid);
             return;
         }
         else if (ratelimts.first > 0 && packet_count >= ratelimts.first)
@@ -265,7 +272,7 @@ void AOClient::handlePacket(AOPacket *packet){
 
     if (packet->getContent().length() < packet->getPacketInfo().min_args) {
 #ifdef NET_DEBUG
-        qDebug().nospace() << QString("[D][AKASHI][NET-PACKET]: \"Invalid packet args length for heeader %1 from client %2 (%3), Minimum is %4 but only %5 were given.\"").arg(packet->getPacketInfo().header, AOClient::NameWId(this), m_ipid, QString::number(packet->getPacketInfo().min_args), QString::number(packet->getContent().length()));
+        qDebug().nospace() << QString("[D][WAP-AKASHI][NET-PACKET]: \"Invalid packet args length for heeader %1 from client %2 (%3), Minimum is %4 but only %5 were given.\"").arg(packet->getPacketInfo().header, AOClient::NameWId(this), m_ipid, QString::number(packet->getPacketInfo().min_args), QString::number(packet->getContent().length()));
 #endif
         return;
     }
@@ -295,13 +302,13 @@ void AOClient::changeArea(int new_area)
     previous_area->removeClient(clientId());
     server->updateCharsTaken(previous_area);
 
-    if (target_area->charactersTaken().contains(server->getCharID(character()))){ /* our character is already being used here, so we'll have to spectate, until we pick a new one (or the other player leaves).. */
+    if (target_area->charactersTaken().contains(m_char_id)){ /* our character is already being used here, so we'll have to spectate, until we pick a new one (or the other player leaves).. */
         changeCharacter(-1);
         sendPacket("DONE"); // If our character was taken, force us into character select
     }
 
     target_area->addClient(clientId(), m_char_id);
-    setAreaId(new_area);
+    setAreaId(target_area->index());
 
     arup(ARUPType::PLAYER_COUNT, true);
 
@@ -327,10 +334,15 @@ void AOClient::changeArea(int new_area)
     // > cleaning up pair sync from the old area.. <
     if (previous_area->checkPairSync(clientId())) {
         sendServerMessage("Your pair sync has been reset (you changed areas).");
-
-        auto partner = server->getClientByID(previous_area->get_pair_sync_clientID(clientId()));
-        if (!partner.isNull() && previous_area->removePairSync(partner->clientId(), clientId())) /* > let the partner/target know the user moved on < */
-            partner->sendServerMessage(QString("You are no longer synced with %1 — they moved to another area.").arg(AOClient::NameWId(partner)));
+        
+        for (const int I : previous_area->GetPairSyncIDList(clientId())){
+            auto partner = server->getClientByID(previous_area->GetPairSyncID(clientId()));
+            if (partner && previous_area->removePairSync(partner->clientId(), clientId())) /* > let the partner/target know the user moved on < */
+                partner->sendServerMessage(QString("You are no longer synced with %1 — they moved to another area.").arg(AOClient::NameWId(this)));
+            else if (!partner)
+                previous_area->removePairSync(I);
+            
+        }
         previous_area->removePairSync(clientId());
     }
 
@@ -534,6 +546,7 @@ void AOClient::sendAudioState(const int c_from, const bool state, const int area
         return;
 
     sendPacket("VS_SPEAK", {QString::number(c_from), QString::number(state)});
+    sendPacket("VS_PEERS", area->GetRegisteredVoice(true));
 }
 void AOClient::sendAudioJoinLeave(const int c_from, const bool isleave, const int area_id){
     const QPointer<AreaData> area = server->getAreaById(area_id);
@@ -599,7 +612,7 @@ bool AOClient::checkPermission(ACLRole::Permission f_permission) const{
     case ACLRole::NONE:
         return true;
     case ACLRole::CM: // hack moment..
-        return isAuthenticated() ? ConfigManager::authType() == DataTypes::AuthType::SIMPLE || m_authenticated_type == AuthenticateType::ROOT || l_role.checkPermission(ACLRole::SUPER) || l_role.checkPermission(f_permission) : (!l_area.isNull() && l_area->owners().contains(clientId()));
+        return isAuthenticated() ? ConfigManager::authType() == DataTypes::AuthType::SIMPLE || m_authenticated_type == AuthenticateType::ROOT || l_role.checkPermission(ACLRole::SUPER) || l_role.checkPermission(ACLRole::CM) : (l_area.isNull() ? false : l_area->owners().contains(clientId()));
     case ACLRole::SUPER:
          return isAuthenticated() ? ConfigManager::authType() == DataTypes::AuthType::SIMPLE || m_authenticated_type == AuthenticateType::ROOT || l_role.checkPermission(ACLRole::SUPER) : false;
     default:
@@ -701,7 +714,7 @@ bool AOClient::UserAFK() const{
 void AOClient::ToggleAFK(const bool afk){
     if (m_is_afk != afk){
         m_is_afk = afk;
-        Q_EMIT UpdateState(1);
+        Q_EMIT UpdateState(0);
     }
 }
 
@@ -729,6 +742,33 @@ void AOClient::onAfkTimeout(){
             sendServerMessage("You are now AFK (due to inactivity). (unannouncement)");
         ToggleAFK();
     }
+}
+
+void AOClient::sendPlayerStateUpdate(const int c_from, const int type, const QVariant &value){
+    if (server->getClientByID(c_from).isNull() || !value.isValid())
+        return;
+
+    switch (type){
+    case 0:
+        sendPacket(QSharedPointer<PacketPU>::create(c_from, PacketPU::NAME, value.toString()));
+        break;
+    case 1:
+        sendPacket(QSharedPointer<PacketPU>::create(c_from, PacketPU::CHARACTER, value.toString()));
+        break;
+    case 2:
+        sendPacket(QSharedPointer<PacketPU>::create(c_from, PacketPU::SHOWNAME, value.toString()));
+        break;
+    case 3:
+        sendPacket(QSharedPointer<PacketPU>::create(c_from, PacketPU::AREA_ID, value.toInt()));
+        break;
+    default:
+        break;
+    }
+}
+void AOClient::sendPlayerStateRegister(const int c_from, const bool remove){
+    sendPacket(QSharedPointer<PacketPR>::create(c_from, remove ? PacketPR::REMOVE : PacketPR::ADD));
+    if (!remove && isMAuthenticated())
+        sendPacket(QSharedPointer<PacketPU>::create(c_from, PacketPU::NAME, "[" + server->getClientByID(c_from)->getIpid() + "]"));
 }
 
 void AOClient::globalReminder(){
@@ -900,8 +940,8 @@ QString AOClient::MessageToPigify(const QString Message)
     return result.join(' ');
 }
 
-QString AOClient::NameWId(const QPointer<AOClient> client){
-    return client.isNull() ? "" : QString("[%1] %2").arg(QString::number(client->clientId()), client->isSpectator() ? "[Spectator]" : client->character());
+QString AOClient::NameWId(const QPointer<AOClient> client, const bool include_ooc){
+    return client.isNull() ? "" : QString("[%1] %2").arg(QString::number(client->clientId()), (include_ooc && !client->name().isEmpty()) ? client->name() : client->isSpectator() ? "[Spectator]" : client->character());
 }
 QByteArray AOClient::calculateHashid(const QPointer<AOClient> &client){
     if (client.isNull())

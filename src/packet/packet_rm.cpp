@@ -8,13 +8,8 @@ PacketRM::PacketRM(QStringList &contents) :
 {
 }
 
-PacketInfo PacketRM::getPacketInfo() const
-{
-    PacketInfo info{
-        .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 0,
-        .header = "RM"};
-    return info;
+PacketInfo PacketRM::getPacketInfo() const{
+    return PacketInfo::CreateInfo("RM");
 }
 
 void PacketRM::handlePacket(AreaData *area, AOClient &client) const

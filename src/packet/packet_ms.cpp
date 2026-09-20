@@ -11,97 +11,81 @@ PacketMS::PacketMS(QStringList &contents) :
 {
 }
 
-PacketInfo PacketMS::getPacketInfo() const
-{
-    PacketInfo info{
-        .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 15,
-        .header = "MS"};
-    return info;
+PacketInfo PacketMS::getPacketInfo() const{
+    return PacketInfo::CreateInfo("MS", 15);
 }
 
 void PacketMS::handlePacket(AreaData *area, AOClient &client) const{
-    if (client.isAccessBlocked(AOClient::IC)) {
+    if (!client.m_joined)
+        client.m_socket->close();
+    if (client.isAccessBlocked(AOClient::IC))
         client.sendServerMessage("You cannot speak while muted.");
-        return;
-    }
-    
-    const QPointer<Server> CurrentServer(client.getServer()); const QPointer<AreaData> CurrentArea(area);
-    if (CurrentArea.isNull() || CurrentServer.isNull()){
-        qDebug() << "[W][AKASHI][MS]: An client id" << client.clientId() << "attempting to calling an [NULL] area/server pointer.";
-        return;
-    }
+    else{
+        const QPointer<Server> CurrentServer(client.getServer()); const QPointer<AreaData> CurrentArea(area);
+        if (CurrentArea && CurrentServer){
+            if (area->isMessageAllowed() || CurrentServer->isMessageAllowed()){
+                QScopedPointer<AOPacket> validated_packet = CreatePacket(client, CurrentArea, CurrentServer);
+                if (validated_packet){ // only accepted valid pointer..
+                    if (!client.m_pos.isEmpty())
+                        validated_packet->setContentField(5, client.m_pos);
 
-    // floodguard checks..
-    if (!area->isMessageAllowed() || !CurrentServer->isMessageAllowed())
-        return;
-    
-    QScopedPointer<AOPacket> validated_packet = CreatePacket(client);
-    if (!validated_packet.isNull()){ // only accepted valid pointer..
-        if (!client.m_pos.isEmpty())
-            validated_packet->setContentField(5, client.m_pos);
+                    // Check if evidence was presented and we need to handle HIDDEN_CM mode
+                    int evi_idx = validated_packet->getContent()[11].toInt();
+                    int real_evidence_idx = -1;
+                    bool evidence_presented = false;
 
-        // Check if evidence was presented and we need to handle HIDDEN_CM mode
-        int evi_idx = validated_packet->getContent()[11].toInt();
-        int real_evidence_idx = -1;
-        bool evidence_presented = false;
+                    if (evi_idx > 0 && CurrentArea->eviMod() == AreaData::EvidenceMod::HIDDEN_CM) {
+                        // Find the real evidence index
+                        real_evidence_idx = CurrentArea->getEvidenceIndexByVisibleIndex(evi_idx, client.m_pos, client.checkPermission(ACLRole::CM));
+                        if (real_evidence_idx >= 0) {
+                            area->setEvidenceOwnerToAll(real_evidence_idx);
+                            // Update evidence list for all clients in the area
+                            client.sendEvidenceList(area);
+                            evidence_presented = true;
+                        }
+                    }
 
-        if (evi_idx > 0 && CurrentArea->eviMod() == AreaData::EvidenceMod::HIDDEN_CM) {
-            // Find the real evidence index
-            real_evidence_idx = CurrentArea->getEvidenceIndexByVisibleIndex(evi_idx, client.m_pos, client.checkPermission(ACLRole::CM));
-            if (real_evidence_idx >= 0) {
-                area->setEvidenceOwnerToAll(real_evidence_idx);
-                // Update evidence list for all clients in the area
-                client.sendEvidenceList(area);
-                evidence_presented = true;
+                    if (evidence_presented){ /* Send individual packets to each client with correct evidence indices */
+                        for (int Index : CurrentArea->joinedIDs()){
+                            auto l_client = CurrentServer->getClientByID(Index);
+                            if (l_client.isNull())
+                                continue;
+
+                            // Create a copy of the packet content
+                            QStringList packet_content = validated_packet->getContent();
+
+                            // Convert the real evidence index to visible index for this client
+                            int visible_idx = area->getVisibleIndexByEvidenceIndex(real_evidence_idx, l_client->m_pos, l_client->checkPermission(ACLRole::CM));
+                            packet_content[11] = QString::number(visible_idx);
+
+                            // Send the customized packet to this client
+                            AOPacket *custom_packet = PacketFactory::createPacket("MS", packet_content);
+                            l_client->sendPacket(custom_packet);
+                        }
+                    }
+                    else /* Normal broadcast for non-evidence messages or non-HIDDEN_CM areas */
+                        CurrentServer->broadcast(validated_packet.get(), client.areaId());
+
+                    emit client.logIC((client.character() + " " + client.characterName()), client.name(), {client.clientId(), client.m_ipid}, CurrentServer->getAreaById(client.areaId()).isNull() ? "[NULL]" : CurrentServer->getAreaById(client.areaId())->name(), client.m_last_message);
+                    CurrentArea->updateLastICMessage(validated_packet->getContent());
+
+                    CurrentArea->startMessageFloodguard(ConfigManager::messageFloodguard());
+                    CurrentServer->startMessageFloodguard(ConfigManager::globalMessageFloodguard());
+                }
             }
         }
-
-        if (evidence_presented){ /* Send individual packets to each client with correct evidence indices */
-            for (int Index : CurrentArea->joinedIDs()){
-                auto l_client = CurrentServer->getClientByID(Index);
-                if (l_client.isNull())
-                    continue;
-
-                // Create a copy of the packet content
-                QStringList packet_content = validated_packet->getContent();
-
-                // Convert the real evidence index to visible index for this client
-                int visible_idx = area->getVisibleIndexByEvidenceIndex(real_evidence_idx, l_client->m_pos, l_client->checkPermission(ACLRole::CM));
-                packet_content[11] = QString::number(visible_idx);
-
-                // Send the customized packet to this client
-                AOPacket *custom_packet = PacketFactory::createPacket("MS", packet_content);
-                l_client->sendPacket(custom_packet);
-            }
-        }
-        else /* Normal broadcast for non-evidence messages or non-HIDDEN_CM areas */
-            CurrentServer->broadcast(validated_packet.get(), client.areaId());
-
-        emit client.logIC((client.character() + " " + client.characterName()), client.name(), {client.clientId(), client.m_ipid}, CurrentServer->getAreaById(client.areaId()).isNull() ? "[NULL]" : CurrentServer->getAreaById(client.areaId())->name(), client.m_last_message);
-        CurrentArea->updateLastICMessage(validated_packet->getContent());
-
-        CurrentArea->startMessageFloodguard(ConfigManager::messageFloodguard());
-        CurrentServer->startMessageFloodguard(ConfigManager::globalMessageFloodguard());
+        else
+            qDebug() << "[W][WAP-AKASHI][MS]: An client id" << client.clientId() << "attempting to calling an [NULL] area/server pointer.";
     }
 }
 
-static QString NormalizeFormatting(QString s){ /* > normalize of [zero-width & any invisible unicode] < */
-    static const ushort BadChars[] = {
-        0x200B, 0x200C, 0x200D, 0x2060, 0xFEFF, 0x180E,
-        0x200E, 0x200F,
-        0x202A, 0x202B, 0x202C, 0x202D, 0x202E,
-        0x2066, 0x2067, 0x2068, 0x2069, 0x2064
-    }; // thanks to google(s).. i guess..
-
-    for (ushort u : BadChars)
-        s.remove(QChar(u));
-
-    return s.trimmed();
+static QString NormalizeFormatting(const QString &s){ /* > normalize of [zero-width & any invisible unicode] < */
+    static const QRegularExpression rx(QStringLiteral("[\u200B\u200C\u200E\u200F\u202A\u202E\u2060\u2061\u2064\u2066\u206F\uFEFF\u00AD\u180E]"), QRegularExpression::UseUnicodePropertiesOption);
+    return s.trimmed().remove(rx);
 }
 
-QScopedPointer<AOPacket> PacketMS::CreatePacket(AOClient &client) const{
-    /* ====================== [Devs notes] ================================
+QScopedPointer<AOPacket> PacketMS::CreatePacket(AOClient &client, AreaData *area, Server *server) const{
+    /* ====================== [akashi devs notes] =========================
      * Welcome to the super cursed server-side IC chat validation hell
      *
      * I wanted to use enums or #defines here to make the
@@ -113,13 +97,11 @@ QScopedPointer<AOPacket> PacketMS::CreatePacket(AOClient &client) const{
      * 2.6+ extensions raise this to 19, and 2.8 further raises this to 26.
      * ==================================================================== */
     
-    const QPointer<Server> CurrentServer(client.getServer());
     QStringList l_args;
-    if (CurrentServer.isNull() || client.isSpectator() || !client.m_joined)
+    if (client.isSpectator())
         // Spectators cannot use IC
         return QScopedPointer<AOPacket>();
-    QPointer<AreaData> area = CurrentServer->getAreaById(client.areaId());
-    if (area.isNull() || (area->lockStatus() >= AreaData::LockStatus::LOCKED && !area->invited().contains(client.clientId()) && !client.checkPermission(ACLRole::BYPASS_LOCKS)))
+    if (area->lockStatus() >= AreaData::LockStatus::LOCKED && !area->invited().contains(client.clientId()) && !client.checkPermission(ACLRole::BYPASS_LOCKS))
         // Non-invited players cannot speak in spectatable/locked areas
         return QScopedPointer<AOPacket>();
 
@@ -168,7 +150,7 @@ QScopedPointer<AOPacket> PacketMS::CreatePacket(AOClient &client) const{
         const QStringList l_character_split = l_character_name.split("/"); /* selected char is different from supplied folder name.. */
         if (area->iniswapAllowed()) /* user can iniswaping */
             client.m_current_iniswap = l_character_name;
-        else if (!CurrentServer->getCharacters().contains(l_character_split.at(0), Qt::CaseInsensitive) || l_character_split.contains("..")) /* this means the user is INI-swapped */
+        else if (!server->getCharacters().contains(l_character_split.at(0), Qt::CaseInsensitive) || l_character_split.contains("..")) /* this means the user is INI-swapped */
             return QScopedPointer<AOPacket>();
     }
     else if (!client.m_current_iniswap.isEmpty()) /* otherwise.. clear user iniswap state.. */
@@ -184,7 +166,7 @@ QScopedPointer<AOPacket> PacketMS::CreatePacket(AOClient &client) const{
         return QScopedPointer<AOPacket>();
     
     // Doublepost prevention. Has to ignore blankposts and testimony commands.
-    QString l_incoming_msg = client.dezalgo(l_incoming_args[4].toString().trimmed());
+    QString l_incoming_msg = NormalizeFormatting(client.dezalgo(l_incoming_args[4].toString().trimmed()));
     QRegularExpressionMatch match = isTestimonyJumpCommand(client.decodeMessage(l_incoming_msg));
     bool msg_is_testimony_cmd = (match.hasMatch() || l_incoming_msg == ">" || l_incoming_msg == "<");
     if (!client.m_last_message.isEmpty()           // If the last message you sent isn't empty,
@@ -192,7 +174,7 @@ QScopedPointer<AOPacket> PacketMS::CreatePacket(AOClient &client) const{
             && !msg_is_testimony_cmd)                  // and it's not a testimony command,
         return QScopedPointer<AOPacket>();                          // get it the hell outta here!
     
-    if (NormalizeFormatting(l_incoming_msg).trimmed().isEmpty() && !area->blankpostingAllowed()) {
+    if (l_incoming_msg.isEmpty() && !area->blankpostingAllowed()) {
         client.sendServerMessage("Blankposting has been forbidden in this area.");
         return QScopedPointer<AOPacket>();
     }
@@ -249,7 +231,7 @@ QScopedPointer<AOPacket> PacketMS::CreatePacket(AOClient &client) const{
     const QString pos = l_incoming_args[5].toString().remove("../").remove("..\\");
     if (client.m_pos != pos) {
         client.m_pos = pos;
-        client.updateEvidenceList(CurrentServer->getAreaById(client.areaId()));
+        client.updateEvidenceList(area);
     }
     
     // sfx name
@@ -375,10 +357,10 @@ QScopedPointer<AOPacket> PacketMS::CreatePacket(AOClient &client) const{
         QPair<int, QStringList> l_other_data = qMakePair(0, QStringList{"", "", ""});
         
         if (area->checkPairSync(client.clientId())){ /* [Pair Sync] server-side */
-            auto target_synced = CurrentServer->getClientByID(area->getPairSyncList()[client.clientId()]);
+            auto target_synced = server->getClientByID(area->getPairSyncList()[client.clientId()]);
             if (!target_synced.isNull() && area->joinedIDs().contains(target_synced->clientId())){ /* capture target from current area */
                 if (area->checkPairSync(target_synced->clientId())){ /* target were in pair_sync list */
-                    if (area->get_pair_sync_clientID(target_synced->clientId()) == client.clientId()){ /* when user been targeted by that targets */
+                    if (area->GetPairSyncID(target_synced->clientId()) == client.clientId()){ /* when user been targeted by that targets */
                         client.m_pairing_with = target_synced->m_char_id; /* syncing by /pair, no matter if target were switching chars. */
                         if (target_synced->m_pairing_with != client.m_char_id) /* resyncing target 'pairing_with' with user id too when target were switching chars */
                             target_synced->m_pairing_with = client.m_char_id;
@@ -405,7 +387,7 @@ QScopedPointer<AOPacket> PacketMS::CreatePacket(AOClient &client) const{
         /* [pairing] handles */
         const auto current_taken = area->PlayerCharacterMap();
         if (client.m_pairing_with > -1 && current_taken.values().contains(client.m_pairing_with)){ /* capture an target by char_id */
-            const auto Target_client = CurrentServer->getClientByID(current_taken.key(client.m_pairing_with));
+            const auto Target_client = server->getClientByID(current_taken.key(client.m_pairing_with));
             if (!Target_client.isNull() && Target_client->m_pairing_with == client.m_char_id){ /* let's marked if target are paired with user */
                 l_other_charid = client.m_pairing_with;
                 l_other_data = qMakePair(Target_client->m_flipping.toInt(), QStringList{Target_client->m_current_iniswap.isEmpty() ? Target_client->character() : Target_client->m_current_iniswap, Target_client->m_emote, Target_client->m_offset});
@@ -524,7 +506,7 @@ QScopedPointer<AOPacket> PacketMS::CreatePacket(AOClient &client) const{
             if (area->statement() == -1) { // -1 indicates title
                 l_args[4] = "~~-- " + l_args[4] + " --";
                 l_args[14] = "3";
-                CurrentServer->broadcast(PacketFactory::createPacket("RT", {"testimony1", "0"}), client.areaId());
+                server->broadcast(PacketFactory::createPacket("RT", {"testimony1", "0"}), client.areaId());
             }
             client.addStatement(l_args);
         }

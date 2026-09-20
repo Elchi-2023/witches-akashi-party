@@ -27,7 +27,7 @@
 // This file is for commands under the messaging category in aoclient.h
 // Be sure to register the command in the header before adding it here!
 
-void AOClient::cmdHoliday(int argc, QStringList argv)
+void AOClient::cmdHoliday(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
 
@@ -39,19 +39,19 @@ void AOClient::cmdHoliday(int argc, QStringList argv)
             QStringList l_holiday_list;
             for (auto i = l_holiday.begin(); i != l_holiday.end(); i++)
                 l_holiday_list << QString(i.key().toLower() == m_holiday_mode.second.toLower() ? (m_version.type == AOClient::ClientVersion::NDS ? " > [" + i.key() + "]" : " 👉 [" + i.key() + "]") : " · [" + i.key() + "]"); /* pointing out which user holiday mode on, otherwise */
-            sendPacket("CT", {"[Holiday Mode]", l_holiday_list.isEmpty() ? "The holiday list unavailable." : "The holiday list available as follows:\n" + l_holiday_list.join('\n') , "1"});
+            sendServerMessage(l_holiday_list.isEmpty() ? "The holiday list unavailable." : "The holiday list available as follows:\n" + l_holiday_list.join('\n'), "[Holiday Mode]");
         }
         else{
             if (l_holiday.contains(target.toLower())){
                 if (m_holiday_mode.second == target.toLower())
-                    sendPacket("CT", {"[Holiday Mode]", QString("You already on %1 holiday mode").arg(m_holiday_mode.second), "1"});
+                    sendServerMessage(QString("You already on %1 holiday mode").arg(m_holiday_mode.second), "[Holiday Mode]");
                 else{
-                    sendPacket("CT", {"[Holiday Mode]", QString("Changes from %1 to %2.").arg(m_holiday_mode.second, target), "1"});
+                    sendServerMessage(QString("Changes from %1 to %2.").arg(m_holiday_mode.second, target), "[Holiday Mode]");
                     m_holiday_mode.second = target;
                 }
             }
             else
-                sendPacket("CT", {"[Holiday Mode]", QString("%1 Not exist on the holiday list.").arg(target), "1"});
+                sendServerMessage(QString("%1 Not exist on the holiday list.").arg(target), "[Holiday Mode]");
         }
     }
     else{
@@ -59,31 +59,31 @@ void AOClient::cmdHoliday(int argc, QStringList argv)
             QStringList l_holiday_list;
             for (auto i = l_holiday.begin(); i != l_holiday.end(); i++)
                 l_holiday_list << " · [" + i.key() + "]";
-            sendPacket("CT", {"[Holiday Mode]", l_holiday_list.isEmpty() ? "The holiday list unavailable." : "The holiday list available as follows:\n" + l_holiday_list.join('\n') , "1"});
+            sendServerMessage(l_holiday_list.isEmpty() ? "The holiday list unavailable." : "The holiday list available as follows:\n" + l_holiday_list.join('\n'), "[Holiday Mode]");
         }
         else if (l_holiday.contains(target.toLower())){
-            sendPacket("CT", {"[Holiday Mode]", QString("Holiday Mode enable and set to %2 mode.").arg(target), "1"});
+            sendServerMessage(QString("Holiday Mode enable and set to %2 mode.").arg(target), "[Holiday Mode]");
             m_holiday_mode = qMakePair(true, target);
         }
         else
-            sendPacket("CT", {"[Holiday Mode]", QString("%1 Not exist on the holiday list.").arg(target), "1"});
+            sendServerMessage(QString("%1 Not exist on the holiday list.").arg(target), "[Holiday Mode]");
     }
 }
 
-void AOClient::cmdUnHoliday(int argc, QStringList argv)
+void AOClient::cmdUnHoliday(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc)
     Q_UNUSED(argv)
 
     if (m_holiday_mode.first){
         m_holiday_mode = qMakePair(false, QString());
-        sendPacket("CT", {"[Holiday Mode]", "Holiday Mode disabled", "1"});
+        sendServerMessage("Holiday Mode disabled.", "[Holiday Mode]");
     }
     else
-        sendPacket("CT", {"[Holiday Mode]", "Holiday Mode are disabled", "1"});
+        sendServerMessage("Holiday Mode are disabled.", "[Holiday Mode]");
 }
 
-void AOClient::cmdPair(int argc, QStringList argv){
+void AOClient::cmdPair(const int argc, const QStringList &argv){
     switch (argc){
     case 0:
         sendServerMessage("Please inserts target ID if you want pairing someone.");
@@ -102,25 +102,19 @@ void AOClient::cmdPair(int argc, QStringList argv){
                 if (!l_area->joinedIDs().contains(target->clientId()))
                     sendServerMessage("That target weren't on this area, make sure you check if that target were on this area.");
                 else{
-                    bool ispaired_other = l_area->get_pair_sync_clientID(target->clientId()) > -1 && l_area->get_pair_sync_clientID(target->clientId()) != clientId(); // checker if target are pairing with someone..
-                    const QHash<int, int> current_joined = l_area->PlayerJoinedMap();
-                    if (!ispaired_other){ // double check moment (client-side by <char_id>)..
-                        const auto cpaired_other = server->getClientByID(current_joined.value(target->m_pairing_with, -1)); // getting client by <char_id>..
-                        ispaired_other = target->m_pairing_with > -1 && current_joined.values().contains(target->m_pairing_with) && !cpaired_other.isNull() && cpaired_other->m_pairing_with > -1 && cpaired_other->m_pairing_with != target->m_pairing_with;
-                    }
-
-                    if (l_area->addPairSync(clientId(), target->clientId())){ /* oh this?.. well.. user choices the target that'll adds/change */
-                        if (ispaired_other){
-                            l_area->removePairSync(clientId());
-                            sendServerMessage("That target are already paired with someone.");
-                        }
-                        else {
-                            sendServerMessage(QString("You are now paired with %1 and synced with, Make sure that target also selected you.").arg(AOClient::NameWId(target)));
-                            m_pair_order = 0;
-                        }
-                    }
-                    else
+                    switch (l_area->checkPairSync({clientId(), target->clientId()})){
+                    case 0:
+                        l_area->addPairSync(clientId(), target->clientId());
+                        sendServerMessage(QString("You are now paired with %1 and synced with, Make sure that target also selected you.").arg(AOClient::NameWId(target)));
+                        m_pair_order = 0;
+                        break;
+                    case 1:
                         sendServerMessage("You are already synced pairing with that target.");
+                        break;
+                    case 2:
+                        sendServerMessage("That target are already paired syncs with someone.");
+                        break;
+                    }
                 }
             }
         }
@@ -130,7 +124,7 @@ void AOClient::cmdPair(int argc, QStringList argv){
     }
 }
 
-void AOClient::cmdUnPair(int argc, QStringList argv) 
+void AOClient::cmdUnPair(const int argc, const QStringList &argv) 
 {
     Q_UNUSED(argc);
     Q_UNUSED(argv);
@@ -139,15 +133,10 @@ void AOClient::cmdUnPair(int argc, QStringList argv)
     if (l_area.isNull())
         return;
 
-    if (l_area->removePairSync(clientId())){
-        sendServerMessage("You are not longer paired.");
-        m_pair_order = -1;
-    }
-    else
-        sendServerMessage("You are not pairing with anyone, do /pair <client id> if you want pairing someone.");
+    sendServerMessage(l_area->removePairSync(clientId()) ? "You are not longer paired." : "You are not pairing with anyone, do /pair <client id> if you want pairing someone.");
 }
 
-void AOClient::cmdPairOrder(int argc, QStringList argv)
+void AOClient::cmdPairOrder(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc)
 
@@ -186,7 +175,7 @@ void AOClient::cmdPairOrder(int argc, QStringList argv)
     }
 }
 
-void AOClient::cmdOffset(int argc, QStringList argv){
+void AOClient::cmdOffset(const int argc, const QStringList &argv){
     if (argv.isEmpty()){ /* when there is no input, we show the current offset */
         if (m_offset_override.isEmpty()){ /* we check if the override is empty or resetted */
             const QPair<int, int> current_offset(qMakePair(m_offset.split("&").size() >= 1 ? m_offset.split("&")[0].toInt() : 0, m_offset.split("&").size() >= 2 ? m_offset.split("&")[1].toInt() : 0));
@@ -315,7 +304,7 @@ void AOClient::cmdOffset(int argc, QStringList argv){
     }
 }
 
-void AOClient::cmdPos(int argc, QStringList argv)
+void AOClient::cmdPos(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
 
@@ -327,7 +316,7 @@ void AOClient::cmdPos(int argc, QStringList argv)
     updateEvidenceList(l_area);
 }
 
-void AOClient::cmdForcePos(int argc, QStringList argv)
+void AOClient::cmdForcePos(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
 
@@ -363,7 +352,7 @@ void AOClient::cmdForcePos(int argc, QStringList argv)
         sendServerMessage("That does not look like a valid ID.");
 }
 
-void AOClient::cmdG(int argc, QStringList argv)
+void AOClient::cmdG(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
     auto current_area = server->getAreaById(areaId());
@@ -399,12 +388,12 @@ void AOClient::cmdG(int argc, QStringList argv)
     server->broadcastCAuth(PacketCT::CreateMessage(l_sender_message, "[G][" + l_sender.second + "][" + l_sender.first + "][" + m_ipid + "]"), AOClient::AuthenticateType::MODERATOR);
 }
 
-void AOClient::cmdNeed(int argc, QStringList argv){
+void AOClient::cmdNeed(const int argc, const QStringList &argv){
     Q_UNUSED(argc);
     server->broadcast(PacketCT::CreateMessageS(QString("\n=== Advert ===\n%1 needs %2\nin area: %3\n==============").arg(AOClient::NameWId(this), argv.join(" "), server->getAreaName(areaId()))));
 }
 
-void AOClient::cmdSwitch(int argc, QStringList argv)
+void AOClient::cmdSwitch(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
 
@@ -426,7 +415,7 @@ void AOClient::cmdSwitch(int argc, QStringList argv)
     }
 }
 
-void AOClient::cmdRandomChar(int argc, QStringList argv)
+void AOClient::cmdRandomChar(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
     Q_UNUSED(argv);
@@ -446,7 +435,7 @@ void AOClient::cmdRandomChar(int argc, QStringList argv)
     }
 }
 
-void AOClient::cmdToggleGlobal(int argc, QStringList argv)
+void AOClient::cmdToggleGlobal(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
     Q_UNUSED(argv);
@@ -454,7 +443,7 @@ void AOClient::cmdToggleGlobal(int argc, QStringList argv)
     sendServerMessage("Global chat set to " + QStringList({"hidden", "shown"})[(m_global_enabled = !m_global_enabled)]);
 }
 
-void AOClient::cmdPM(int argc, QStringList argv)
+void AOClient::cmdPM(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
 
@@ -496,14 +485,14 @@ void AOClient::cmdPM(int argc, QStringList argv)
     }
 }
 
-void AOClient::cmdAnnounce(int argc, QStringList argv)
+void AOClient::cmdAnnounce(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
 
     sendServerBroadcast("\r\n=== Announcement ===\r\n" + argv.join(" ") + "\r\n=============");
 }
 
-void AOClient::cmdM(int argc, QStringList argv)
+void AOClient::cmdM(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
 
@@ -533,7 +522,7 @@ void AOClient::cmdM(int argc, QStringList argv)
     server->broadcast(PacketCT::CreateMessage(QString("[MODCHAT][%1]").arg(isVAuthenticated() ? "VIP][" + l_sender.first : l_sender.first), l_sender.second), Server::TARGET_TYPE::MODCHAT);
 }
 
-void AOClient::cmdGM(int argc, QStringList argv)
+void AOClient::cmdGM(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
 
@@ -543,7 +532,7 @@ void AOClient::cmdGM(int argc, QStringList argv)
     server->broadcast(PacketCT::CreateMessageS("[G][" + l_sender_area + "]" + "[" + l_sender_name + "][M]", l_sender_message), Server::TARGET_TYPE::MODCHAT);
 }
 
-void AOClient::cmdLM(int argc, QStringList argv)
+void AOClient::cmdLM(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
 
@@ -552,7 +541,7 @@ void AOClient::cmdLM(int argc, QStringList argv)
     server->broadcast(PacketCT::CreateMessage(argv.join(" "), "[M][" + name() + "]"), areaId());
 }
 
-void AOClient::cmdMutePM(int argc, QStringList argv)
+void AOClient::cmdMutePM(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
     Q_UNUSED(argv);
@@ -560,7 +549,7 @@ void AOClient::cmdMutePM(int argc, QStringList argv)
     sendServerMessage("PM's are now " + QStringList({"unmuted", "muted"})[(m_pm_mute = !m_pm_mute)]);
 }
 
-void AOClient::cmdToggleAdverts(int argc, QStringList argv)
+void AOClient::cmdToggleAdverts(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
     Q_UNUSED(argv);
@@ -568,7 +557,7 @@ void AOClient::cmdToggleAdverts(int argc, QStringList argv)
     sendServerMessage("Advertisements turned " + QStringList({"off", "on"})[(m_advert_enabled = !m_advert_enabled)]);
 }
 
-void AOClient::cmdToggleAfkMute(int argc, QStringList argv)
+void AOClient::cmdToggleAfkMute(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
     Q_UNUSED(argv);
@@ -576,7 +565,7 @@ void AOClient::cmdToggleAfkMute(int argc, QStringList argv)
     sendServerMessage("AFK notifications are now " + QStringList({"hidden", "shown"})[(m_afk_received = !m_afk_received)] + ".");
 }
 
-void AOClient::cmdToggleAfkannounce(int argc, QStringList argv){
+void AOClient::cmdToggleAfkannounce(const int argc, const QStringList &argv){
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
@@ -585,7 +574,7 @@ void AOClient::cmdToggleAfkannounce(int argc, QStringList argv){
     sendServerMessage(String[m_afk_announcement]);
 }
 
-void AOClient::cmdAfk(int argc, QStringList argv)
+void AOClient::cmdAfk(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
     Q_UNUSED(argv);
@@ -617,7 +606,7 @@ void AOClient::cmdAfk(int argc, QStringList argv)
     ToggleAFK();
 }
 
-void AOClient::cmdCharCurse(int argc, QStringList argv){
+void AOClient::cmdCharCurse(const int argc, const QStringList &argv){
     auto current_area = server->getAreaById(areaId());
     if (current_area.isNull())
         return;
@@ -677,7 +666,7 @@ void AOClient::cmdCharCurse(int argc, QStringList argv){
     }
 }
 
-void AOClient::cmdUnCharCurse(int argc, QStringList argv){
+void AOClient::cmdUnCharCurse(const int argc, const QStringList &argv){
     Q_UNUSED(argc);
     auto current_area = server->getAreaById(areaId());
     if (current_area.isNull())
@@ -702,7 +691,7 @@ void AOClient::cmdUnCharCurse(int argc, QStringList argv){
     }
 }
 
-void AOClient::cmdCharSelect(int argc, QStringList argv){
+void AOClient::cmdCharSelect(const int argc, const QStringList &argv){
     switch (argc){
     case 0:
         changeCharacter(-1);
@@ -719,7 +708,7 @@ void AOClient::cmdCharSelect(int argc, QStringList argv){
     }
 }
 
-void AOClient::cmdForceCharSelect(int argc, QStringList argv)
+void AOClient::cmdForceCharSelect(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
 
@@ -736,7 +725,7 @@ void AOClient::cmdForceCharSelect(int argc, QStringList argv)
     }
 }
 
-void AOClient::cmdA(int argc, QStringList argv)
+void AOClient::cmdA(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
 
@@ -780,7 +769,7 @@ void AOClient::cmdA(int argc, QStringList argv)
         sendServerMessage("This does not look like a valid AreaID.");
 }
 
-void AOClient::cmdS(int argc, QStringList argv)
+void AOClient::cmdS(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
 
@@ -814,7 +803,7 @@ void AOClient::cmdS(int argc, QStringList argv)
     }
 }
 
-void AOClient::cmdFirstPerson(int argc, QStringList argv)
+void AOClient::cmdFirstPerson(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
     Q_UNUSED(argv);

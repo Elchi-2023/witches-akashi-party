@@ -25,30 +25,29 @@
 
 Server *server;
 
-void cleanup()
-{
-    server->deleteLater();
+void cleanup(){
+    if (server)
+        server->deleteLater();
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]){
     QCoreApplication app(argc, argv);
-    QCoreApplication::setApplicationName("akashi");
-    QCoreApplication::setApplicationVersion("jackfruit (1.9)");
+    QCoreApplication::setApplicationName("WAP-Akashi");
+    QCoreApplication::setApplicationVersion("1.3");
     std::atexit(cleanup);
-    qInfo() << "[AKASHI]: Starting software..";
-    qInfo() << "[AKASHI]: Verifying server configs..";
+    qInfo() << "[WAP-AKASHI]: Starting software..";
+    qInfo() << "[WAP-AKASHI]: Verifying server configs..";
 
     // Verify server configuration is sound.
-    if (!ConfigManager::verifyServerConfig()) {
-        qCritical() << "[E][AKASHI]: configs is invalid!";
-        qCritical() << "[C][AKASHI]: Exiting server due to configuration issue.";
+    if (ConfigManager::verifyServerConfig()){
+        qInfo() << "[WAP-AKASHI]: Verifed and software progressing..";
+        (server = new Server(ConfigManager::serverPort(), &app))->start();
+    }
+    else{
+        qCritical() << "[E][WAP-AKASHI]: configs is invalid!";
+        qCritical() << "[C][WAP-AKASHI]: Exiting server due to configuration issue.";
         exit(EXIT_FAILURE);
         QCoreApplication::quit();
-    }
-    else {
-        qInfo() << "[AKASHI]: Verifed and software progressing..";
-        (server = new Server(ConfigManager::serverPort(), &app))->start();
     }
 
     return app.exec();

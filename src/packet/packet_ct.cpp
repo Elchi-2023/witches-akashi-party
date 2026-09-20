@@ -12,34 +12,20 @@ PacketCT::PacketCT(QStringList &contents) :
 {
 }
 
-PacketInfo PacketCT::getPacketInfo() const
-{
-    PacketInfo info{
-        .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 2,
-        .header = "CT"};
-    return info;
+PacketInfo PacketCT::getPacketInfo() const{
+    return PacketInfo::CreateInfo("CT", 2);
 }
 
-static QString NormalizeName(QString s){ /* > normalize of [zero-width & any invisible unicode] < */
-    static const ushort BadChars[] = {
-        0x200B, 0x200C, 0x200D, 0x2060, 0xFEFF, 0x180E,
-        0x200E, 0x200F,
-        0x202A, 0x202B, 0x202C, 0x202D, 0x202E,
-        0x2066, 0x2067, 0x2068, 0x2069, 0x2064
-    }; // thanks to google(s).. i guess..
-
-    for (ushort u : BadChars)
-        s.remove(QChar(u));
-
-    return s.trimmed().remove(QRegularExpression("\\[|\\]|\\{|\\}|\\#|\\$|\\%|\\&"));
+static QString NormalizeFormatting(const QString &s){ /* > normalize of [zero-width & any invisible unicode] < */
+    static const QRegularExpression rx(QStringLiteral("[\u200B\u200C\u200E\u200F\u202A\u202E\u2060\u2061\u2064\u2066\u206F\uFEFF\u00AD\u180E]"), QRegularExpression::UseUnicodePropertiesOption);
+    return s.trimmed().remove(rx);
 }
 
 void PacketCT::handlePacket(AreaData *area, AOClient &client) const{
     if (QPointer<AreaData>(area).isNull())
         return; // safely first..
 
-    const QString Name = NormalizeName(AOClient::dezalgo(m_content[0]));
+    const QString Name = NormalizeFormatting(AOClient::dezalgo(m_content[0]));
     if (Name.isEmpty() || Name.normalized(QString::NormalizationForm_KC).compare(ConfigManager::serverName().normalized(QString::NormalizationForm_KC), Qt::CaseInsensitive) == 0) /* impersonation & empty name protection */
         return;
     else if (Name.length() >= 31)
@@ -69,7 +55,7 @@ void PacketCT::handlePacket(AreaData *area, AOClient &client) const{
                             const QPointer<Server> current_server = client.getServer();
                             if (!current_server.isNull())
                                 current_server->broadcast(PacketCT::CreateMessageS(QString("[ALERT] A user %1 (aka %2) attempted to logining, %3 tries.").arg(client.m_ipid, client.name(), QString::number(client.totalAttempt.second))), AOClient::AuthenticateType::MODERATOR);
-                            qInfo() << "[I][AKASHI][Login Prompt]: " << client.m_ipid << " (aka " << client.name() << ") attempting to logining, " << client.totalAttempt.second << " tries.";
+                            qInfo() << "[I][WAP-AKASHI][Login Prompt]: " << client.m_ipid << " (aka " << client.name() << ") attempting to logining, " << client.totalAttempt.second << " tries.";
                             client.totalAttempt.first = 0;
                         }
                         client.sendServerMessage("Please try again or /cancel to exit", "[Login Prompt]");

@@ -25,7 +25,7 @@
 // This file is for commands under the authentication category in aoclient.h
 // Be sure to register the command in the header before adding it here!
 
-void AOClient::cmdLogin(int argc, QStringList argv){
+void AOClient::cmdLogin(const int argc, const QStringList &argv){
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
@@ -49,7 +49,7 @@ void AOClient::cmdLogin(int argc, QStringList argv){
     }
 }
 
-void AOClient::cmdChangeAuth(int argc, QStringList argv){
+void AOClient::cmdChangeAuth(const int argc, const QStringList &argv){
     Q_UNUSED(argc);
     Q_UNUSED(argv);
 
@@ -59,7 +59,7 @@ void AOClient::cmdChangeAuth(int argc, QStringList argv){
     }
 }
 
-void AOClient::cmdSetRootPass(int argc, QStringList argv){
+void AOClient::cmdSetRootPass(const int argc, const QStringList &argv){
     Q_UNUSED(argc);
 
     if (!change_auth_started)
@@ -75,7 +75,7 @@ void AOClient::cmdSetRootPass(int argc, QStringList argv){
         sendServerMessage("Password does not meet server requirements.");
 }
 
-void AOClient::cmdChangeRootName(int argc, QStringList argv){
+void AOClient::cmdChangeRootName(const int argc, const QStringList &argv){
     Q_UNUSED(argc)
 
     if (m_authenticated_type != AuthenticateType::ROOT)
@@ -91,7 +91,7 @@ void AOClient::cmdChangeRootName(int argc, QStringList argv){
     }
 }
 
-void AOClient::cmdAddUser(int argc, QStringList argv){
+void AOClient::cmdAddUser(const int argc, const QStringList &argv){
     Q_UNUSED(argc)
     auto GetDBManager = QPointer<DBManager>(server->getDatabaseManager());
 
@@ -105,12 +105,12 @@ void AOClient::cmdAddUser(int argc, QStringList argv){
         sendServerMessage("Password does not meet server requirements.");
 }
 
-void AOClient::cmdRemoveUser(int argc, QStringList argv){
+void AOClient::cmdRemoveUser(const int argc, const QStringList &argv){
     Q_UNUSED(argc);
     sendServerMessage(server->getDatabaseManager()->deleteUser(argv[0]) ? "Successfully removed user " + argv[0] + "." : "Unable to remove user " + argv[0] + ".\nDoes it exist?");
 }
 
-void AOClient::cmdListPerms(int argc, QStringList argv){
+void AOClient::cmdListPerms(const int argc, const QStringList &argv){
     Q_UNUSED(argc);
 
     const QStringList utype({"VIP", "Moderator"});
@@ -200,7 +200,7 @@ void AOClient::cmdListPerms(int argc, QStringList argv){
     }
 }
 
-void AOClient::cmdSetPerms(int argc, QStringList argv){
+void AOClient::cmdSetPerms(const int argc, const QStringList &argv){
     Q_UNUSED(argc);
 
     QPointer<ACLRolesHandler> GetRoleHander(server->getACLRolesHandler());
@@ -225,13 +225,11 @@ void AOClient::cmdSetPerms(int argc, QStringList argv){
         sendServerMessage("That role doesn't exist!");
 }
 
-void AOClient::cmdRemovePerms(int argc, QStringList argv)
-{
-    argv.append(ACLRolesHandler::NONE_ID);
-    cmdSetPerms(argc, argv);
+void AOClient::cmdRemovePerms(const int argc, const QStringList &argv){
+    cmdSetPerms(argc, {argv[0], ACLRolesHandler::NONE_ID});
 }
 
-void AOClient::cmdListUsers(int argc, QStringList argv){
+void AOClient::cmdListUsers(const int argc, const QStringList &argv){
     Q_UNUSED(argc);
     Q_UNUSED(argv);
     QPointer<DBManager> GetDBManager(server->getDatabaseManager());
@@ -251,7 +249,7 @@ void AOClient::cmdListUsers(int argc, QStringList argv){
     sendServerMessage("All users:\n" + Usertypes.join("\n"));
 }
 
-void AOClient::cmdLogout(int argc, QStringList argv)
+void AOClient::cmdLogout(const int argc, const QStringList &argv)
 {
     Q_UNUSED(argc);
     Q_UNUSED(argv);
@@ -277,7 +275,7 @@ void AOClient::cmdLogout(int argc, QStringList argv)
     }
 }
 
-void AOClient::cmdChangePassword(int argc, QStringList argv){
+void AOClient::cmdChangePassword(const int argc, const QStringList &argv){
     QString l_username;
     const QString l_password = argv[0];
 

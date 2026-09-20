@@ -9,13 +9,8 @@ PacketRD::PacketRD(QStringList &contents) :
 {
 }
 
-PacketInfo PacketRD::getPacketInfo() const
-{
-    PacketInfo info{
-        .acl_permission = ACLRole::Permission::NONE,
-        .min_args = 0,
-        .header = "RD"};
-    return info;
+PacketInfo PacketRD::getPacketInfo() const{
+    return PacketInfo::CreateInfo("RD");
 }
 
 void PacketRD::handlePacket(AreaData *area, AOClient &client) const{
