@@ -309,13 +309,13 @@ bool AreaData::changeCharacter(const int f_clientid, const int f_target_charid){
             m_joined_ids[f_clientid] = -1;
         return true;
     default:
-        if (f_target_charid != m_joined_ids[f_clientid] && !m_joined_ids.values().contains(targetCID))
-            m_joined_ids[f_clientid] = targetCID;
-        break;
+        for (auto it = m_joined_ids.cbegin(); it != m_joined_ids.cend(); ++it){
+            if (it.key() != f_clientid && it.value() == targetCID)
+                return false;
+        }
+        m_joined_ids[f_clientid] = targetCID;
+        return true;
     }
-
-    m_joined_ids[f_clientid] = targetCID;
-    return true;
 }
 
 QList<AreaData::Evidence> AreaData::evidence() const
