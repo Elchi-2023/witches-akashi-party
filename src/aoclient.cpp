@@ -534,8 +534,7 @@ void AOClient::sendAudioFrame(const int c_from, const QByteArray &frame_byte, co
     if (area.isNull() || area->index() != areaId() || c_from == clientId())
         return;
 
-    const auto current_vc = area->GetRegisteredVoiceMap();
-    if (!current_vc.contains(clientId()) || !current_vc[clientId()])
+    if (!area->GetRegisteredVoiceID().contains(clientId()))
         return; // not in vc, reject..
 
     sendPacket("VS_AUDIO", {QString::number(c_from), frame_byte.toBase64()});
